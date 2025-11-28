@@ -6,18 +6,19 @@ function Sidebar({ cartCount}) {
         <div className="sidebar">
             <div className="logo-area">LOGO</div>
 
-            <nav>
+            <div className="nav-links">
                 {/* We use Link to navigate without reloading the page */}
                 <Link to="/" className="nav-btn">Make your own drink</Link>
                 <Link to="/seasonal" className="nav-btn">Seasonal Drinks</Link>
                 <Link to="/milktea" className="nav-btn">Milk Tea</Link>
-                <Link to="tea" className="nav-btn">Tea</Link>
-            </nav>
-
-            {/* Display the Cart Count at the bottom or top */}
-            <div style={{ marginTop: 'auto', padding: '20px', background: '#bfdbfe' }}>
-                <h3>Cart: {cartCount} items</h3>
+                <Link to="/tea" className="nav-btn">Tea</Link>
             </div>
+
+            {/* create new segment for cart link */}
+            <Link to="/cart" className="cart-link">
+                <div>View Cart</div>    
+                <div>{cartCount} items</div>
+            </Link>
         </div>
     );
 }

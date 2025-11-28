@@ -9,7 +9,6 @@ body, html, #root {
 .app-layout {
   display: flex; 
   min-height: 100vh; /* FIX: Forces container to be at least full screen height */
-  width: 100%;
 }
 
 /* SIDEBAR */
@@ -19,7 +18,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   border-right: 1px solid #ccc;
-  flex-shrink: 0; /* FIX: Prevents sidebar from shrinking if content is wide */
+  /* flex-shrink: 0; FIX: Prevents sidebar from shrinking if content is wide */
 }
 
 .logo-area {
@@ -30,7 +29,7 @@ body, html, #root {
   font-size: 24px;
   font-weight: bold;
   background-color: #bfdbfe;
-  border-bottom: 1px solid #999;
+  border-bottom: 1px solid #aaa;
 }
 
 .nav-btn {
@@ -46,6 +45,28 @@ body, html, #root {
 .nav-btn:hover {
   background-color: #93c5fd;
   font-weight: bold;
+}
+
+/* This container holds your links (Make drink, Coffee, etc) */
+.nav-links {
+  display: flex;
+  flex-direction: column;
+}
+
+/* THE CART SECTION STYLES */
+.cart-link {
+  margin-top: auto; /* THIS IS THE MAGIC: Pushes this element to the very bottom */
+  padding: 20px;
+  background-color: #93c5fd; /* Darker blue to stand out */
+  text-decoration: none;
+  color: #1e3a8a;
+  font-weight: bold;
+  text-align: center;
+  transition: background 0.3s;
+}
+
+.cart-link:hover {
+  background-color: #60a5fa;
 }
 
 /* CONTENT AREA */
