@@ -1,8 +1,10 @@
 import io
+from unittest import mock
 from pathlib import Path
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -170,3 +172,72 @@ class SeedDemoTests(TestCase):
         res = APIClient().post("/ordering/log-order/", {
             "shop": shop.id, "items": [{"drink": drink.id, "size": 1, "sugar": 2, "ice": 2}]}, format="json")
         self.assertEqual(res.status_code, 201, res.data)
+
+
+class PickupTests(OrderingTestBase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()  # the pickup rate limit counts attempts in the cache
+
+    def place(self):
+        res = self.order((self.green_tea, 0))
+        self.assertEqual(res.status_code, 201, res.data)
+        return res.data
+
+    def collect(self, code, shop=None):
+        return self.client.post("/ordering/pickup/", {"shop": shop or self.shop.id, "code": code}, format="json")
+
+    def pay(self, order_id):
+        Order.objects.filter(pk=order_id).update(status=Order.Status.PAID)
+
+    def test_new_order_gets_pin_and_qr(self):
+        data = self.place()
+        self.assertRegex(data["pickup_pin"], r"^\d{6}$")
+        self.assertTrue(data["pickup_qr"].startswith("data:image/png;base64,"))
+        order = Order.objects.get(pk=data["id"])
+        self.assertEqual(order.pickup_pin, data["pickup_pin"])
+        self.assertGreaterEqual(len(order.pickup_token), 20)
+        # the codes are never shown again, e.g. in the order status
+        status_data = self.client.get(f"/ordering/orders/{data['id']}/status/").data
+        self.assertNotIn(data["pickup_pin"], str(status_data))
+
+    def test_collect_by_pin_once(self):
+        data = self.place()
+        self.pay(data["id"])
+        res = self.collect(data["pickup_pin"])
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data["status"], Order.Status.COLLECTED)
+        self.assertIsNotNone(Order.objects.get(pk=data["id"]).collected_at)
+        self.assertEqual(self.collect(data["pickup_pin"]).status_code, 409)
+
+    def test_collect_by_qr_token(self):
+        data = self.place()
+        self.pay(data["id"])
+        token = Order.objects.get(pk=data["id"]).pickup_token
+        self.assertEqual(self.collect(token).status_code, 200)
+
+    def test_unpaid_order_is_not_handed_over(self):
+        data = self.place()
+        res = self.collect(data["pickup_pin"])
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(Order.objects.get(pk=data["id"]).status, Order.Status.PENDING)
+
+    def test_wrong_code_or_other_shop(self):
+        data = self.place()
+        self.pay(data["id"])
+        wrong = "000000" if data["pickup_pin"] != "000000" else "111111"
+        self.assertEqual(self.collect(wrong).status_code, 404)
+        other = Shop.objects.create(name="Other", address="2 Road")
+        self.assertEqual(self.collect(data["pickup_pin"], shop=other.id).status_code, 404)
+        self.assertEqual(self.client.post("/ordering/pickup/", {"code": "123456"}, format="json").status_code, 400)
+
+    def test_pins_are_unique_among_uncollected_orders(self):
+        with mock.patch("ordering.pickup.secrets.randbelow", side_effect=[42, 42, 7]):
+            first, second = self.place(), self.place()
+        self.assertEqual(first["pickup_pin"], "000042")
+        self.assertEqual(second["pickup_pin"], "000007")
+
+    def test_guessing_is_rate_limited(self):
+        codes = [self.collect(f"{n:06d}").status_code for n in range(12)]
+        self.assertEqual(codes[:10], [404] * 10)
+        self.assertEqual(codes[10:], [429, 429])

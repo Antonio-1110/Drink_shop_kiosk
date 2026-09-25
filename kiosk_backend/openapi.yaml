@@ -394,6 +394,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutError'
           description: ''
+  /ordering/pickup/:
+    post:
+      operationId: ordering_pickup_create
+      description: The kiosk sends the 6-digit pickup PIN the customer typed, or the
+        token from their scanned pickup QR code. A paid order is handed over once
+        and becomes COLLECTED. Limited to a few attempts a minute per machine, so
+        PINs can't be guessed.
+      summary: Collect an order at the machine
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          description: Too many attempts; wait a minute.
   /ordering/shops/:
     get:
       operationId: ordering_shops_list
@@ -501,6 +552,45 @@ components:
         * `2` - 50%
         * `1` - 25%
         * `0` - 0%
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        shop:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+        time:
+          type: string
+          format: date-time
+          readOnly: true
+        item_quantity:
+          type: integer
+          readOnly: true
+        user_id:
+          type: string
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+      required:
+      - id
+      - item_quantity
+      - items
+      - revenue
+      - shop
+      - status
+      - time
     OrderAvailable:
       type: object
       properties:
@@ -550,11 +640,21 @@ components:
           type: string
           readOnly: true
           description: Proof you placed this order; needed to cancel it.
+        pickup_pin:
+          type: string
+          readOnly: true
+          description: 6 digits (may start with 0) to type at the machine.
+        pickup_qr:
+          type: string
+          readOnly: true
+          description: PNG data URL of the pickup QR code to scan at the machine.
       required:
       - id
       - item_quantity
       - items
       - order_token
+      - pickup_pin
+      - pickup_qr
       - revenue
       - shop
       - status
@@ -705,6 +805,19 @@ components:
       - attempt
       - expires_at
       - method
+    PickupRequestRequest:
+      type: object
+      properties:
+        shop:
+          type: integer
+          description: The machine's shop ID.
+        code:
+          type: string
+          minLength: 1
+          description: The pickup PIN, or the token read from the pickup QR code.
+      required:
+      - code
+      - shop
     Shop:
       type: object
       properties:

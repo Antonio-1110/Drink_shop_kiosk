@@ -23,6 +23,14 @@ OrderOk = inline_serializer('OrderAvailable', {'status': serializers.CharField()
 
 class OrderCreated(OrderSerializer):
     order_token = serializers.CharField(read_only=True, help_text="Proof you placed this order; needed to cancel it.")
+    pickup_pin = serializers.CharField(read_only=True, help_text="6 digits (may start with 0) to type at the machine.")
+    pickup_qr = serializers.CharField(read_only=True, help_text="PNG data URL of the pickup QR code to scan at the machine.")
 
     class Meta(OrderSerializer.Meta):
-        fields = OrderSerializer.Meta.fields + ['order_token']
+        fields = OrderSerializer.Meta.fields + ['order_token', 'pickup_pin', 'pickup_qr']
+
+
+PickupRequest = inline_serializer('PickupRequest', {
+    'shop': serializers.IntegerField(help_text="The machine's shop ID."),
+    'code': serializers.CharField(help_text="The pickup PIN, or the token read from the pickup QR code."),
+})

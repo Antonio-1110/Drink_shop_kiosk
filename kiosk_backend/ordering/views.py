@@ -14,6 +14,9 @@ from django.db import transaction
 from .models import Order
 from .utils import inventory_check, verify_drink_ids, check_cart_fulfillment
 from checkout.services import expire_unpaid_orders, hold_stock, order_token
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.decorators import throttle_classes
+from . import pickup
 
 logger = logging.getLogger(__name__)
 
@@ -124,5 +127,34 @@ def key_in_order(request): # handling orders with more than one drink
                 status=status.HTTP_409_CONFLICT)
         order = serializer.save()
         hold_stock(order, cart)
-    return Response({**OrderSerializer(order).data, 'order_token': order_token(order)},
+        pickup.assign_pickup_codes(order)
+    # the pickup codes and order token go only to whoever placed the order, never in other responses
+    return Response({**OrderSerializer(order).data, 'order_token': order_token(order),
+                     'pickup_pin': order.pickup_pin, 'pickup_qr': pickup.pickup_qr(order)},
                     status=status.HTTP_201_CREATED)
+
+
+@extend_schema(summary="Collect an order at the machine",
+               description="The kiosk sends the 6-digit pickup PIN the customer typed, or the token from "
+                           "their scanned pickup QR code. A paid order is handed over once and becomes "
+                           "COLLECTED. Limited to a few attempts a minute per machine, so PINs can't be guessed.",
+               request=schema.PickupRequest,
+               responses={200: OrderSerializer, 400: schema.Error, 404: schema.Error, 409: schema.Error,
+                          429: OpenApiResponse(description="Too many attempts; wait a minute.")})
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([ScopedRateThrottle])
+def collect_order(request):
+    shop = request.data.get('shop')
+    if not str(shop).isdigit():
+        return Response({'error': "Invalid or missing shop."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        order = pickup.collect(int(shop), str(request.data.get('code', '')))
+    except pickup.PickupError as e:
+        return Response({'error': str(e)}, status=e.status)
+    return Response(OrderSerializer(order).data)
+
+
+# ScopedRateThrottle reads the scope from the view; see DEFAULT_THROTTLE_RATES in settings
+collect_order.cls.throttle_scope = 'pickup'

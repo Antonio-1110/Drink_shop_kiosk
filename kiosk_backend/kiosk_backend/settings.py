@@ -161,6 +161,8 @@ REST_FRAMEWORK = {
     # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # pickup PIN attempts per machine (by IP), so 6-digit PINs can't be guessed
+    'DEFAULT_THROTTLE_RATES': {'pickup': os.environ.get('PICKUP_ATTEMPTS_PER_MINUTE', '10') + '/min'},
 }
 
 # API contract: served at /api/schema/ (browse it at /api/docs/) and committed as openapi.yaml
