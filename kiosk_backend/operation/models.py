@@ -60,6 +60,18 @@ class Ingredient(models.Model):
     saturated_fat_per_100 = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     contains_sweetener = models.BooleanField(default=False) # non-sugar sweetener, rules out grade A
     exclude_from_grade = models.BooleanField(default=False) # e.g. toppings, declared separately
+    # drink designer: customers build their own drink from ingredients offered here
+    class Kind(models.TextChoices):
+        LIQUID = 'LIQUID', 'Liquid'
+        TOPPING = 'TOPPING', 'Topping'
+        OTHER = 'OTHER', 'Other (ice, sweetener)' # set by the ice/sugar level, never picked
+    code = models.CharField(max_length=4, unique=True, null=True, blank=True) # label in drink QR codes, e.g. BT
+    kind = models.CharField(max_length=7, choices=Kind.choices, default=Kind.LIQUID)
+    designer_category = models.CharField(max_length=20, blank=True) # Tea, Coffee, Milk, Fruit, Toppings
+    share = models.DecimalField(max_digits=4, decimal_places=2, default=1) # liquid's weight in the cup, e.g. tea 3 : milk 2 : fruit 1
+    display_color = models.CharField(max_length=7, blank=True) # hex, for the cup preview
+    offered_in_designer = models.BooleanField(default=False)
+    designer_price = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True) # overrides the default for its kind
     # cost/supplier in the future
     def to_millilitres(self, quantity):
         # quantities in grams are converted by density, everything else is taken as mL
@@ -191,3 +203,65 @@ class TemperatureReading(models.Model):
         ordering = ['-recorded_at']
     def __str__(self):
         return f"{self.inventory} {self.temp_c} C at {self.recorded_at:%Y-%m-%d %H:%M}"
+
+
+class DesignerConfig(models.Model):
+    """Single row of drink designer settings, edited in the admin."""
+    SMALL, LARGE = 0, 1 # same values as OrderItem.Size
+    cup_price_small = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('2.80'))
+    cup_price_large = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('3.40'))
+    default_liquid_price = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.50'))
+    default_topping_price = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.60'))
+    # liquid in the cup without ice or sweetener, shared between the liquids picked by their share
+    liquid_ml_small = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('360'))
+    liquid_ml_large = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('500'))
+    # toppings per cup, split evenly between the toppings picked
+    topping_g_small = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('60'))
+    topping_g_large = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('80'))
+    # sweetener added at 100% sugar, scaled down with the sugar level
+    sweetener = models.ForeignKey(Ingredient, on_delete=models.PROTECT, null=True, blank=True, related_name='+')
+    sweetener_ml_small = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('30'))
+    sweetener_ml_large = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal('40'))
+
+    class Meta:
+        verbose_name = 'drink designer settings'
+        verbose_name_plural = 'drink designer settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    def price_of(self, ingredient):
+        if ingredient.designer_price is not None:
+            return ingredient.designer_price
+        if ingredient.kind == Ingredient.Kind.TOPPING:
+            return self.default_topping_price
+        return self.default_liquid_price
+
+    def build(self, ingredients, size, sugar_level, level_steps=4):
+        """
+        Amounts and prices for a custom drink. Returns (lines, total_price) where
+        lines are (ingredient, amount, price) in each ingredient's unit_of_measure.
+        """
+        large = size == self.LARGE
+        liquids = [i for i in ingredients if i.kind == Ingredient.Kind.LIQUID]
+        toppings = [i for i in ingredients if i.kind == Ingredient.Kind.TOPPING]
+        if not liquids:
+            raise ValueError("A custom drink needs at least one liquid.")
+        liquid_ml = self.liquid_ml_large if large else self.liquid_ml_small
+        topping_g = self.topping_g_large if large else self.topping_g_small
+        total_share = sum(i.share for i in liquids)
+        lines = []
+        for i in liquids:
+            lines.append((i, (liquid_ml * i.share / total_share).quantize(Decimal('0.01')), self.price_of(i)))
+        for i in toppings:
+            lines.append((i, (topping_g / len(toppings)).quantize(Decimal('0.01')), self.price_of(i)))
+        if self.sweetener and sugar_level:
+            ml = (self.sweetener_ml_large if large else self.sweetener_ml_small) * sugar_level / level_steps
+            lines.append((self.sweetener, ml.quantize(Decimal('0.01')), Decimal('0')))
+        total = (self.cup_price_large if large else self.cup_price_small) + sum(p for _, _, p in lines)
+        return lines, total
