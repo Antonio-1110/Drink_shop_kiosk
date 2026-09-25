@@ -1,29 +1,25 @@
-from django.shortcuts import render
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
-from .serializer import  InventorySerializer
+from .serializer import InventorySerializer
 from rest_framework import status
+from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
-from .models import Inventory
+from .models import Inventory, StockMovement
 # Create your views here.
 
-@api_view(['PATCH']) # limit access to known IPs only
+@extend_schema(summary="Set a shop's stock of an ingredient (staff only)",
+               request=InventorySerializer, responses=InventorySerializer)
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])  # staff accounts only; kiosks will get their own credentials later
 def inventory(request, shop, ingredient):
-    try:
-        inventory_instance = get_object_or_404(
-            Inventory, 
-            shop=shop, 
-            ingredient=ingredient
-        )
-    except Inventory.DoesNotExist:
-        return Response(
-            {'detail': 'Inventory item not found for the given shop and ingredient.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    data = request.data
-    serializer = InventorySerializer(inventory_instance, data=data, partial=True)
+    inventory_instance = get_object_or_404(Inventory, shop=shop, ingredient=ingredient)
+    serializer = InventorySerializer(inventory_instance, data=request.data, partial=True)
     if serializer.is_valid():
-        print(1)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        new_stock = serializer.validated_data.get('current_stock')
+        if new_stock is not None:
+            # a stock count sets the level; log it as the difference, like every other stock change
+            inventory_instance.adjust_stock(new_stock - inventory_instance.current_stock,
+                                            StockMovement.Reason.ADJUSTMENT, user=request.user)
+        return Response(InventorySerializer(inventory_instance).data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

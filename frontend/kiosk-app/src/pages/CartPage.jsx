@@ -26,7 +26,8 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
         setError(null);
         try {
             const order = await placeOrder(cartItems);
-            navigate(`/payment/${order.id}`);
+            // the token proves this kiosk placed the order, so the payment screen can cancel it
+            navigate(`/payment/${order.id}`, { state: { orderToken: order.order_token } });
         } catch (err) {
             // the backend lists the drinks it no longer has stock for
             const soldOut = cartItems
