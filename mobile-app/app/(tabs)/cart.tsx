@@ -10,7 +10,7 @@ import { useCart } from '@/lib/cart';
 import { formatPrice, itemPrice, SIZE } from '@/lib/menu';
 
 export default function CartScreen() {
-  const { shop, cartItems, updateCartItem, removeFromCart } = useCart();
+  const { shop, cartItems, updateCartItem, removeFromCart, setLastOrder } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
@@ -21,6 +21,7 @@ export default function CartScreen() {
     setError(null);
     try {
       const order = await placeOrder(shop.id, cartItems);
+      setLastOrder(order);
       router.push({ pathname: '/payment/[orderId]', params: { orderId: order.id } });
     } catch (err) {
       // the backend lists the drinks it no longer has stock for
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   item: { backgroundColor: colors.surface, borderRadius: 10, padding: 12, gap: 8 },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   itemName: { fontSize: 16, fontWeight: '600', color: colors.text, flexShrink: 1 },
-  itemPrice: { fontSize: 16, fontWeight: '600', color: colors.navy },
+  itemPrice: { fontSize: 16, fontWeight: '600', color: colors.accent },
   remove: { alignSelf: 'flex-end', backgroundColor: colors.errorBg, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
   removeText: { color: colors.errorText },
   footer: {
@@ -90,11 +91,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14,
     borderTopWidth: 2,
-    borderTopColor: colors.grey,
+    borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
   muted: { color: colors.muted },
   total: { fontSize: 22, fontWeight: 'bold', color: colors.text },
-  payButton: { backgroundColor: colors.navy, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22 },
+  payButton: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22 },
   payText: { color: colors.surface, fontWeight: 'bold', fontSize: 16 },
 });

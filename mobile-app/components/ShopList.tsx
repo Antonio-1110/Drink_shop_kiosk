@@ -18,7 +18,7 @@ export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void
   }, []);
 
   if (error) return <ErrorBanner message={`Could not load shops: ${error}`} />;
-  if (!shops) return <ActivityIndicator style={{ marginTop: 40 }} color={colors.navy} />;
+  if (!shops) return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
 
   return (
     <FlatList
@@ -42,11 +42,11 @@ export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 22, fontWeight: 'bold', color: colors.navy, marginBottom: 4 },
+  heading: { fontSize: 22, fontWeight: 'bold', color: colors.primary, marginBottom: 4 },
   shop: { backgroundColor: colors.surface, borderRadius: 10, padding: 14, gap: 4, borderWidth: 2, borderColor: 'transparent' },
-  current: { borderColor: colors.navy },
+  current: { borderColor: colors.primary },
   name: { fontSize: 17, fontWeight: '600', color: colors.text },
   muted: { color: colors.muted },
-  tag: { alignSelf: 'flex-start', backgroundColor: colors.lightBlue, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
-  tagText: { color: colors.navy, fontSize: 12 },
+  tag: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
+  tagText: { color: colors.primary, fontSize: 12 },
 });

@@ -17,7 +17,7 @@ export const unstable_settings = {
 // the kiosk UI is light only, so the app is too
 const theme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, primary: colors.navy, background: colors.background },
+  colors: { ...DefaultTheme.colors, primary: colors.primary, background: colors.background },
 };
 
 export default function RootLayout() {
@@ -25,10 +25,10 @@ export default function RootLayout() {
     <CartProvider>
       <ThemeProvider value={theme}>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerStyle: { backgroundColor: colors.paleBlue }, headerTintColor: colors.navy }}>
+        <Stack screenOptions={{ headerStyle: { backgroundColor: colors.header }, headerTintColor: colors.primary }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="shops" options={{ title: 'Choose a shop', presentation: 'modal' }} />
-          <Stack.Screen name="payment/[orderId]" options={{ title: 'Pay with PayNow', headerBackVisible: false, headerLeft: () => null, gestureEnabled: false }} />
+          <Stack.Screen name="payment/[orderId]" options={{ title: 'Your order', headerBackVisible: false, headerLeft: () => null, gestureEnabled: false }} />
         </Stack>
       </ThemeProvider>
     </CartProvider>

@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useState } from 'react';
 
+import type { PlacedOrder } from './api';
 import { CartItem, Drink, Shop, Size } from './menu';
 
 type CartState = {
@@ -10,6 +11,9 @@ type CartState = {
   updateCartItem: (index: number, changes: Partial<CartItem>) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
+  // the order just placed, with its pickup code
+  lastOrder: PlacedOrder | null;
+  setLastOrder: (order: PlacedOrder) => void;
 };
 
 const CartContext = createContext<CartState | null>(null);
@@ -17,6 +21,7 @@ const CartContext = createContext<CartState | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [shop, setShop] = useState<Shop | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [lastOrder, setLastOrder] = useState<PlacedOrder | null>(null);
 
   const value: CartState = {
     shop,
@@ -31,6 +36,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems((items) => items.map((item, i) => (i === index ? { ...item, ...changes } : item))),
     removeFromCart: (index) => setCartItems((items) => items.filter((_, i) => i !== index)),
     clearCart: () => setCartItems([]),
+    lastOrder,
+    setLastOrder,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

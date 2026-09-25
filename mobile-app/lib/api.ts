@@ -45,8 +45,11 @@ export function fetchAvailableDrinks(shopId: number, cartItems: CartItem[]) {
   return request<Drink[]>(`/ordering/drinks/?${params}`);
 }
 
+// pickup_pin / pickup_qr only come back in this response, so the app keeps them (see lib/cart.tsx)
+export type PlacedOrder = { id: number; revenue: string; pickup_pin?: string; pickup_qr?: string };
+
 export function placeOrder(shopId: number, cartItems: CartItem[]) {
-  return request<{ id: number; revenue: string }>('/ordering/log-order/', {
+  return request<PlacedOrder>('/ordering/log-order/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

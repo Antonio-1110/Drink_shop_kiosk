@@ -36,8 +36,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: { width: 40, color: colors.muted, fontSize: 13 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, flex: 1 },
-  chip: { paddingVertical: 5, paddingHorizontal: 8, borderRadius: 14, backgroundColor: colors.lightBlue },
-  chipSelected: { backgroundColor: colors.navy },
-  chipText: { fontSize: 12, color: colors.navy },
+  chip: { paddingVertical: 5, paddingHorizontal: 8, borderRadius: 14, backgroundColor: colors.primarySoft },
+  chipSelected: { backgroundColor: colors.primary },
+  chipText: { fontSize: 12, color: colors.primary },
   chipTextSelected: { color: colors.surface, fontWeight: 'bold' },
 });

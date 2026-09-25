@@ -48,14 +48,14 @@ const styles = StyleSheet.create({
   },
   image: {
     aspectRatio: 1.2,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placeholder: { color: colors.surface, fontSize: 36, fontWeight: 'bold' },
-  info: { backgroundColor: colors.grey, padding: 10, gap: 8, alignItems: 'center', flexGrow: 1 },
+  placeholder: { color: colors.primary, fontSize: 36, fontWeight: 'bold' },
+  info: { backgroundColor: colors.cream, padding: 10, gap: 8, alignItems: 'center', flexGrow: 1 },
   name: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
   sizes: { flexDirection: 'row', gap: 6, marginTop: 'auto' },
-  sizeButton: { backgroundColor: colors.navy, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 8 },
+  sizeButton: { backgroundColor: colors.primary, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 8 },
   sizeText: { color: colors.surface, fontWeight: 'bold', fontSize: 13 },
 });
