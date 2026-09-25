@@ -46,7 +46,14 @@ export function fetchAvailableDrinks(shopId: number, cartItems: CartItem[]) {
 }
 
 // pickup_pin / pickup_qr only come back in this response, so the app keeps them (see lib/cart.tsx)
-export type PlacedOrder = { id: number; revenue: string; pickup_pin?: string; pickup_qr?: string };
+// order_token is needed to cancel the order
+export type PlacedOrder = {
+  id: number;
+  revenue: string;
+  order_token?: string;
+  pickup_pin?: string;
+  pickup_qr?: string;
+};
 
 export function placeOrder(shopId: number, cartItems: CartItem[]) {
   return request<PlacedOrder>('/ordering/log-order/', {
@@ -62,6 +69,24 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
 // expires_at: unpaid orders are cancelled after this time
 export type PaynowQr = { qr_code: string; reference: string; amount: string; expires_at?: string };
 
+// starts the PayNow payment (or returns the open one); ingredients are held until expires_at
 export function fetchPaynowQr(orderId: string | number) {
   return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`);
+}
+
+export type OrderStatus = { status: string; hold_expires_at?: string | null };
+
+// "TBM" is the backend's paid status until the models rename it to "PAID"
+export const isPaid = (status?: string) => status === 'PAID' || status === 'TBM';
+
+export function fetchOrderStatus(orderId: string | number) {
+  return request<OrderStatus>(`/ordering/orders/${orderId}/status/`);
+}
+
+export function cancelOrder(orderId: string | number, orderToken: string) {
+  return request<{ status: string }>(`/ordering/orders/${orderId}/cancel/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_token: orderToken }),
+  });
 }
