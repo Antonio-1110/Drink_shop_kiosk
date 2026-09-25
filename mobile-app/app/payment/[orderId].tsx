@@ -21,6 +21,7 @@ export default function PaymentScreen() {
   const order = lastOrder && String(lastOrder.id) === orderId ? lastOrder : { id: Number(orderId), revenue: '' };
   const paid = isPaid(status ?? undefined);
   const cancelled = status === 'CANCELLED';
+  const collected = status === 'COLLECTED';
 
   // the order is placed, so the cart is done with
   useEffect(() => { clearCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -32,7 +33,7 @@ export default function PaymentScreen() {
 
   // poll until the order is paid or cancelled; older backends without /status/ just leave it unknown
   useEffect(() => {
-    if (paid || cancelled) return;
+    if (collected || cancelled) return;
     let stopped = false;
     const check = () => fetchOrderStatus(orderId)
       .then((res) => { if (!stopped) setStatus(res.status); })
@@ -40,7 +41,7 @@ export default function PaymentScreen() {
     check();
     const timer = setInterval(check, POLL_MS);
     return () => { stopped = true; clearInterval(timer); };
-  }, [orderId, paid, cancelled]);
+  }, [orderId, collected, cancelled]);
 
   const cancel = async () => {
     if (!order.order_token) return;
@@ -63,6 +64,8 @@ export default function PaymentScreen() {
 
       {cancelled ? (
         <Text style={styles.cancelled}>This order was cancelled and you haven&apos;t been charged.</Text>
+      ) : collected ? (
+        <Text style={styles.collected}>Collected. Enjoy your drink!</Text>
       ) : (
         <>
           <View style={styles.step}>
@@ -92,6 +95,7 @@ export default function PaymentScreen() {
 
           <View style={styles.step}>
             <Text style={styles.stepTitle}>2. Collect at the machine</Text>
+            {!paid && <Text style={styles.muted}>Your code works once the payment comes through.</Text>}
             <PickupCode order={order} />
           </View>
 
@@ -134,6 +138,7 @@ const styles = StyleSheet.create({
   deadline: { color: colors.errorText, fontWeight: '600', textAlign: 'center' },
   hint: { textAlign: 'center', color: colors.text, backgroundColor: colors.primarySoft, borderRadius: 8, padding: 12, marginTop: 8 },
   cancelled: { textAlign: 'center', color: colors.errorText, backgroundColor: colors.errorBg, borderRadius: 8, padding: 14, marginTop: 14, alignSelf: 'stretch' },
+  collected: { textAlign: 'center', color: colors.primary, fontWeight: 'bold', fontSize: 18, backgroundColor: colors.primarySoft, borderRadius: 8, padding: 16, marginTop: 14, alignSelf: 'stretch' },
   cancelButton: { marginTop: 14, paddingVertical: 10, paddingHorizontal: 18 },
   cancelText: { color: colors.errorText, fontWeight: '600', textDecorationLine: 'underline' },
   newOrder: { backgroundColor: colors.secondary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22, marginTop: 20 },

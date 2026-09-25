@@ -12,9 +12,9 @@ export default function PickupCode({ order }: { order: PlacedOrder }) {
   const hasPin = Boolean(order.pickup_pin);
   const [mode, setMode] = useState<Mode>(hasQr ? 'qr' : 'pin');
 
-  // the backend doesn't hand out pickup codes yet, so fall back to the order number
+  // the codes only come back when the order is placed, so a reloaded page has lost them
   if (!hasQr && !hasPin) {
-    return <Text style={styles.fallback}>Show order number {order.id} at the machine to collect.</Text>;
+    return <Text style={styles.fallback}>Your pickup code is on the screen you saw right after ordering.</Text>;
   }
 
   return (

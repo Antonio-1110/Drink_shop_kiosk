@@ -76,8 +76,8 @@ export function fetchPaynowQr(orderId: string | number) {
 
 export type OrderStatus = { status: string; hold_expires_at?: string | null };
 
-// "TBM" is the backend's paid status until the models rename it to "PAID"
-export const isPaid = (status?: string) => status === 'PAID' || status === 'TBM';
+// a collected order was paid for too
+export const isPaid = (status?: string) => status === 'PAID' || status === 'COLLECTED';
 
 export function fetchOrderStatus(orderId: string | number) {
   return request<OrderStatus>(`/ordering/orders/${orderId}/status/`);
