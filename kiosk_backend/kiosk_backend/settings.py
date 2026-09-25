@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -123,3 +124,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# PayNow details used in the order QR code; set these for the real shop
+PAYNOW_UEN = os.environ.get('PAYNOW_UEN', '000000000X')
+PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk')

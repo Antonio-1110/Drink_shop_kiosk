@@ -8,7 +8,7 @@ from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db.models import F, Q
 from django.db import transaction
 from .models import Order
-from .utils import qr_gen, inventory_check, verify_drink_ids, check_cart_fulfillment
+from .utils import qr_gen, inventory_check, inventory_update, verify_drink_ids, check_cart_fulfillment
 
 # Create your views here.
 
@@ -59,9 +59,9 @@ def check_order_availability(request): #add data verification later
         if tf:
             return Response({'status':'order is good'}, status=status.HTTP_200_OK)
         else:
-            drinks
-            ingredients
-            return Response({'error':'order unavailable'})
+            return Response(
+                {'error': 'order unavailable', 'drinks': drinks, 'ingredients': ingredients},
+                status=status.HTTP_409_CONFLICT)
     except Shop.DoesNotExist:
         return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
@@ -74,11 +74,29 @@ def paynow_qr(request, order_id):
         order = Order.objects.get(pk=order_id, status='PENDING')
     except Order.DoesNotExist:
         return Response({"error": "Order not found or payment status is resolved."}, status=status.HTTP_404_NOT_FOUND)
-    qr_img = qr_gen(float(order.revenue)) # reference no.
-    return Response({'status':'QR code generated', 'qr code': qr_img}, status=status.HTTP_200_OK)
+    reference = f"ORDER{order.id}"
+    qr_img = qr_gen(order.revenue, reference)
+    return Response({'status': 'QR code generated', 'qr_code': qr_img, 'reference': reference,
+                     'amount': str(order.revenue)}, status=status.HTTP_200_OK)
 
 
 
 @api_view(['POST'])
 def key_in_order(request): # handling orders with more than one drink
-    data = request.data
+    serializer = OrderSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    shop = serializer.validated_data['shop']
+    # one entry per drink ordered, so two of the same drink uses stock twice
+    cart = [item['drink'].id for item in serializer.validated_data['items']]
+    with transaction.atomic():
+        # lock this shop's stock so two kiosks can't sell the last cup at once
+        list(Inventory.objects.select_for_update().filter(shop=shop))
+        tf, drinks, ingredients = check_cart_fulfillment(shop, cart)
+        if not tf:
+            return Response(
+                {'error': 'order unavailable', 'drinks': drinks, 'ingredients': ingredients},
+                status=status.HTTP_409_CONFLICT)
+        order = serializer.save()
+        inventory_update(shop, cart)
+    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)

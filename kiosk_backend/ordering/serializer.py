@@ -10,21 +10,21 @@ class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         # Note: We exclude 'order' here because it will be set by the parent OrderSerializer's create method.
-        fields = ['drink', 'size', 'sugar', 'ice', 'quantity']
+        fields = ['drink', 'size', 'sugar', 'ice']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
+    items = OrderItemSerializer(many=True, allow_empty=False)
 
     class Meta:
         model = Order
-        fields = ['shop', 'items', 'revenue', 'time', 'item_quantity', 'user_id'] 
-        read_only_fields = ['revenue', 'time', 'item_quantity', 'status'] # Ensure these cannot be manipulated on POST
+        fields = ['id', 'shop', 'items', 'revenue', 'time', 'item_quantity', 'user_id', 'status']
+        read_only_fields = ['id', 'revenue', 'time', 'item_quantity', 'status'] # Ensure these cannot be manipulated on POST
 
     # --- Overriding the Create Method ---
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        order = Order.objects.create(**validated_data)
+        order = Order.objects.create(revenue=0, **validated_data)
         rev = 0
         for item_data in items_data:
             x = OrderItem.objects.create(order=order, **item_data)
