@@ -24,6 +24,8 @@ function PaymentPage({ clearCart }) {
                     <img className="paynow-qr" src={qr.qr_code} alt="PayNow QR code" />
                     <h3>Amount: ${qr.amount}</h3>
                     <p>Reference: {qr.reference}</p>
+                    {/* unpaid orders are cancelled after this and the drinks go back on sale */}
+                    <p>Please pay by {new Date(qr.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 </>
             )}
             <div className="cart-actions">

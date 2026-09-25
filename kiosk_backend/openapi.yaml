@@ -1,0 +1,527 @@
+openapi: 3.0.3
+info:
+  title: Drink Shop Kiosk API
+  version: 0.1.0
+  description: |-
+    Backend for the self-order kiosk and the mobile ordering app: menu, stock, orders and PayNow payment.
+
+    Base URL: `http://localhost:8000` in development. The kiosk UI and the mobile app in a browser reach it through their dev-server proxy at `/api`. A phone on the same Wi-Fi uses `http://<computer IP>:8000`: start the backend with `./dev.sh --lan`, which listens on the network and adds that address to `DJANGO_ALLOWED_HOSTS`.
+
+    Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).
+paths:
+  /operation/inventory/shop/{shop}/ingredient/{ingredient}/:
+    patch:
+      operationId: operation_inventory_shop_ingredient_partial_update
+      summary: Set a shop's stock of an ingredient (staff only)
+      parameters:
+      - in: path
+        name: ingredient
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: shop
+        schema:
+          type: integer
+        required: true
+      tags:
+      - operation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInventoryRequest'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+          description: ''
+  /ordering/check-order/:
+    get:
+      operationId: ordering_check_order_retrieve
+      summary: Check the cart can be made
+      parameters:
+      - in: query
+        name: cart
+        schema:
+          type: array
+          items:
+            type: integer
+        description: Drink IDs already in the cart, one per cup (repeat `cart` for
+          each).
+        explode: true
+      - in: query
+        name: shop_id
+        schema:
+          type: integer
+        description: The shop (kiosk) the customer is ordering from.
+        required: true
+      tags:
+      - ordering
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderAvailable'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderUnavailable'
+          description: ''
+  /ordering/drinks/:
+    get:
+      operationId: ordering_drinks_list
+      description: Drinks with enough stock for one more cup after everything already
+        in the cart.
+      summary: Drinks the shop can still make
+      parameters:
+      - in: query
+        name: cart
+        schema:
+          type: array
+          items:
+            type: integer
+        description: Drink IDs already in the cart, one per cup (repeat `cart` for
+          each).
+        explode: true
+      - in: query
+        name: shop_id
+        schema:
+          type: integer
+        description: The shop (kiosk) the customer is ordering from.
+        required: true
+      tags:
+      - ordering
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drink'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /ordering/log-order/:
+    post:
+      operationId: ordering_log_order_create
+      description: Reserves the ingredients and creates an unpaid order. Unpaid orders
+        are cancelled after ORDER_PAYMENT_TIMEOUT_MINUTES and the stock is returned.
+      summary: Place an order
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+        '400':
+          description: 'Invalid order: errors keyed by field.'
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderUnavailable'
+          description: ''
+  /ordering/orders/{order_id}/paynow-qr/:
+    get:
+      operationId: ordering_orders_paynow_qr_retrieve
+      summary: PayNow QR code for an unpaid order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaynowQr'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /ordering/shops/:
+    get:
+      operationId: ordering_shops_list
+      summary: List shops
+      tags:
+      - ordering
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shop'
+          description: ''
+components:
+  schemas:
+    CategoryEnum:
+      type: string
+      enum:
+      - Milk Tea
+      - Fruit Tea
+      - Smoothie
+      - Coffee
+      - Others
+    Drink:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        image_url:
+          type: string
+          maxLength: 200
+        l_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+        s_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+        description:
+          type: string
+          maxLength: 300
+      required:
+      - category
+      - id
+      - l_price
+      - name
+      - s_price
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
+    Inventory:
+      type: object
+      properties:
+        current_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - current_stock
+    LevelEnum:
+      enum:
+      - 4
+      - 3
+      - 2
+      - 1
+      - 0
+      type: integer
+      description: |-
+        * `4` - 100%
+        * `3` - 75%
+        * `2` - 50%
+        * `1` - 25%
+        * `0` - 0%
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        shop:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+        time:
+          type: string
+          format: date-time
+          readOnly: true
+        item_quantity:
+          type: integer
+          readOnly: true
+        user_id:
+          type: string
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+      required:
+      - id
+      - item_quantity
+      - items
+      - revenue
+      - shop
+      - status
+      - time
+    OrderAvailable:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    OrderItem:
+      type: object
+      properties:
+        drink:
+          type: integer
+        size:
+          allOf:
+          - $ref: '#/components/schemas/SizeEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+        sugar:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+        ice:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+      required:
+      - drink
+    OrderItemRequest:
+      type: object
+      properties:
+        drink:
+          type: integer
+        size:
+          allOf:
+          - $ref: '#/components/schemas/SizeEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+        sugar:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+        ice:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+      required:
+      - drink
+    OrderRequest:
+      type: object
+      properties:
+        shop:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemRequest'
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - items
+      - shop
+    OrderUnavailable:
+      type: object
+      properties:
+        error:
+          type: string
+        drinks:
+          type: array
+          items:
+            type: integer
+          description: Drinks in the cart that can't be made.
+        ingredients:
+          type: array
+          items:
+            type: integer
+          description: Ingredients that ran short.
+      required:
+      - drinks
+      - error
+      - ingredients
+    PatchedInventoryRequest:
+      type: object
+      properties:
+        current_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+    PaynowQr:
+      type: object
+      properties:
+        status:
+          type: string
+        qr_code:
+          type: string
+          description: 'PNG image as a data: URL, ready for an <img> src.'
+        reference:
+          type: string
+          description: Payment reference shown to the customer, e.g. ORDER12.
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        expires_at:
+          type: string
+          format: date-time
+          description: After this the order is cancelled if still unpaid.
+      required:
+      - amount
+      - expires_at
+      - qr_code
+      - reference
+      - status
+    Shop:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        shop_type:
+          allOf:
+          - $ref: '#/components/schemas/ShopTypeEnum'
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        address:
+          type: string
+          maxLength: 200
+      required:
+      - address
+      - id
+      - name
+      - shop_type
+    ShopTypeEnum:
+      type: string
+      enum:
+      - Flagship Store
+      - Normal Store
+      - Vending Machine
+    SizeEnum:
+      enum:
+      - 1
+      - 0
+      type: integer
+      description: |-
+        * `1` - Large
+        * `0` - Small
+    StatusEnum:
+      enum:
+      - PENDING
+      - COMPLETED
+      - CANCELLED
+      - TBM
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `TBM` - To Be Made
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +21,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l35)u@^w1u4*m_%2x-f(grv#1_7dak30@g$q7n$lvrdgi*ueb2'
+# Everything that differs between a laptop and a real deployment comes from environment
+# variables. For local development set DJANGO_DEBUG=1 (./dev.sh does this for you).
+DEBUG = os.environ.get('DJANGO_DEBUG', '').lower() in ('1', 'true', 'yes')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'Set DJANGO_SECRET_KEY, or set DJANGO_DEBUG=1 for local development.')
+    SECRET_KEY = 'django-insecure-local-development-only'
 
-ALLOWED_HOSTS = []
+# comma-separated, e.g. "kiosk.example.com,10.0.0.5"; localhost is allowed when DEBUG is on
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 
 # Application definition
@@ -38,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_spectacular',
     'ordering',
     'rest_framework',
     'operation'
@@ -126,6 +134,41 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# PayNow details used in the order QR code; set these for the real shop
-PAYNOW_UEN = os.environ.get('PAYNOW_UEN', '000000000X')
+# The PayNow account order QR codes pay (payments/paynow.py). These are company credentials, so
+# they only come from the environment. In development a dummy UEN is used so the QR screen works;
+# without DEBUG, the QR endpoint refuses to make codes until PAYNOW_PROXY_VALUE is set.
+PAYNOW_PROXY_TYPE = os.environ.get('PAYNOW_PROXY_TYPE', 'UEN')  # UEN or MOBILE
+PAYNOW_PROXY_VALUE = os.environ.get('PAYNOW_PROXY_VALUE', '000000000X' if DEBUG else '')
 PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk')
+PAYNOW_MERCHANT_CITY = os.environ.get('PAYNOW_MERCHANT_CITY', 'Singapore')
+PAYNOW_MERCHANT_CATEGORY_CODE = os.environ.get('PAYNOW_MERCHANT_CATEGORY_CODE', '0000')
+
+# how long an unpaid order holds its ingredients before it is cancelled and the stock returned
+ORDER_PAYMENT_TIMEOUT_MINUTES = int(os.environ.get('ORDER_PAYMENT_TIMEOUT_MINUTES', '10'))
+
+REST_FRAMEWORK = {
+    # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# API contract: served at /api/schema/ (browse it at /api/docs/) and committed as openapi.yaml
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Drink Shop Kiosk API',
+    'DESCRIPTION': (
+        'Backend for the self-order kiosk and the mobile ordering app: menu, stock, orders and '
+        'PayNow payment.\n\n'
+        'Base URL: `http://localhost:8000` in development. The kiosk UI and the mobile app in a '
+        'browser reach it through their dev-server proxy at `/api`. A phone on the same Wi-Fi uses '
+        '`http://<computer IP>:8000`: start the backend with `./dev.sh --lan`, which listens on the '
+        'network and adds that address to `DJANGO_ALLOWED_HOSTS`.\n\n'
+        'Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).'
+    ),
+    'VERSION': '0.1.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    # separate request and response shapes, so read-only fields like an order's id aren't asked for
+    'COMPONENT_SPLIT_REQUEST': True,
+    # sugar and ice share the same 0-4 level choices
+    'ENUM_NAME_OVERRIDES': {'LevelEnum': 'ordering.models.OrderItem.Level'},
+}
