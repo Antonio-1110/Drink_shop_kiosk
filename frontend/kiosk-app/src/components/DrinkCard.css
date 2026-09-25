@@ -1,0 +1,52 @@
+/* src/components/DrinkCard.css */
+.card {
+  /* FIX: Standardized dimensions */
+  width: 180px;  
+  height: 240px; 
+  
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  background-color: white;
+  cursor: pointer; /* Shows the hand icon when hovering */
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px); /* subtle lift effect on hover */
+  box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+.card-image {
+  background-color: #1e3a8a; /* Dark Blue */
+  height: 65%; /* Fixed percentage height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+}
+
+.card-info {
+  background-color: #e2e8f0; 
+  height: 35%;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center; /* Centers text horizontally */
+}
+
+.card-info h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  
+  /* FIX: Text Wrapping Logic */
+  word-wrap: break-word;   /* Breaks long words if needed */
+  overflow-wrap: break-word;
+  line-height: 1.2;        /* Tighter line height for multi-line text */
+}
