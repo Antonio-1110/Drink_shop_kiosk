@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { CATEGORIES } from '../menu';
 
 function Sidebar({ cartCount}) {
     return (
@@ -8,10 +9,10 @@ function Sidebar({ cartCount}) {
 
             <div className="nav-links">
                 {/* We use Link to navigate without reloading the page */}
-                <Link to="/" className="nav-btn">Make your own drink</Link>
-                <Link to="/seasonal" className="nav-btn">Seasonal Drinks</Link>
-                <Link to="/milktea" className="nav-btn">Milk Tea</Link>
-                <Link to="/tea" className="nav-btn">Tea</Link>
+                <Link to="/" className="nav-btn">All Drinks</Link>
+                {CATEGORIES.map(({ path, label }) => (
+                    <Link key={path} to={`/${path}`} className="nav-btn">{label}</Link>
+                ))}
             </div>
 
             {/* create new segment for cart link */}

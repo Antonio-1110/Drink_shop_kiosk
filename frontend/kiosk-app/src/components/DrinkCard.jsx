@@ -1,14 +1,19 @@
 import React from 'react';
+import { SIZE } from '../menu';
 import './DrinkCard.css';
 
-function DrinkCard({ name, onAdd }) {
+function DrinkCard({ drink, onAdd }) {
     return (
-        <div className="card" onClick={onAdd}>
+        <div className="card">
             <div className="card-image">
-                <span>PIC</span>
+                {drink.image_url ? <img src={drink.image_url} alt={drink.name} /> : <span>PIC</span>}
             </div>
             <div className="card-info">
-                <h3>{name}</h3>
+                <h3>{drink.name}</h3>
+                <div className="size-buttons">
+                    <button onClick={() => onAdd(drink, SIZE.SMALL)}>S ${Number(drink.s_price).toFixed(2)}</button>
+                    <button onClick={() => onAdd(drink, SIZE.LARGE)}>L ${Number(drink.l_price).toFixed(2)}</button>
+                </div>
             </div>
         </div>
     );

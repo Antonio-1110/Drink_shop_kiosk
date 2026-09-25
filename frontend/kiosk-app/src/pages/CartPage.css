@@ -57,3 +57,44 @@
   background-color: #1e3a8a; /* Dark Blue */
   color: white;
 }
+.cart-item {
+  align-items: center;
+  gap: 12px;
+}
+
+.level-select {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.remove-btn {
+  border: none;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-banner {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.payment-page {
+  align-items: center;
+}
+
+.paynow-qr {
+  width: 280px;
+  height: 280px;
+  margin: 20px 0;
+}
