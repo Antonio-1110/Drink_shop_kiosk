@@ -57,7 +57,8 @@ setup_frontend() {
   local stamp="$FRONTEND/node_modules/.package-lock.json"
   if [ ! -f "$stamp" ] || [ "$FRONTEND/package-lock.json" -nt "$stamp" ]; then
     log "Installing frontend dependencies"
-    (cd "$FRONTEND" && npm install --no-audit --no-fund)
+    # npm ci installs exactly what package-lock.json says and never rewrites it
+    (cd "$FRONTEND" && npm ci --no-audit --no-fund)
   fi
 }
 
