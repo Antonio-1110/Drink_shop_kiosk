@@ -8,6 +8,7 @@ async function request(path, options) {
     if (!res.ok) {
         const error = new Error(data.error ?? 'Request failed');
         error.data = data;
+        error.status = res.status;
         throw error;
     }
     return data;
@@ -16,7 +17,8 @@ async function request(path, options) {
 // drinks the shop can still make after the ones already in the cart
 export function fetchAvailableDrinks(cartItems) {
     const params = new URLSearchParams({ shop_id: SHOP_ID });
-    cartItems.forEach((item) => params.append('cart', item.drink.id));
+    // only menu drinks count here; designed drinks are checked when the order is placed
+    cartItems.filter((item) => !item.custom).forEach((item) => params.append('cart', item.drink.id));
     return request(`/ordering/drinks/?${params}`);
 }
 
@@ -26,7 +28,9 @@ export function placeOrder(cartItems) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             shop: Number(SHOP_ID),
-            items: cartItems.map(({ drink, size, sugar, ice }) => ({ drink: drink.id, size, sugar, ice })),
+            items: cartItems.map(({ drink, custom, size, sugar, ice }) => (custom
+                ? { custom: custom.picks, size, sugar, ice }
+                : { drink: drink.id, size, sugar, ice })),
         }),
     });
 }
@@ -46,4 +50,9 @@ export function cancelOrder(orderId, orderToken) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_token: orderToken }),
     });
+}
+
+// what the drink designer offers at this shop: ingredients, their amounts and prices
+export function fetchDesignerOptions() {
+    return request(`/ordering/designer/options/?shop_id=${SHOP_ID}`);
 }
