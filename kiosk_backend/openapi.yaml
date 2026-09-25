@@ -127,6 +127,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
           description: ''
+  /ordering/designer/options/:
+    get:
+      operationId: ordering_designer_options_retrieve
+      description: Sizes, prices and the ingredients a customer can build a drink
+        from at this shop. `available` means the shop has enough of the ingredient
+        for the most a large cup could use. Order a designed drink by sending its
+        ingredient codes as `custom` in POST /ordering/log-order/.
+      summary: Drink designer options
+      parameters:
+      - in: query
+        name: shop_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesignerOptions'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /ordering/drinks/:
     get:
       operationId: ordering_drinks_list
@@ -487,6 +524,158 @@ components:
           type: string
       required:
       - error
+    DesignerCupPrice:
+      type: object
+      properties:
+        '0':
+          type: string
+        '1':
+          type: string
+      required:
+      - '0'
+      - '1'
+    DesignerIngredient:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        category:
+          type: string
+        share:
+          type: number
+          format: double
+          description: Liquids split the cup by share.
+        color:
+          type: string
+        available:
+          type: boolean
+        sugar:
+          type: number
+          format: double
+        sat_fat:
+          type: number
+          format: double
+        sweetener:
+          type: boolean
+          description: Contains a non-sugar sweetener.
+        exclude_from_grade:
+          type: boolean
+      required:
+      - available
+      - category
+      - code
+      - color
+      - exclude_from_grade
+      - kind
+      - name
+      - sat_fat
+      - share
+      - sugar
+      - sweetener
+    DesignerOptions:
+      type: object
+      properties:
+        sizes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DesignerSize'
+        pricing:
+          $ref: '#/components/schemas/DesignerPricing'
+        sweetener:
+          allOf:
+          - $ref: '#/components/schemas/DesignerSweetener'
+          nullable: true
+          description: Added at 100% sugar and scaled down with the sugar level; null
+            if none is set.
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DesignerIngredient'
+      required:
+      - ingredients
+      - pricing
+      - sizes
+      - sweetener
+    DesignerPricing:
+      type: object
+      properties:
+        cup:
+          $ref: '#/components/schemas/DesignerCupPrice'
+        liquid:
+          type: string
+          description: Default price per liquid picked.
+        topping:
+          type: string
+          description: Default price per topping picked.
+        overrides:
+          type: object
+          additionalProperties:
+            type: string
+          description: Price by ingredient code, where it differs.
+      required:
+      - cup
+      - liquid
+      - overrides
+      - topping
+    DesignerSize:
+      type: object
+      properties:
+        value:
+          type: integer
+        label:
+          type: string
+        liquid_ml:
+          type: number
+          format: double
+        topping_g:
+          type: number
+          format: double
+      required:
+      - label
+      - liquid_ml
+      - topping_g
+      - value
+    DesignerSweetener:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        sugar:
+          type: number
+          format: double
+          description: g per 100 mL
+        sat_fat:
+          type: number
+          format: double
+        ml:
+          $ref: '#/components/schemas/DesignerSweetenerMl'
+      required:
+      - code
+      - color
+      - ml
+      - name
+      - sat_fat
+      - sugar
+    DesignerSweetenerMl:
+      type: object
+      properties:
+        '0':
+          type: number
+          format: double
+        '1':
+          type: number
+          format: double
+      required:
+      - '0'
+      - '1'
     Drink:
       type: object
       properties:
@@ -538,6 +727,14 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
       - current_stock
+    KindEnum:
+      enum:
+      - liquid
+      - topping
+      type: string
+      description: |-
+        * `liquid` - liquid
+        * `topping` - topping
     LevelEnum:
       enum:
       - 4
@@ -664,6 +861,13 @@ components:
       properties:
         drink:
           type: integer
+          nullable: true
+        custom:
+          type: array
+          items:
+            type: string
+            maxLength: 4
+          description: Ingredient codes for a designer drink, instead of `drink`.
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'
@@ -679,13 +883,19 @@ components:
           - $ref: '#/components/schemas/LevelEnum'
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-      required:
-      - drink
     OrderItemRequest:
       type: object
       properties:
         drink:
           type: integer
+          nullable: true
+        custom:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 4
+          description: Ingredient codes for a designer drink, instead of `drink`.
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'
@@ -701,8 +911,6 @@ components:
           - $ref: '#/components/schemas/LevelEnum'
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-      required:
-      - drink
     OrderPaymentStatus:
       type: object
       properties:
@@ -753,10 +961,16 @@ components:
           items:
             type: integer
           description: Ingredients that ran short.
+        options:
+          type: array
+          items:
+            type: string
+          description: Designer ingredient codes that ran short.
       required:
       - drinks
       - error
       - ingredients
+      - options
     PatchedInventoryRequest:
       type: object
       properties:

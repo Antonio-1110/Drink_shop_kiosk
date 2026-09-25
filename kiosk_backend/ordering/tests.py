@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.test import APIClient
-from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient
+from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient, DesignerConfig
 from .models import Order, OrderItem
 
 
@@ -241,3 +241,82 @@ class PickupTests(OrderingTestBase):
         codes = [self.collect(f"{n:06d}").status_code for n in range(12)]
         self.assertEqual(codes[:10], [404] * 10)
         self.assertEqual(codes[10:], [429, 429])
+
+
+class DesignerTests(OrderingTestBase):
+    def setUp(self):
+        super().setUp()
+        Ingredient.objects.filter(pk=self.tea.pk).update(
+            code="BT", kind=Ingredient.Kind.LIQUID, share=3, offered_in_designer=True, designer_category="Tea")
+        Ingredient.objects.filter(pk=self.milk.pk).update(
+            code="FM", kind=Ingredient.Kind.LIQUID, share=2, offered_in_designer=True, designer_category="Milk",
+            designer_price=Decimal("0.80"))
+        self.pearls = Ingredient.objects.create(name="Pearls", unit_of_measure="g", code="TP",
+                                                kind=Ingredient.Kind.TOPPING, offered_in_designer=True)
+        self.pearl_stock = Inventory.objects.create(shop=self.shop, ingredient=self.pearls, current_stock=Decimal("100"))
+        self.syrup = Ingredient.objects.create(name="Syrup", unit_of_measure="mL", code="BS",
+                                               kind=Ingredient.Kind.OTHER, sugar_per_100=65)
+        self.syrup_stock = Inventory.objects.create(shop=self.shop, ingredient=self.syrup, current_stock=Decimal("1000"))
+        config = DesignerConfig.load()
+        config.sweetener = self.syrup
+        config.save()
+
+    def custom(self, codes, size=0, sugar=4):
+        return self.client.post("/ordering/log-order/", {
+            "shop": self.shop.id, "items": [{"custom": codes, "size": size, "sugar": sugar, "ice": 2}]}, format="json")
+
+    def test_options(self):
+        res = self.client.get("/ordering/designer/options/", {"shop_id": self.shop.id})
+        self.assertEqual(res.status_code, 200)
+        by_code = {i["code"]: i for i in res.data["ingredients"]}
+        self.assertEqual(set(by_code), {"BT", "FM", "TP"})  # the sweetener isn't picked
+        self.assertEqual(by_code["TP"]["kind"], "topping")
+        # a large cup of only milk needs 500 mL, the shop has 150
+        self.assertFalse(by_code["FM"]["available"])
+        self.assertTrue(by_code["BT"]["available"])
+        self.assertEqual(res.data["pricing"]["overrides"], {"FM": "0.80"})
+        self.assertEqual(res.data["sweetener"]["code"], "BS")
+        self.assertEqual(self.client.get("/ordering/designer/options/", {"shop_id": 999}).status_code, 404)
+
+    def test_order_custom_drink_prices_and_holds_stock(self):
+        res = self.custom(["BT", "FM", "TP"], sugar=2)
+        self.assertEqual(res.status_code, 201, res.data)
+        order = Order.objects.get(pk=res.data["id"])
+        # small cup 2.80 + tea 0.50 + milk 0.80 + pearls 0.60
+        self.assertEqual(order.revenue, Decimal("4.70"))
+        self.assertEqual(res.data["items"][0]["custom"], ["BT", "FM", "TP"])
+        amounts = {l.ingredient.code: l.amount for l in order.items.get().custom_ingredients.select_related("ingredient")}
+        # 360 mL split 3:2, 60 g of pearls, half of 30 mL syrup at 50% sugar
+        self.assertEqual(amounts, {"BT": Decimal("216.00"), "FM": Decimal("144.00"), "TP": Decimal("60.00"),
+                                   "BS": Decimal("15.00")})
+        self.tea_stock.refresh_from_db()
+        self.pearl_stock.refresh_from_db()
+        self.assertEqual(self.tea_stock.current_stock, Decimal("784"))
+        self.assertEqual(self.pearl_stock.current_stock, Decimal("40"))
+        self.assertTrue(order.items.get().nutri_grade)
+
+    def test_mixed_cart_and_shortfall(self):
+        # a menu milk tea (100 mL milk) plus a custom milk drink (360 mL) is more than the 150 mL there is
+        res = self.client.post("/ordering/log-order/", {"shop": self.shop.id, "items": [
+            {"drink": self.milk_tea.id, "size": 0, "sugar": 2, "ice": 2},
+            {"custom": ["FM"], "size": 0, "sugar": 0, "ice": 2}]}, format="json")
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.data["options"], ["FM"])
+        self.assertEqual(res.data["drinks"], [self.milk_tea.id])
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_invalid_custom_drinks(self):
+        self.assertEqual(self.custom(["XX"]).status_code, 400)
+        self.assertEqual(self.custom(["TP"]).status_code, 400)  # no liquid
+        self.assertEqual(self.custom(["BS"]).status_code, 400)  # the sweetener isn't pickable
+        both = self.client.post("/ordering/log-order/", {"shop": self.shop.id, "items": [
+            {"drink": self.milk_tea.id, "custom": ["BT"], "size": 0}]}, format="json")
+        self.assertEqual(both.status_code, 400)
+
+    def test_cancelling_returns_custom_stock(self):
+        from checkout.services import cancel_order
+        order = Order.objects.get(pk=self.custom(["BT", "TP"]).data["id"])
+        cancel_order(order)
+        self.tea_stock.refresh_from_db()
+        self.pearl_stock.refresh_from_db()
+        self.assertEqual((self.tea_stock.current_stock, self.pearl_stock.current_stock), (Decimal("1000"), Decimal("100")))

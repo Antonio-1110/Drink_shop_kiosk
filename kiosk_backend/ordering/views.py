@@ -12,7 +12,8 @@ from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db.models import F, Q
 from django.db import transaction
 from .models import Order
-from .utils import inventory_check, verify_drink_ids, check_cart_fulfillment
+from .utils import (inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
+                    aggregate_ingredients, custom_needs)
 from checkout.services import expire_unpaid_orders, hold_stock, order_token
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import throttle_classes
@@ -113,20 +114,27 @@ def key_in_order(request): # handling orders with more than one drink
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     shop = serializer.validated_data['shop']
+    items = serializer.validated_data['items']
     # one entry per drink ordered, so two of the same drink uses stock twice
-    cart = [item['drink'].id for item in serializer.validated_data['items']]
+    cart = [item['drink'].id for item in items if item.get('drink')]
+    needed = add_needs(aggregate_ingredients(cart),
+                       *(custom_needs(item['designer_lines']) for item in items if 'designer_lines' in item))
     # free up stock held by abandoned orders before checking this one
     expire_unpaid_orders(shop)
     with transaction.atomic():
         # lock this shop's stock so two kiosks can't sell the last cup at once
         list(Inventory.objects.select_for_update().filter(shop=shop))
-        tf, drinks, ingredients = check_cart_fulfillment(shop, cart)
-        if not tf:
+        short = check_needs(shop, needed)
+        if short:
+            drinks = list(DrinkIngredient.objects.filter(drink_id__in=cart, ingredient_id__in=short)
+                          .values_list('drink', flat=True).distinct())
+            options = sorted({ingredient.code for item in items for ingredient, _, _ in item.get('designer_lines', [])
+                              if ingredient.pk in short})
             return Response(
-                {'error': 'order unavailable', 'drinks': drinks, 'ingredients': ingredients},
+                {'error': 'order unavailable', 'drinks': drinks, 'ingredients': short, 'options': options},
                 status=status.HTTP_409_CONFLICT)
         order = serializer.save()
-        hold_stock(order, cart)
+        hold_stock(order, needed)
         pickup.assign_pickup_codes(order)
     # the pickup codes and order token go only to whoever placed the order, never in other responses
     return Response({**OrderSerializer(order).data, 'order_token': order_token(order),

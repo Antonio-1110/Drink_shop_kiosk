@@ -52,3 +52,20 @@ def check_cart_fulfillment(shop, cart : list = []):
     affected_drink_ids = DrinkIngredient.objects.filter(drink__id__in=cart,
     ingredient__id__in=failing_ingredient_ids ).values_list('drink', flat=True).distinct()
     return False, list(affected_drink_ids), failing_ingredient_ids
+def check_needs(shop, needed):
+    # needed is {ingredient_id: amount}; returns the ingredient ids the shop doesn't have enough of
+    stock = dict(Inventory.objects.filter(shop=shop, ingredient_id__in=needed)
+                 .values_list('ingredient_id', 'current_stock'))
+    return [ingredient_id for ingredient_id, amount in needed.items()
+            if ingredient_id not in stock or stock[ingredient_id] < amount]
+
+def add_needs(*needs):
+    total = {}
+    for need in needs:
+        for ingredient_id, amount in need.items():
+            total[ingredient_id] = total.get(ingredient_id, 0) + amount
+    return total
+
+def custom_needs(lines):
+    # lines from DesignerConfig.build: (ingredient, amount, price)
+    return add_needs(*({ingredient.pk: amount} for ingredient, amount, _ in lines))

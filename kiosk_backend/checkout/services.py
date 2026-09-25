@@ -24,7 +24,8 @@ from django.utils import timezone
 
 from operation.models import Inventory, StockMovement
 from ordering.models import Order
-from ordering.utils import aggregate_ingredients, check_cart_fulfillment
+from ordering.models import OrderItemIngredient
+from ordering.utils import add_needs, aggregate_ingredients, check_needs
 from .models import PaymentAttempt, StockHold
 from .providers import PROVIDERS, SUCCEEDED, FAILED
 
@@ -55,14 +56,17 @@ def check_order_token(order, token):
 
 # --- stock holds ---
 
-def order_cart(order):
-    return list(order.items.values_list('drink_id', flat=True))
+def order_needs(order):
+    """{ingredient_id: amount} for everything in the order, menu and designer drinks alike."""
+    cart = [d for d in order.items.values_list('drink_id', flat=True) if d]
+    custom = OrderItemIngredient.objects.filter(order_item__order=order).values_list('ingredient_id', 'amount')
+    return add_needs(aggregate_ingredients(cart), *({i: a} for i, a in custom))
 
 
-def hold_stock(order, cart=None):
+def hold_stock(order, needed=None):
     """Takes the order's ingredients off sellable stock. Call inside a transaction, after locking
     the shop's inventory rows and checking there is enough."""
-    needed = aggregate_ingredients(cart if cart is not None else order_cart(order))
+    needed = order_needs(order) if needed is None else needed
     inventories = Inventory.objects.filter(shop=order.shop, ingredient_id__in=needed)
     for inventory in inventories:
         quantity = needed[inventory.ingredient_id]
@@ -162,9 +166,9 @@ def confirm_payment(order, method, amount, provider_ref=''):
         elif order.status == Order.Status.CANCELLED:
             # paid after the hold ran out: take the order if the stock is still there
             list(Inventory.objects.select_for_update().filter(shop=order.shop))
-            cart = order_cart(order)
-            if check_cart_fulfillment(order.shop, cart)[0]:
-                hold_stock(order, cart)
+            needed = order_needs(order)
+            if not check_needs(order.shop, needed):
+                hold_stock(order, needed)
                 Order.objects.filter(pk=order.pk).update(status=PAID)
                 consume_stock(order)
             else:

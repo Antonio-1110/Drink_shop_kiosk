@@ -65,6 +65,8 @@ The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 
 PayNow QR codes are built by `kiosk_backend/payments/paynow.py`, a standalone module that follows the SGQR (EMVCo) format and has no Django dependency, so the kiosk's edge service can reuse it. Order codes are single-use, carry the amount and an `ORDER<id>` reference, and stop working after the day the order expires. A payment provider is still needed to confirm automatically that a customer paid.
 
+Drink designer: `GET /ordering/designer/options/?shop_id=` lists the sizes, prices and ingredients customers can build a drink from, and an order item can carry `custom: [ingredient codes]` instead of `drink`. Amounts and price come from **Drink designer settings** in `/admin`, and the ingredients are held like any menu drink.
+
 Pickup: every order gets a 6-digit PIN and a QR code, returned only in the reply to placing it. At the machine the customer types the PIN or scans the code, and the kiosk calls `POST /ordering/pickup/`. That hands over a paid order once and marks it collected. Attempts are limited per machine (`PICKUP_ATTEMPTS_PER_MINUTE`, default 10), so PINs can't be guessed.
 
 ## Testing the mobile app on a phone
