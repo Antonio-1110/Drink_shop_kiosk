@@ -31,6 +31,19 @@ export function placeOrder(cartItems) {
     });
 }
 
+// starts (or reuses) the PayNow payment; the ingredients stay held until it expires
 export function fetchPaynowQr(orderId) {
     return request(`/ordering/orders/${orderId}/paynow-qr/`);
+}
+
+export function fetchOrderStatus(orderId) {
+    return request(`/ordering/orders/${orderId}/status/`);
+}
+
+export function cancelOrder(orderId, orderToken) {
+    return request(`/ordering/orders/${orderId}/cancel/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_token: orderToken }),
+    });
 }
