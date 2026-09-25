@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory
+from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk
 
 # Register your models here.
 
@@ -29,3 +29,8 @@ class DrinkIngredientAdmin(admin.ModelAdmin):
     list_display = ('id', 'shop', 'ingredient', 'current_stock')
     list_editable = ('current_stock',)
     list_filter = ('shop',)
+
+@admin.register(Kiosk)
+class KioskAdmin(admin.ModelAdmin):
+    list_display = ('machine_id', 'shop', 'operational_status', 'sfa_locked', 'last_heartbeat')
+    list_filter = ('operational_status', 'sfa_locked')

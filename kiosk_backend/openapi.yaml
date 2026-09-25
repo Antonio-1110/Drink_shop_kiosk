@@ -463,6 +463,8 @@ components:
         description:
           type: string
           maxLength: 300
+        is_active:
+          type: boolean
       required:
       - category
       - id
@@ -752,12 +754,16 @@ components:
       - COMPLETED
       - CANCELLED
       - TBM
+      - PAID
+      - COLLECTED
       type: string
       description: |-
         * `PENDING` - Pending
         * `COMPLETED` - Completed
         * `CANCELLED` - Cancelled
         * `TBM` - To Be Made
+        * `PAID` - Paid / Ready for Dispense
+        * `COLLECTED` - Collected
   securitySchemes:
     basicAuth:
       type: http

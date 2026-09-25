@@ -44,6 +44,20 @@ class KeyInOrderTests(OrderingTestBase):
         self.assertEqual(self.milk_stock.current_stock, Decimal("50"))
         self.assertEqual(self.tea_stock.current_stock, Decimal("500"))
 
+    def test_items_keep_sale_price_and_nutri_grade(self):
+        res = self.order((self.milk_tea, OrderItem.Size.LARGE))
+        self.assertEqual(res.status_code, 201, res.data)
+        self.milk_tea.l_price = Decimal("9.99")
+        self.milk_tea.save()
+        item = OrderItem.objects.get(order_id=res.data["id"])
+        self.assertEqual(item.unit_price, Decimal("4.50"))
+        self.assertEqual(item.nutri_grade, "A")  # test ingredients carry no sugar or fat
+
+    def test_retired_drink_cannot_be_ordered(self):
+        self.green_tea.is_active = False
+        self.green_tea.save()
+        self.assertEqual(self.order((self.green_tea, 0)).status_code, 400)
+
     def test_rejects_order_that_exceeds_stock(self):
         # two milk teas need 200 mL of milk, only 150 in stock
         res = self.order((self.milk_tea, 0), (self.milk_tea, 0))

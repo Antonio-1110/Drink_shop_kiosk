@@ -52,7 +52,7 @@ def available_drinks(request):
     try: 
         shop = Shop.objects.get(id=shop_id)
         expire_unpaid_orders(shop)
-        drink_serializer = DrinkSerializer(Drink.objects.exclude(id__in=inventory_check(shop, valid_cart)),many=True)
+        drink_serializer = DrinkSerializer(Drink.objects.filter(is_active=True).exclude(id__in=inventory_check(shop, valid_cart)),many=True)
         return Response(drink_serializer.data)
     except Shop.DoesNotExist:
         return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
