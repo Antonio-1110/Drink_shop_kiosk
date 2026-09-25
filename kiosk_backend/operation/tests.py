@@ -92,3 +92,41 @@ class InventoryTests(TestCase):
         self.assertTrue(inv.temperature_ok())
         inv.last_temp_c = D('4.5')
         self.assertFalse(inv.temperature_ok())
+
+
+class StockAndTemperatureLogTests(TestCase):
+    def setUp(self):
+        from .models import Kiosk
+        self.shop = Shop.objects.create(name='Kiosk 1', address='Somewhere')
+        self.kiosk = Kiosk.objects.create(shop=self.shop, machine_id='K-001')
+        milk = Ingredient.objects.create(name='Milk', unit_of_measure='mL')
+        self.inv = Inventory.objects.create(shop=self.shop, ingredient=milk, current_stock=D('1000'),
+                                            max_safe_temp_c=D('4'))
+
+    def test_adjust_stock_updates_and_logs(self):
+        from .models import StockMovement
+        self.inv.adjust_stock(D('-150'), StockMovement.Reason.ORDER)
+        self.inv.adjust_stock(D('500'), StockMovement.Reason.RESTOCK, note='delivery')
+        self.inv.refresh_from_db()
+        self.assertEqual(self.inv.current_stock, D('1350'))
+        self.assertEqual(list(self.inv.movements.order_by('id').values_list('change', 'stock_after')),
+                         [(D('-150'), D('850')), (D('500'), D('1350'))])
+
+    def test_safe_reading_keeps_kiosk_unlocked(self):
+        reading = self.inv.record_temperature(D('3.5'))
+        self.assertTrue(reading.within_bounds)
+        self.kiosk.refresh_from_db()
+        self.assertFalse(self.kiosk.sfa_locked)
+
+    def test_unsafe_reading_locks_kiosk(self):
+        reading = self.inv.record_temperature(D('4.2'))
+        self.assertFalse(reading.within_bounds)
+        self.inv.refresh_from_db()
+        self.assertEqual(self.inv.last_temp_c, D('4.2'))
+        self.kiosk.refresh_from_db()
+        self.assertTrue(self.kiosk.sfa_locked)
+        self.assertIn('Milk', self.kiosk.sfa_lock_reason)
+        # a safe reading afterwards does not unlock it; a person has to
+        self.inv.record_temperature(D('3'))
+        self.kiosk.refresh_from_db()
+        self.assertTrue(self.kiosk.sfa_locked)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk
+from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk, StockMovement, TemperatureReading
 
 # Register your models here.
 
@@ -34,3 +34,14 @@ class DrinkIngredientAdmin(admin.ModelAdmin):
 class KioskAdmin(admin.ModelAdmin):
     list_display = ('machine_id', 'shop', 'operational_status', 'sfa_locked', 'last_heartbeat')
     list_filter = ('operational_status', 'sfa_locked')
+
+
+@admin.register(StockMovement)
+class StockMovementAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'inventory', 'change', 'stock_after', 'reason', 'order', 'created_by')
+    list_filter = ('reason', 'inventory__shop')
+
+@admin.register(TemperatureReading)
+class TemperatureReadingAdmin(admin.ModelAdmin):
+    list_display = ('recorded_at', 'inventory', 'temp_c', 'within_bounds')
+    list_filter = ('within_bounds', 'inventory__shop')

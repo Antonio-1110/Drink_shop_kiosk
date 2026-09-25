@@ -1,6 +1,9 @@
 from decimal import Decimal
 
-from django.db import models
+from django.conf import settings
+from django.db import models, transaction
+from django.db.models import F
+from django.utils import timezone
 
 # Create your models here.
 
@@ -80,14 +83,41 @@ class Inventory(models.Model):
         unique_together = ('shop', 'ingredient')
     def needs_reorder(self):
         return self.current_stock <= self.ingredient.reorder_threshold
-    def temperature_ok(self):
-        if self.last_temp_c is None:
+    def temperature_ok(self, temp_c=None):
+        temp_c = self.last_temp_c if temp_c is None else Decimal(temp_c)
+        if temp_c is None:
             return True
-        if self.max_safe_temp_c is not None and self.last_temp_c > self.max_safe_temp_c:
+        if self.max_safe_temp_c is not None and temp_c > self.max_safe_temp_c:
             return False
-        if self.min_safe_temp_c is not None and self.last_temp_c < self.min_safe_temp_c:
+        if self.min_safe_temp_c is not None and temp_c < self.min_safe_temp_c:
             return False
         return True
+    @transaction.atomic
+    def adjust_stock(self, change, reason, order=None, note='', user=None):
+        # the only place stock should change, so every change is logged
+        change = Decimal(change)
+        Inventory.objects.filter(pk=self.pk).update(current_stock=F('current_stock') + change)
+        self.refresh_from_db(fields=['current_stock'])
+        return StockMovement.objects.create(
+            inventory=self, change=change, stock_after=self.current_stock,
+            reason=reason, order=order, note=note, created_by=user,
+        )
+    @transaction.atomic
+    def record_temperature(self, temp_c, recorded_at=None):
+        # stores the reading; an unsafe one locks the shop's kiosk until someone unlocks it
+        ok = self.temperature_ok(temp_c)
+        reading = TemperatureReading.objects.create(
+            inventory=self, temp_c=temp_c, within_bounds=ok,
+            recorded_at=recorded_at or timezone.now(),
+        )
+        self.last_temp_c = reading.temp_c
+        self.save(update_fields=['last_temp_c'])
+        if not ok:
+            Kiosk.objects.filter(shop_id=self.shop_id).update(
+                sfa_locked=True,
+                sfa_lock_reason=f"{self.ingredient} at {reading.temp_c} C, outside safe range",
+            )
+        return reading
     def __str__(self):
         return str(self.ingredient) + " in " + str(self.shop)
 
@@ -130,3 +160,34 @@ class Drink(models.Model):
     is_active = models.BooleanField(default=True) # retired drinks stay for order history
     def __str__(self):
         return self.name
+
+class StockMovement(models.Model):
+    class Reason(models.TextChoices):
+        ORDER = 'ORDER', 'Used by order'
+        RELEASE = 'RELEASE', 'Returned from cancelled order'
+        RESTOCK = 'RESTOCK', 'Restock'
+        WASTE = 'WASTE', 'Waste / expired'
+        ADJUSTMENT = 'ADJUST', 'Stock count adjustment'
+    inventory = models.ForeignKey(Inventory, on_delete=models.PROTECT, related_name='movements')
+    change = models.DecimalField(max_digits=10, decimal_places=2) # negative when stock goes out
+    stock_after = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.CharField(max_length=7, choices=Reason.choices)
+    order = models.ForeignKey('ordering.Order', on_delete=models.PROTECT, null=True, blank=True,
+                              related_name='stock_movements')
+    note = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    class Meta:
+        ordering = ['-created_at']
+    def __str__(self):
+        return f"{self.change:+} {self.inventory} ({self.get_reason_display()})"
+
+class TemperatureReading(models.Model):
+    inventory = models.ForeignKey(Inventory, on_delete=models.CASCADE, related_name='temperature_readings')
+    temp_c = models.DecimalField(max_digits=4, decimal_places=1)
+    within_bounds = models.BooleanField()
+    recorded_at = models.DateTimeField(default=timezone.now, db_index=True)
+    class Meta:
+        ordering = ['-recorded_at']
+    def __str__(self):
+        return f"{self.inventory} {self.temp_c} C at {self.recorded_at:%Y-%m-%d %H:%M}"
