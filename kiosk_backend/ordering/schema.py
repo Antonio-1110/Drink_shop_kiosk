@@ -2,6 +2,7 @@
 # views already return; the views don't use them to build responses.
 from drf_spectacular.utils import OpenApiParameter, inline_serializer
 from rest_framework import serializers
+from .serializer import OrderSerializer
 
 SHOP_ID = OpenApiParameter(
     'shop_id', int, required=True, description="The shop (kiosk) the customer is ordering from.")
@@ -19,10 +20,9 @@ Unavailable = inline_serializer('OrderUnavailable', {
 
 OrderOk = inline_serializer('OrderAvailable', {'status': serializers.CharField()})
 
-PaynowQr = inline_serializer('PaynowQr', {
-    'status': serializers.CharField(),
-    'qr_code': serializers.CharField(help_text="PNG image as a data: URL, ready for an <img> src."),
-    'reference': serializers.CharField(help_text="Payment reference shown to the customer, e.g. ORDER12."),
-    'amount': serializers.DecimalField(max_digits=6, decimal_places=2, coerce_to_string=True),
-    'expires_at': serializers.DateTimeField(help_text="After this the order is cancelled if still unpaid."),
-})
+
+class OrderCreated(OrderSerializer):
+    order_token = serializers.CharField(read_only=True, help_text="Proof you placed this order; needed to cancel it.")
+
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ['order_token']

@@ -39,8 +39,10 @@ Set these in the environment or in a `.env.local` file next to this README.
 2. **Cart** (`/cart`): pick size, sugar and ice for each cup, then **Checkout** places the order.
    If another customer took the last stock in the meantime, the backend answers 409 and the cart
    names the drinks that are now sold out.
-3. **Payment** (`/payment/:orderId`): shows the PayNow QR code, the amount, the reference and the
-   time to pay by. Unpaid orders are cancelled by the backend after that time.
+3. **Payment** (`/payment/:orderId`): shows the PayNow QR code, the amount, the reference and a
+   countdown. The ingredients are held until the countdown ends. The page asks the backend every
+   few seconds whether the order is paid, and switches to "Payment received" or "Order cancelled".
+   **Cancel order** releases the ingredients at once (it sends the `order_token` from step 2).
 
 ## Code map
 
@@ -62,4 +64,6 @@ also browse it at http://localhost:8000/api/docs/.
 | --- | --- |
 | `GET /ordering/drinks/?shop_id=&cart=` | Menu of drinks that can still be made |
 | `POST /ordering/log-order/` | Placing the order |
-| `GET /ordering/orders/{id}/paynow-qr/` | Payment QR code |
+| `GET /ordering/orders/{id}/paynow-qr/` | Starting the PayNow payment and getting its QR code |
+| `GET /ordering/orders/{id}/status/` | Checking whether the order is paid |
+| `POST /ordering/orders/{id}/cancel/` | The Cancel button |

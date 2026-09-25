@@ -9,6 +9,37 @@ info:
 
     Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).
 paths:
+  /checkout/webhooks/{method}/:
+    post:
+      operationId: checkout_webhooks_create
+      description: Each provider posts here with its own format and signature, checked
+        by that provider's code.
+      summary: Payment notification from a payment provider
+      parameters:
+      - in: path
+        name: method
+        schema:
+          type: string
+        required: true
+      tags:
+      - checkout
+      security:
+      - {}
+      responses:
+        '200':
+          description: Processed
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
   /operation/inventory/shop/{shop}/ingredient/{ingredient}/:
     patch:
       operationId: operation_inventory_shop_ingredient_partial_update
@@ -70,8 +101,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -123,8 +152,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -150,8 +177,9 @@ paths:
   /ordering/log-order/:
     post:
       operationId: ordering_log_order_create
-      description: Reserves the ingredients and creates an unpaid order. Unpaid orders
-        are cancelled after ORDER_PAYMENT_TIMEOUT_MINUTES and the stock is returned.
+      description: 'Holds the ingredients and creates an unpaid order. Start paying
+        with POST /ordering/orders/{id}/payments/; the hold lasts as long as that
+        payment. Keep order_token: cancelling needs it.'
       summary: Place an order
       tags:
       - ordering
@@ -168,15 +196,13 @@ paths:
               $ref: '#/components/schemas/OrderRequest'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
+                $ref: '#/components/schemas/OrderCreated'
           description: ''
         '400':
           description: 'Invalid order: errors keyed by field.'
@@ -186,9 +212,125 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
           description: ''
+  /ordering/orders/{order_id}/cancel/:
+    post:
+      operationId: ordering_orders_cancel_create
+      description: For the customer's Cancel button or the kiosk's idle timeout. Puts
+        the ingredients back on sale straight away. Needs the order_token from placing
+        the order.
+      summary: Cancel an unpaid order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCancelled'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+  /ordering/orders/{order_id}/payments/:
+    post:
+      operationId: ordering_orders_payments_create
+      description: Opens a payment with the chosen method (see PAYMENT_METHODS) and
+        holds the order's ingredients until the payment expires. Calling it again
+        returns the same open payment.
+      summary: Start paying for an order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStarted'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
   /ordering/orders/{order_id}/paynow-qr/:
     get:
       operationId: ordering_orders_paynow_qr_retrieve
+      description: Shortcut for starting a PayNow payment; same as POST .../payments/
+        with method paynow.
       summary: PayNow QR code for an unpaid order
       parameters:
       - in: path
@@ -199,27 +341,58 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaynowQr'
+                $ref: '#/components/schemas/PaymentStarted'
           description: ''
         '404':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
           description: ''
         '503':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+  /ordering/orders/{order_id}/status/:
+    get:
+      operationId: ordering_orders_status_retrieve
+      summary: Payment status of an order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPaymentStatus'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
           description: ''
   /ordering/shops/:
     get:
@@ -228,8 +401,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -242,6 +413,14 @@ paths:
           description: ''
 components:
   schemas:
+    CancelOrderRequest:
+      type: object
+      properties:
+        order_token:
+          type: string
+          minLength: 1
+      required:
+      - order_token
     CategoryEnum:
       type: string
       enum:
@@ -250,6 +429,13 @@ components:
       - Smoothie
       - Coffee
       - Others
+    CheckoutError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
     Drink:
       type: object
       properties:
@@ -313,7 +499,21 @@ components:
         * `2` - 50%
         * `1` - 25%
         * `0` - 0%
-    Order:
+    OrderAvailable:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    OrderCancelled:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    OrderCreated:
       type: object
       properties:
         id:
@@ -344,21 +544,19 @@ components:
           allOf:
           - $ref: '#/components/schemas/StatusEnum'
           readOnly: true
+        order_token:
+          type: string
+          readOnly: true
+          description: Proof you placed this order; needed to cancel it.
       required:
       - id
       - item_quantity
       - items
+      - order_token
       - revenue
       - shop
       - status
       - time
-    OrderAvailable:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-      - status
     OrderItem:
       type: object
       properties:
@@ -403,6 +601,25 @@ components:
           maximum: 9223372036854775807
       required:
       - drink
+    OrderPaymentStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          description: PENDING until paid; then the paid status, or CANCELLED.
+        hold_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While PENDING: when the order is cancelled if still unpaid.'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentAttemptSummary'
+      required:
+      - hold_expires_at
+      - payments
+      - status
     OrderRequest:
       type: object
       properties:
@@ -445,31 +662,47 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-    PaynowQr:
+    PaymentAttemptSummary:
       type: object
       properties:
+        method:
+          type: string
         status:
           type: string
-        qr_code:
-          type: string
-          description: 'PNG image as a data: URL, ready for an <img> src.'
-        reference:
-          type: string
-          description: Payment reference shown to the customer, e.g. ORDER12.
-        amount:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
         expires_at:
           type: string
           format: date-time
-          description: After this the order is cancelled if still unpaid.
+      required:
+      - expires_at
+      - method
+      - status
+    PaymentStarted:
+      type: object
+      properties:
+        attempt:
+          type: integer
+        method:
+          type: string
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        expires_at:
+          type: string
+          format: date-time
+          description: The ingredients are held until then; after it the order is
+            cancelled if unpaid.
+        qr_code:
+          type: string
+          description: 'PayNow: PNG image as a data: URL.'
+        reference:
+          type: string
+          description: 'PayNow: reference shown in the customer''s bank app.'
       required:
       - amount
+      - attempt
       - expires_at
-      - qr_code
-      - reference
-      - status
+      - method
     Shop:
       type: object
       properties:
@@ -505,6 +738,14 @@ components:
       description: |-
         * `1` - Large
         * `0` - Small
+    StartPaymentRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          minLength: 1
+      required:
+      - method
     StatusEnum:
       enum:
       - PENDING

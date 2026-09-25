@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'drf_spectacular',
     'ordering',
+    'checkout',
     'rest_framework',
     'operation'
 ]
@@ -143,8 +144,18 @@ PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk'
 PAYNOW_MERCHANT_CITY = os.environ.get('PAYNOW_MERCHANT_CITY', 'Singapore')
 PAYNOW_MERCHANT_CATEGORY_CODE = os.environ.get('PAYNOW_MERCHANT_CATEGORY_CODE', '0000')
 
-# how long an unpaid order holds its ingredients before it is cancelled and the stock returned
-ORDER_PAYMENT_TIMEOUT_MINUTES = int(os.environ.get('ORDER_PAYMENT_TIMEOUT_MINUTES', '10'))
+# Payment methods customers can choose (see checkout/providers.py), comma-separated
+PAYMENT_METHODS = [m.strip() for m in os.environ.get('PAYMENT_METHODS', 'paynow').split(',') if m.strip()]
+# An unpaid order's ingredients stay held while its payment is open. Each method sets how long
+# that is; a payment gateway's own session expiry should match its entry here.
+PAYMENT_HOLD_MINUTES = {
+    'default': int(os.environ.get('PAYMENT_HOLD_MINUTES', '10')),
+    'paynow': int(os.environ.get('PAYNOW_HOLD_MINUTES', '10')),
+}
+# time to start paying after placing the order, or to try another method after one fails
+PAYMENT_START_GRACE_MINUTES = int(os.environ.get('PAYMENT_START_GRACE_MINUTES', '2'))
+# an order never holds stock longer than this, however many payments it starts
+ORDER_MAX_HOLD_MINUTES = int(os.environ.get('ORDER_MAX_HOLD_MINUTES', '30'))
 
 REST_FRAMEWORK = {
     # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly

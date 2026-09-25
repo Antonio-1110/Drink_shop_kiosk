@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from operation.models import Shop, Drink, DrinkIngredient, Inventory
 import logging
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -12,17 +12,18 @@ from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db.models import F, Q
 from django.db import transaction
 from .models import Order
-from .utils import (qr_gen, inventory_check, inventory_update, verify_drink_ids, check_cart_fulfillment,
-                    expire_unpaid_orders, payment_deadline, paynow_expiry_date)
-from payments.paynow import PayNowError
+from .utils import inventory_check, verify_drink_ids, check_cart_fulfillment
+from checkout.services import expire_unpaid_orders, hold_stock, order_token
 
 logger = logging.getLogger(__name__)
 
 # The kiosk screen calls these endpoints without logging in, so each one opts out of the
-# staff-only default set in settings.REST_FRAMEWORK.
+# staff-only default set in settings.REST_FRAMEWORK. They skip session auth too, so a staff
+# login in the same browser can't trip Django's CSRF check.
 
 @extend_schema(summary="List shops", responses=ShopSerializer(many=True))
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def shops(request): # need to use request for membership programs
     shops = Shop.objects.all()
@@ -34,6 +35,7 @@ def shops(request): # need to use request for membership programs
                parameters=[schema.SHOP_ID, schema.CART],
                responses={200: DrinkSerializer(many=True), 400: schema.Error, 404: schema.Error})
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def available_drinks(request):
     # incorporate drink category as will
@@ -64,6 +66,7 @@ def available_drinks(request):
 @extend_schema(summary="Check the cart can be made", parameters=[schema.SHOP_ID, schema.CART],
                responses={200: schema.OrderOk, 400: schema.Error, 404: schema.Error, 409: schema.Unavailable})
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def check_order_availability(request): #add data verification later
     shop_id = request.GET.get('shop_id', "default")
@@ -93,36 +96,14 @@ def check_order_availability(request): #add data verification later
         return Response({"error": "Something went wrong."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-@extend_schema(summary="PayNow QR code for an unpaid order",
-               responses={200: schema.PaynowQr, 404: schema.Error, 503: schema.Error})
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def paynow_qr(request, order_id):
-    expire_unpaid_orders()
-    try: 
-        order = Order.objects.get(pk=order_id, status='PENDING')
-    except Order.DoesNotExist:
-        return Response({"error": "Order not found or payment status is resolved."}, status=status.HTTP_404_NOT_FOUND)
-    reference = f"ORDER{order.id}"
-    try:
-        qr_img = qr_gen(order.revenue, reference, expires_on=paynow_expiry_date(order))
-    except PayNowError as e:
-        # usually missing company PayNow settings; staff need to see why, customers don't
-        logger.error("Can't make a PayNow QR for order %s: %s", order.id, e)
-        return Response({"error": "Payment is not available right now. Please ask staff."},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    return Response({'status': 'QR code generated', 'qr_code': qr_img, 'reference': reference,
-                     'amount': str(order.revenue),
-                     'expires_at': payment_deadline(order)}, status=status.HTTP_200_OK)
-
-
-
 @extend_schema(summary="Place an order",
-               description="Reserves the ingredients and creates an unpaid order. Unpaid orders are "
-                           "cancelled after ORDER_PAYMENT_TIMEOUT_MINUTES and the stock is returned.",
-               request=OrderSerializer, responses={201: OrderSerializer, 400: OpenApiResponse(description="Invalid order: errors keyed by field."),
+               description="Holds the ingredients and creates an unpaid order. Start paying with "
+                           "POST /ordering/orders/{id}/payments/; the hold lasts as long as that payment. "
+                           "Keep order_token: cancelling needs it.",
+               request=OrderSerializer, responses={201: schema.OrderCreated, 400: OpenApiResponse(description="Invalid order: errors keyed by field."),
                           409: schema.Unavailable})
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def key_in_order(request): # handling orders with more than one drink
     serializer = OrderSerializer(data=request.data)
@@ -142,5 +123,6 @@ def key_in_order(request): # handling orders with more than one drink
                 {'error': 'order unavailable', 'drinks': drinks, 'ingredients': ingredients},
                 status=status.HTTP_409_CONFLICT)
         order = serializer.save()
-        inventory_update(shop, cart)
-    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        hold_stock(order, cart)
+    return Response({**OrderSerializer(order).data, 'order_token': order_token(order)},
+                    status=status.HTTP_201_CREATED)

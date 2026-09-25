@@ -1,16 +1,13 @@
 import io
-from datetime import timedelta
 from pathlib import Path
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase
-from django.utils import timezone
 from rest_framework.test import APIClient
 from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient
 from .models import Order, OrderItem
-from .utils import expire_unpaid_orders, mark_order_paid, cancel_order
 
 
 class OrderingTestBase(TestCase):
@@ -97,7 +94,7 @@ class PayNowTests(OrderingTestBase):
         order_id = self.order((self.green_tea, 0)).data["id"]
         Order.objects.filter(pk=order_id).update(status=Order.Status.COMPLETED)
         res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
-        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.status_code, 409)
 
     def test_qr_pays_the_configured_account(self):
         order_id = self.order((self.green_tea, 0)).data["id"]
@@ -108,59 +105,9 @@ class PayNowTests(OrderingTestBase):
 
     def test_qr_refused_when_paynow_not_configured(self):
         order_id = self.order((self.green_tea, 0)).data["id"]
-        with self.settings(PAYNOW_PROXY_VALUE=""), self.assertLogs("ordering.views", "ERROR"):
+        with self.settings(PAYNOW_PROXY_VALUE=""), self.assertLogs("checkout.views", "ERROR"):
             res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
         self.assertEqual(res.status_code, 503)
-
-class UnpaidOrderTests(OrderingTestBase):
-    def age(self, order_id, minutes):
-        Order.objects.filter(pk=order_id).update(time=timezone.now() - timedelta(minutes=minutes))
-
-    def test_expired_order_is_cancelled_and_stock_returned(self):
-        order_id = self.order((self.milk_tea, 0)).data["id"]
-        self.age(order_id, 11)
-        self.assertEqual(expire_unpaid_orders(), 1)
-        self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.CANCELLED)
-        self.milk_stock.refresh_from_db()
-        self.tea_stock.refresh_from_db()
-        self.assertEqual(self.milk_stock.current_stock, Decimal("150"))
-        self.assertEqual(self.tea_stock.current_stock, Decimal("1000"))
-        # a second run finds nothing, so stock is never returned twice
-        self.assertEqual(expire_unpaid_orders(), 0)
-        self.milk_stock.refresh_from_db()
-        self.assertEqual(self.milk_stock.current_stock, Decimal("150"))
-
-    def test_recent_and_paid_orders_are_kept(self):
-        recent = self.order((self.green_tea, 0)).data["id"]
-        paid = self.order((self.green_tea, 0)).data["id"]
-        self.assertTrue(mark_order_paid(Order.objects.get(pk=paid)))
-        self.age(paid, 60)
-        self.assertEqual(expire_unpaid_orders(), 0)
-        self.assertEqual(Order.objects.get(pk=recent).status, Order.Status.PENDING)
-        self.assertEqual(Order.objects.get(pk=paid).status, Order.Status.TBM)
-
-    def test_abandoned_order_frees_stock_for_the_next_customer(self):
-        # the first milk tea takes 100 of the 150 mL of milk, so a second can't be made...
-        first = self.order((self.milk_tea, 0)).data["id"]
-        self.assertEqual(self.order((self.milk_tea, 0)).status_code, 409)
-        # ...until the first order goes unpaid past the timeout
-        self.age(first, 11)
-        self.assertEqual(self.order((self.milk_tea, 0)).status_code, 201)
-
-    def test_qr_refused_after_expiry_and_reports_deadline(self):
-        order_id = self.order((self.green_tea, 0)).data["id"]
-        self.assertIn("expires_at", self.client.get(f"/ordering/orders/{order_id}/paynow-qr/").data)
-        self.age(order_id, 11)
-        self.assertEqual(self.client.get(f"/ordering/orders/{order_id}/paynow-qr/").status_code, 404)
-
-    def test_cancel_and_mark_paid_only_apply_to_pending_orders(self):
-        order = Order.objects.get(pk=self.order((self.milk_tea, 0)).data["id"])
-        self.assertTrue(cancel_order(order))
-        self.assertFalse(cancel_order(order))
-        self.assertFalse(mark_order_paid(order))
-        self.milk_stock.refresh_from_db()
-        self.assertEqual(self.milk_stock.current_stock, Decimal("150"))
-
 
 class PermissionTests(OrderingTestBase):
     url = "/operation/inventory/shop/{}/ingredient/{}/"
