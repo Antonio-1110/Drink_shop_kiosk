@@ -33,7 +33,7 @@ def avaliable_drinks(request):
             {"error": message}, status=status.HTTP_400_BAD_REQUEST)
     try: 
         shop = Shop.objects.get(id=shop_id)
-        drink_serializer = DrinkSerializer(Drink.objects.exclude(id__in=inventory_check(shop, valid_cart)),many=True)
+        drink_serializer = DrinkSerializer(Drink.objects.filter(is_active=True).exclude(id__in=inventory_check(shop, valid_cart)),many=True)
         return Response(drink_serializer.data)
     except Shop.DoesNotExist:
         return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)

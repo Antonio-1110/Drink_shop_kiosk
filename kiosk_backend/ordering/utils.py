@@ -49,7 +49,7 @@ def qr_gen(rev, reference):
 def verify_drink_ids(incoming_drink_ids):
     valid_ids_list = [int(i) for i in incoming_drink_ids if str(i).isdigit()]
     unique_count = len(set(valid_ids_list))
-    existing_drink_count = Drink.objects.filter(id__in=valid_ids_list).count()
+    existing_drink_count = Drink.objects.filter(id__in=valid_ids_list, is_active=True).count()
     if existing_drink_count == unique_count:
         return True, valid_ids_list, "All drink IDs are valid."
     else:

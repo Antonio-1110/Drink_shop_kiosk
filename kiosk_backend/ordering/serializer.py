@@ -5,7 +5,7 @@ from django.db import transaction
 class OrderItemSerializer(serializers.ModelSerializer):
     # This field is used for input validation, ensuring the provided ID exists in the Drink table.
     # We use a PrimaryKeyRelatedField because the client will send the drink's ID (e.g., 5).
-    drink = serializers.PrimaryKeyRelatedField(queryset=Drink.objects.all())
+    drink = serializers.PrimaryKeyRelatedField(queryset=Drink.objects.filter(is_active=True))
 
     class Meta:
         model = OrderItem
@@ -27,8 +27,14 @@ class OrderSerializer(serializers.ModelSerializer):
         order = Order.objects.create(revenue=0, **validated_data)
         rev = 0
         for item_data in items_data:
-            x = OrderItem.objects.create(order=order, **item_data)
-            rev += x.drink.l_price if x.size == OrderItem.Size.LARGE else x.drink.s_price
+            x = OrderItem(order=order, **item_data)
+            x.unit_price = x.drink.l_price if x.size == OrderItem.Size.LARGE else x.drink.s_price
+            try:
+                x.apply_nutri_grade()
+            except ValueError: # drink has no recipe lines to grade yet
+                pass
+            x.save()
+            rev += x.unit_price
         order.item_quantity = len(items_data)
         order.revenue = rev
         order.save()
