@@ -1,56 +1,40 @@
 // STUB: stands in for GET /ordering/designer/options/ until the backend serves it.
-// Everything here is a placeholder for the shop to confirm: which ingredients are offered,
-// prices, cup limits, which combinations are blocked, and the nutrition values
-// (sugar and saturated fat in g per 100 mL or g). Names match seed_demo where the ingredient exists.
+// The ingredients are the ones in the backend's Ingredient table (seed_demo). Ice is set by the
+// ice level and Brown sugar syrup by the sugar level, so neither is picked on its own.
+// Prices are placeholders: the shop sets them in `pricing`. Nutrition values (g per 100 mL or g)
+// are typical figures for the shop to confirm.
 // The mobile app has the same stub in mobile-app/lib/designerStub.ts; change both together.
 
 export const DESIGNER_OPTIONS_STUB = {
     stub: true,
-    // volume_ml is the drink without ice or toppings, which is what Nutri-Grade is measured on
+    // liquid_ml: the drink without ice or toppings (what Nutri-Grade is measured on);
+    // topping_g: toppings per cup, shared between the toppings picked
     sizes: [
-        { value: 0, label: 'Small', volume_ml: 360, base_price: '2.80' },
-        { value: 1, label: 'Large', volume_ml: 500, base_price: '3.40' },
+        { value: 0, label: 'Small', liquid_ml: 360, topping_g: 60 },
+        { value: 1, label: 'Large', liquid_ml: 500, topping_g: 80 },
     ],
-    // the sugar level scales this syrup: 100% adds volume_ml, 50% adds half
-    sweetener: { name: 'Cane sugar syrup', sugar: 65, sat_fat: 0, volume_ml: { 0: 30, 1: 40 } },
-    groups: [
-        {
-            key: 'base', label: 'Base', hint: 'Pick one', min: 1, max: 1, options: [
-                { id: 'black-tea', name: 'Black tea', price: '0.00', color: '#8a4b24', sugar: 0, sat_fat: 0 },
-                { id: 'green-tea', name: 'Green tea', price: '0.00', color: '#b5c46a', sugar: 0, sat_fat: 0 },
-                { id: 'oolong-tea', name: 'Oolong tea', price: '0.00', color: '#c08a3e', sugar: 0, sat_fat: 0 },
-                { id: 'espresso', name: 'Espresso', price: '0.80', color: '#3b2417', sugar: 0, sat_fat: 0,
-                    incompatible: ['passion-fruit', 'lemon', 'mango-puree'] },
-            ],
-        },
-        {
-            key: 'milk', label: 'Milk', hint: 'Optional', min: 0, max: 1, options: [
-                { id: 'fresh-milk', name: 'Fresh milk', price: '0.60', color: '#f4efe6', sugar: 4.8, sat_fat: 2.3,
-                    volume_ml: { 0: 100, 1: 140 } },
-                { id: 'oat-milk', name: 'Oat milk', price: '0.90', color: '#e8d9bd', sugar: 4.0, sat_fat: 0.3,
-                    volume_ml: { 0: 100, 1: 140 } },
-            ],
-        },
-        {
-            key: 'fruit', label: 'Fruit', hint: 'Up to 2', min: 0, max: 2, options: [
-                { id: 'passion-fruit', name: 'Passion fruit', price: '0.80', color: '#f2b705', sugar: 11, sat_fat: 0,
-                    volume_ml: { 0: 40, 1: 55 } },
-                // citrus curdles milk
-                { id: 'lemon', name: 'Lemon', price: '0.60', color: '#f7e463', sugar: 2.5, sat_fat: 0,
-                    volume_ml: { 0: 30, 1: 40 }, incompatible: ['fresh-milk', 'oat-milk'] },
-                { id: 'mango-puree', name: 'Mango', price: '1.00', color: '#ffa630', sugar: 14, sat_fat: 0.1,
-                    volume_ml: { 0: 60, 1: 80 } },
-            ],
-        },
-        {
-            // HPB grades toppings separately, so they don't count towards the drink's grade
-            key: 'topping', label: 'Toppings', hint: 'Up to 3', min: 0, max: 3, options: [
-                { id: 'tapioca-pearls', name: 'Tapioca pearls', price: '0.60', color: '#2e1a12', exclude_from_grade: true },
-                { id: 'coconut-jelly', name: 'Coconut jelly', price: '0.60', color: '#f5f5f0', exclude_from_grade: true },
-                { id: 'grass-jelly', name: 'Grass jelly', price: '0.60', color: '#1d1d1d', exclude_from_grade: true },
-                { id: 'aloe-vera', name: 'Aloe vera', price: '0.70', color: '#cfe8c4', exclude_from_grade: true },
-                { id: 'cheese-foam', name: 'Cheese foam', price: '1.00', color: '#fff6d8', exclude_from_grade: true },
-            ],
-        },
+    // price = cup price for the size + each ingredient's price (its override, or the default for its kind)
+    pricing: {
+        cup: { 0: '2.80', 1: '3.40' },
+        liquid: '0.50',
+        topping: '0.60',
+        overrides: { ES: '0.80' },
+    },
+    // the sugar level adds this much syrup at 100%, less at lower levels
+    sweetener: { code: 'BS', name: 'Brown sugar syrup', color: '#a0612b', sugar: 65, sat_fat: 0, ml: { 0: 30, 1: 40 } },
+    // code: the short label printed on the drink code customers bring to the kiosk.
+    // share: how much of the cup a liquid takes next to the others (tea 3 : milk 2 : fruit 1)
+    ingredients: [
+        { code: 'BT', name: 'Black tea', kind: 'liquid', category: 'Tea', share: 3, color: '#8a4b24', sugar: 0, sat_fat: 0 },
+        { code: 'GT', name: 'Green tea', kind: 'liquid', category: 'Tea', share: 3, color: '#b5c46a', sugar: 0, sat_fat: 0 },
+        { code: 'OT', name: 'Oolong tea', kind: 'liquid', category: 'Tea', share: 3, color: '#c08a3e', sugar: 0, sat_fat: 0 },
+        { code: 'ES', name: 'Espresso', kind: 'liquid', category: 'Coffee', share: 1, color: '#3b2417', sugar: 0, sat_fat: 0 },
+        { code: 'FM', name: 'Fresh milk', kind: 'liquid', category: 'Milk', share: 2, color: '#f4efe6', sugar: 4.8, sat_fat: 2.3 },
+        { code: 'OM', name: 'Oat milk', kind: 'liquid', category: 'Milk', share: 2, color: '#e8d9bd', sugar: 4.0, sat_fat: 0.3 },
+        { code: 'PF', name: 'Passion fruit', kind: 'liquid', category: 'Fruit', share: 1, color: '#f2b705', sugar: 11, sat_fat: 0 },
+        { code: 'LM', name: 'Lemon', kind: 'liquid', category: 'Fruit', share: 1, color: '#f7e463', sugar: 2.5, sat_fat: 0 },
+        { code: 'MG', name: 'Mango puree', kind: 'liquid', category: 'Fruit', share: 1, color: '#ffa630', sugar: 14, sat_fat: 0.1 },
+        // HPB grades toppings separately, so they don't count towards the drink's grade
+        { code: 'TP', name: 'Tapioca pearls', kind: 'topping', category: 'Toppings', share: 1, color: '#2e1a12', exclude_from_grade: true },
     ],
 };

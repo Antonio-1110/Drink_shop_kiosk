@@ -31,7 +31,7 @@ export function placeOrder(cartItems) {
         body: JSON.stringify({
             shop: Number(SHOP_ID),
             items: cartItems.map(({ drink, custom, size, sugar, ice }) => (custom
-                ? { custom: custom.selections, size, sugar, ice }
+                ? { custom: custom.picks, size, sugar, ice }
                 : { drink: drink.id, size, sugar, ice })),
         }),
     });

@@ -79,6 +79,14 @@ cd mobile-app && npm install && npm run web
 
 See [mobile-app/README.md](mobile-app/README.md) for running it on a phone.
 
+## Drink designer
+
+Customers can build their own drink from the shop's ingredients, on the kiosk ("Design your own") and in the mobile app. Liquids share the cup by each ingredient's `share` (tea 3 : milk 2 : fruit 1), so picking more of them makes each smaller; toppings split the size's topping allowance. The sugar level sets the Brown sugar syrup and the ice level sets the ice.
+
+Prices are one block of settings: a cup price per size, a default price per liquid and per topping, and per-ingredient overrides. Until the backend serves `GET /ordering/designer/options/`, both apps use the placeholders in `frontend/kiosk-app/src/designerStub.js` and `mobile-app/lib/designerStub.ts` (keep them the same), and designed drinks can't be paid for yet.
+
+In the app, "Kiosk QR" shows the drink as a code like `DD1:144:OT-OM-TP`: size, sugar and ice digits, then each ingredient's short code. The kiosk's designer page reads it from a QR reader that types like a keyboard, from a `?code=` link, or typed into the box, and fills in the drink.
+
 ## Tests
 
 ```

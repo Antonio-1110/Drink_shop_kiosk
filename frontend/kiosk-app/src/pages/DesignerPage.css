@@ -203,3 +203,59 @@
   font-size: 15px;
   cursor: pointer;
 }
+
+.code-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: #e0f2fe;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.code-box input {
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  width: 200px;
+}
+
+.code-box button {
+  font-size: 16px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1e3a8a;
+  color: white;
+  cursor: pointer;
+}
+
+.code-box button:disabled {
+  opacity: 0.5;
+}
+
+.code-ok {
+  background: #dcfce7;
+  color: #166534;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.recipe-lines {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  font-size: 14px;
+  color: #475569;
+}
+
+.recipe-lines li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}

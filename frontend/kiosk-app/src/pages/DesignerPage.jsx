@@ -1,29 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchDesignerOptions } from '../api';
 import {
-    blockedReason, cupLayers, findOption, designName, designNutrition, designPrice, designToCartItem,
-    missingChoice, newDesign, toggleOption,
+    categories, decodeDesign, designName, designNutrition, designPrice, designToCartItem,
+    ingredientPrice, missingChoice, newDesign, recipe, togglePick,
 } from '../designer';
 import { LEVELS } from '../menu';
 import { GRADE_COLORS } from '../nutrigrade';
 import './DesignerPage.css';
 
-function Cup({ options, design }) {
-    const layers = cupLayers(options, design);
-    const total = layers.reduce((sum, layer) => sum + layer.ml, 0) || 1;
-    const toppingColors = (design.selections.topping ?? []).map((id) => findOption(options, id).color);
+function Cup({ lines, ice }) {
+    const liquids = lines.filter((line) => line.unit === 'mL');
+    const total = liquids.reduce((sum, line) => sum + line.amount, 0) || 1;
+    const toppings = lines.filter((line) => line.unit === 'g');
     return (
         <div className="cup" aria-hidden="true">
             <div className="cup-liquid">
-                {layers.map((layer) => (
-                    <div key={layer.id} className="cup-layer" style={{ flexGrow: layer.ml / total, background: layer.color }} />
+                {liquids.map((line) => (
+                    <div key={line.code} className="cup-layer" style={{ flexGrow: line.amount / total, background: line.color }} />
                 ))}
             </div>
-            {design.ice > 0 && <div className="cup-ice">{'❄'.repeat(design.ice)}</div>}
+            {ice > 0 && <div className="cup-ice">{'❄'.repeat(ice)}</div>}
             <div className="cup-toppings">
-                {toppingColors.flatMap((color, i) => Array.from({ length: 6 }, (_, j) => (
-                    <span key={`${i}-${j}`} className="topping-dot" style={{ background: color }} />
+                {toppings.flatMap((line) => Array.from({ length: Math.max(2, Math.round(12 / toppings.length)) }, (_, j) => (
+                    <span key={`${line.code}-${j}`} className="topping-dot" style={{ background: line.color }} />
                 )))}
             </div>
         </div>
@@ -46,21 +46,65 @@ function LevelRow({ label, value, onChange }) {
     );
 }
 
+// Loads a drink code from the mobile app. A USB or built-in QR reader types the code and presses
+// Enter like a keyboard, so the page listens for that anywhere; the box is for typing one in.
+function useScannedCode(onCode) {
+    const buffer = useRef('');
+    const latest = useRef(onCode);
+    useEffect(() => { latest.current = onCode; });
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'Enter') {
+                if (buffer.current.toUpperCase().startsWith('DD1:')) latest.current(buffer.current);
+                buffer.current = '';
+            } else if (e.key.length === 1) {
+                buffer.current = (buffer.current + e.key).slice(-200);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+}
+
 function DesignerPage({ addCustomToCart }) {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [options, setOptions] = useState(null);
     const [design, setDesign] = useState(null);
     const [loadError, setLoadError] = useState(null);
+    const [codeText, setCodeText] = useState('');
+    const [codeMessage, setCodeMessage] = useState(null);
+
+    const loadCode = (opts, text) => {
+        const result = decodeDesign(opts, text);
+        if (result.design) {
+            setDesign(result.design);
+            setCodeMessage({ ok: true, text: 'Loaded your drink. Check it, then add it to your cart.' });
+            setCodeText('');
+        } else {
+            setCodeMessage({ ok: false, text: result.error });
+        }
+    };
 
     useEffect(() => {
         fetchDesignerOptions()
-            .then((data) => { setOptions(data); setDesign(newDesign(data)); })
+            .then((data) => {
+                setOptions(data);
+                setDesign(newDesign(data));
+                // a camera app that opens the QR's link lands here with ?code=
+                const code = searchParams.get('code');
+                if (code) loadCode(data, code);
+            })
             .catch((err) => setLoadError(err.message));
-    }, []);
+    }, [searchParams]);
+
+    useScannedCode((text) => options && loadCode(options, text));
 
     if (loadError) return <p className="error-banner">Could not load the drink designer: {loadError}</p>;
     if (!options) return <p>Loading…</p>;
 
+    const lines = recipe(options, design);
     const nutrition = designNutrition(options, design);
     const missing = missingChoice(options, design);
     const add = () => {
@@ -72,7 +116,14 @@ function DesignerPage({ addCustomToCart }) {
         <div className="designer-page">
             <div className="designer-options">
                 <h1>Design your own drink</h1>
-                {options.stub && <p className="stub-note">Demo options: prices and ingredients aren't final yet.</p>}
+                {options.stub && <p className="stub-note">Demo prices: the shop hasn't set them yet.</p>}
+
+                <form className="code-box" onSubmit={(e) => { e.preventDefault(); loadCode(options, codeText); }}>
+                    <span>Designed a drink in the app? Scan its QR code at the reader, or type the code:</span>
+                    <input value={codeText} onChange={(e) => setCodeText(e.target.value)} placeholder="DD1:…" />
+                    <button type="submit" disabled={!codeText.trim()}>Load</button>
+                </form>
+                {codeMessage && <p className={codeMessage.ok ? 'code-ok' : 'error-banner'}>{codeMessage.text}</p>}
 
                 <div className="designer-group">
                     <h2>Cup size</h2>
@@ -81,29 +132,28 @@ function DesignerPage({ addCustomToCart }) {
                             <button key={size.value} className={`option-tile ${design.size === size.value ? 'selected' : ''}`}
                                 onClick={() => setDesign({ ...design, size: size.value })}>
                                 <strong>{size.label}</strong>
-                                <span className="option-price">${Number(size.base_price).toFixed(2)}</span>
+                                <span className="option-price">${Number(options.pricing.cup[size.value]).toFixed(2)}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {options.groups.map((group) => (
-                    <div key={group.key} className="designer-group">
-                        <h2>{group.label} <span className="group-hint">{group.hint}</span></h2>
+                {categories(options).map((category) => (
+                    <div key={category} className="designer-group">
+                        <h2>{category}</h2>
                         <div className="option-row">
-                            {group.options.map((option) => {
-                                const selected = design.selections[group.key].includes(option.id);
-                                const reason = blockedReason(options, design, group, option.id);
+                            {options.ingredients.filter((i) => i.category === category).map((ingredient) => {
+                                const selected = design.picks.includes(ingredient.code);
+                                const soldOut = ingredient.available === false && !selected;
+                                const price = ingredientPrice(options, ingredient);
                                 return (
-                                    <button key={option.id} disabled={Boolean(reason)}
+                                    <button key={ingredient.code} disabled={soldOut}
                                         className={`option-tile ${selected ? 'selected' : ''}`}
-                                        onClick={() => setDesign(toggleOption(options, design, group, option.id))}>
-                                        <span className="swatch" style={{ background: option.color }} />
-                                        <strong>{option.name}</strong>
-                                        <span className="option-price">
-                                            {Number(option.price) ? `+$${Number(option.price).toFixed(2)}` : 'Included'}
-                                        </span>
-                                        {reason && <span className="option-reason">{reason}</span>}
+                                        onClick={() => setDesign(togglePick(options, design, ingredient.code))}>
+                                        <span className="swatch" style={{ background: ingredient.color }} />
+                                        <strong>{ingredient.name}</strong>
+                                        <span className="option-price">{price ? `+$${price.toFixed(2)}` : 'Included'}</span>
+                                        {soldOut && <span className="option-reason">Sold out</span>}
                                     </button>
                                 );
                             })}
@@ -116,8 +166,14 @@ function DesignerPage({ addCustomToCart }) {
             </div>
 
             <aside className="designer-summary">
-                <Cup options={options} design={design} />
+                <Cup lines={lines} ice={design.ice} />
                 <h3>{designName(options, design)}</h3>
+                {/* amounts change as ingredients are added, so show what actually goes in */}
+                <ul className="recipe-lines">
+                    {lines.map((line) => (
+                        <li key={line.code}><span>{line.name}</span><span>{Math.round(line.amount)} {line.unit}</span></li>
+                    ))}
+                </ul>
                 <div className="grade-row">
                     <span className="grade-badge" style={{ background: GRADE_COLORS[nutrition.grade] }}>
                         {nutrition.grade}
@@ -131,7 +187,9 @@ function DesignerPage({ addCustomToCart }) {
                 <button className="action-btn pay-btn" disabled={Boolean(missing)} onClick={add}>
                     {missing ?? 'Add to cart'}
                 </button>
-                <button className="link-btn" onClick={() => setDesign(newDesign(options))}>Start over</button>
+                <button className="link-btn" onClick={() => { setDesign(newDesign(options)); setCodeMessage(null); }}>
+                    Start over
+                </button>
             </aside>
         </div>
     );
