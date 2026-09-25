@@ -68,6 +68,17 @@ No CORS setup is needed: the phone app isn't a browser page, and the browser ver
 
 The backend's endpoints are described in [`kiosk_backend/openapi.yaml`](kiosk_backend/openapi.yaml) (OpenAPI 3). With the backend running, browse it at http://localhost:8000/api/docs/. After changing an endpoint, regenerate the file with `python manage.py spectacular --file openapi.yaml`; a test fails if it is out of date.
 
+## Mobile app
+
+`mobile-app/` is an Expo (React Native) app for customers to pre-order from their phone,
+using the same backend and look as the kiosk. It also runs in a browser:
+
+```
+cd mobile-app && npm install && npm run web
+```
+
+See [mobile-app/README.md](mobile-app/README.md) for running it on a phone.
+
 ## Tests
 
 ```
