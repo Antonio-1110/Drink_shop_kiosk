@@ -6,8 +6,9 @@ async function request(path, options) {
     const res = await fetch(`${API_BASE}${path}`, options);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        const error = new Error(data.error ?? 'Request failed');
+        const error = new Error(data.error ?? data.detail ?? 'Request failed');
         error.data = data;
+        error.status = res.status;
         throw error;
     }
     return data;
@@ -45,5 +46,14 @@ export function cancelOrder(orderId, orderToken) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_token: orderToken }),
+    });
+}
+
+// code is the 6-digit pickup PIN the customer typed, or the token their pickup QR code holds
+export function collectOrder(code) {
+    return request('/ordering/pickup/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: Number(SHOP_ID), code }),
     });
 }

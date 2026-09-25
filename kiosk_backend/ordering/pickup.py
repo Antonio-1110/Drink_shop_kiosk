@@ -38,9 +38,10 @@ def pickup_qr(order):
 
 
 class PickupError(Exception):
-    def __init__(self, message, status):
+    def __init__(self, message, status, reason):
         super().__init__(message)
         self.status = status
+        self.reason = reason  # for the kiosk screen: not_found, not_paid or already_collected
 
 
 def collect(shop_id, code):
@@ -48,20 +49,20 @@ def collect(shop_id, code):
     Raises PickupError (404 unknown code, 409 not paid yet or already collected)."""
     code = (code or '').strip()
     if not code:
-        raise PickupError("Enter your pickup PIN or scan your QR code.", 404)
+        raise PickupError("Enter your pickup PIN or scan your QR code.", 404, "not_found")
     field = 'pickup_pin' if code.isdigit() and len(code) == 6 else 'pickup_token'
     matches = Order.objects.filter(shop_id=shop_id, **{field: code})
     order = matches.filter(status__in=UNCOLLECTED).order_by('-time').first()
     if order is None:
         if matches.filter(status=Order.Status.COLLECTED).exists():
-            raise PickupError("This order has already been collected.", 409)
-        raise PickupError("No order found for that code at this machine.", 404)
+            raise PickupError("This order has already been collected.", 409, "already_collected")
+        raise PickupError("No order found for that code at this machine.", 404, "not_found")
     if order.status == Order.Status.PENDING:
-        raise PickupError("This order hasn't been paid yet.", 409)
+        raise PickupError("This order hasn't been paid yet.", 409, "not_paid")
     with transaction.atomic():
         # the status check in the update means two scans at once can't both collect it
         if not Order.objects.filter(pk=order.pk, status__in=READY).update(
                 status=Order.Status.COLLECTED, collected_at=timezone.now()):
-            raise PickupError("This order has already been collected.", 409)
+            raise PickupError("This order has already been collected.", 409, "already_collected")
     order.refresh_from_db()
     return order

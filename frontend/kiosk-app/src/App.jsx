@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import PaymentPage from "./pages/PaymentPage";
+import CollectPage from "./pages/CollectPage";
 import { fetchAvailableDrinks } from "./api";
 import { CATEGORIES } from "./menu";
 import './App.css';
@@ -51,6 +52,7 @@ function App() {
             <Route path="/cart" element={
               <CartPage cartItems={cartItems} updateCartItem={updateCartItem} removeFromCart={removeFromCart} />
             } />
+            <Route path="/collect" element={<CollectPage />} />
             <Route path="/payment/:orderId" element={<PaymentPage clearCart={clearCart} />} />
           </Routes>
         </div>

@@ -208,7 +208,8 @@ class PickupTests(OrderingTestBase):
         self.assertEqual(res.status_code, 200, res.data)
         self.assertEqual(res.data["status"], Order.Status.COLLECTED)
         self.assertIsNotNone(Order.objects.get(pk=data["id"]).collected_at)
-        self.assertEqual(self.collect(data["pickup_pin"]).status_code, 409)
+        again = self.collect(data["pickup_pin"])
+        self.assertEqual((again.status_code, again.data["reason"]), (409, "already_collected"))
 
     def test_collect_by_qr_token(self):
         data = self.place()
@@ -219,7 +220,7 @@ class PickupTests(OrderingTestBase):
     def test_unpaid_order_is_not_handed_over(self):
         data = self.place()
         res = self.collect(data["pickup_pin"])
-        self.assertEqual(res.status_code, 409)
+        self.assertEqual((res.status_code, res.data["reason"]), (409, "not_paid"))
         self.assertEqual(Order.objects.get(pk=data["id"]).status, Order.Status.PENDING)
 
     def test_wrong_code_or_other_shop(self):
