@@ -4,6 +4,15 @@ Self-order kiosk for a drink shop: a React + Vite touchscreen UI and a Django RE
 
 ## Run it locally
 
+The quick way, from the repo root (needs Python 3 and Node.js):
+
+```
+./dev.sh           # installs dependencies, migrates, starts both; Ctrl-C stops them
+./dev.sh --help    # run only one side, set up only, or run the tests
+```
+
+Or by hand:
+
 Backend (http://localhost:8000):
 
 ```
@@ -31,3 +40,8 @@ The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 ```
 cd kiosk_backend && python manage.py test
 ```
+
+
+## What's next
+
+See [TODO.md](TODO.md).
