@@ -252,3 +252,13 @@ class EndpointTests(CheckoutTestBase):
         self.assertTrue(res.data['qr_code'].startswith("data:image/png;base64,"))
         self.assertEqual(res.data['reference'], f"ORDER{order.pk}")
         self.assertEqual(PaymentAttempt.objects.get(pk=res.data['attempt']).method, 'paynow')
+
+
+class StockLogTests(CheckoutTestBase):
+    def test_hold_and_release_are_logged(self):
+        from operation.models import StockMovement
+        order, _ = self.place(self.milk_tea)
+        services.cancel_order(order)
+        moves = StockMovement.objects.filter(order=order, inventory=self.milk_stock).order_by('created_at', 'pk')
+        self.assertEqual([(m.reason, m.change) for m in moves],
+                         [(StockMovement.Reason.ORDER, Decimal("-100")), (StockMovement.Reason.RELEASE, Decimal("100"))])

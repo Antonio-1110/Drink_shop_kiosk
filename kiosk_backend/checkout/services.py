@@ -19,10 +19,10 @@ from decimal import Decimal
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
-from django.db.models import F, Max
+from django.db.models import Max
 from django.utils import timezone
 
-from operation.models import Inventory
+from operation.models import Inventory, StockMovement
 from ordering.models import Order
 from ordering.utils import aggregate_ingredients, check_cart_fulfillment
 from .models import PaymentAttempt, StockHold
@@ -66,13 +66,13 @@ def hold_stock(order, cart=None):
     inventories = Inventory.objects.filter(shop=order.shop, ingredient_id__in=needed)
     for inventory in inventories:
         quantity = needed[inventory.ingredient_id]
-        Inventory.objects.filter(pk=inventory.pk).update(current_stock=F('current_stock') - quantity)
+        inventory.adjust_stock(-quantity, StockMovement.Reason.ORDER, order=order)
         StockHold.objects.create(order=order, inventory=inventory, quantity=quantity)
 
 
 def release_stock(order):
     for hold in order.stock_holds.select_for_update().filter(status=StockHold.Status.HELD):
-        Inventory.objects.filter(pk=hold.inventory_id).update(current_stock=F('current_stock') + hold.quantity)
+        hold.inventory.adjust_stock(hold.quantity, StockMovement.Reason.RELEASE, order=order)
         hold.status = StockHold.Status.RELEASED
         hold.save(update_fields=['status', 'updated_at'])
 
