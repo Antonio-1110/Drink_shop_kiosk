@@ -49,6 +49,16 @@ npm run dev
 
 The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 
+## Testing the mobile app on a phone
+
+```
+./dev.sh --lan            # or ./dev.sh --lan --backend to skip the kiosk UI
+```
+
+The backend then listens on your network as well as on localhost, and prints the address phones use (`http://<your computer's IP>:8000`). Keep the phone on the same Wi-Fi. Without `--lan` the backend only answers on this computer. For a server, set `DJANGO_ALLOWED_HOSTS` to its host name instead.
+
+No CORS setup is needed: the phone app isn't a browser page, and the browser versions of both apps go through their dev server's `/api` proxy.
+
 ## API contract
 
 The backend's endpoints are described in [`kiosk_backend/openapi.yaml`](kiosk_backend/openapi.yaml) (OpenAPI 3). With the backend running, browse it at http://localhost:8000/api/docs/. After changing an endpoint, regenerate the file with `python manage.py spectacular --file openapi.yaml`; a test fails if it is out of date.

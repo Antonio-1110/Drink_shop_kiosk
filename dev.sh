@@ -7,6 +7,8 @@
 #   ./dev.sh --frontend   run only the frontend
 #   ./dev.sh --setup      install dependencies and migrate, then exit
 #   ./dev.sh --test       run the backend tests, then exit
+#   ./dev.sh --lan        also let phones on your Wi-Fi reach the backend (mobile app testing);
+#                         combine with --backend to skip the kiosk UI
 #
 # Ctrl-C stops everything. The backend always runs on port 8000 because
 # frontend/kiosk-app/vite.config.js proxies /api there.
@@ -22,14 +24,19 @@ PY="$VENV/bin/python"
 
 RUN_BACKEND=1
 RUN_FRONTEND=1
-case "${1:-}" in
-  "") ;;
-  --backend) RUN_FRONTEND=0 ;;
-  --frontend) RUN_BACKEND=0 ;;
-  --setup|--test) ;;
-  -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  *) echo "Unknown option: $1 (try --help)" >&2; exit 1 ;;
-esac
+MODE=run
+LAN=0
+for arg in "$@"; do
+  case "$arg" in
+    --backend) RUN_FRONTEND=0 ;;
+    --frontend) RUN_BACKEND=0 ;;
+    --setup) MODE=setup ;;
+    --test) MODE=test ;;
+    --lan) LAN=1 ;;
+    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;
+  esac
+done
 
 log() { printf '\033[1;36m[dev]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[dev]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -70,12 +77,12 @@ setup_frontend() {
   fi
 }
 
-if [ "${1:-}" = "--test" ]; then
+if [ "$MODE" = test ]; then
   setup_backend
   cd "$BACKEND" && exec "$PY" manage.py test
 fi
 
-if [ "${1:-}" = "--setup" ]; then
+if [ "$MODE" = setup ]; then
   setup_backend
   setup_frontend
   log "Setup done."
@@ -89,7 +96,10 @@ cleanup() {
   trap - INT TERM EXIT
   log "Stopping..."
   for pid in "${PIDS[@]:-}"; do
-    [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+    [ -n "$pid" ] || continue
+    # Django's autoreloader and npm each run the real server as a child process, so stop those too
+    pkill -TERM -P "$pid" 2>/dev/null || true
+    kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
 }
@@ -102,14 +112,25 @@ if [ "$RUN_BACKEND" = 1 ]; then
       >/dev/null 2>&1); then
     log "No admin user yet. Create one with: cd kiosk_backend && .venv/bin/python manage.py createsuperuser"
   fi
+  BIND=127.0.0.1
+  if [ "$LAN" = 1 ]; then
+    # the address other devices on this network use to reach this computer (no packet is sent)
+    LAN_IP="$("$PY" -c 'import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(("10.255.255.255", 1)); print(s.getsockname()[0])' 2>/dev/null || true)"
+    [ -n "$LAN_IP" ] || die "Couldn't find this computer's network address. Are you on Wi-Fi?"
+    BIND=0.0.0.0
+    # a non-empty ALLOWED_HOSTS replaces Django's localhost default, so keep localhost in it
+    export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS:+$DJANGO_ALLOWED_HOSTS,}localhost,127.0.0.1,$LAN_IP"
+    log "Backend on your network: http://$LAN_IP:8000  (phones on the same Wi-Fi use this)"
+  fi
   log "Backend:  http://localhost:8000  (admin at /admin)"
-  (cd "$BACKEND" && exec "$PY" manage.py runserver 8000) &
+  (cd "$BACKEND" && exec "$PY" manage.py runserver "$BIND:8000") &
   PIDS+=($!)
 fi
 
 if [ "$RUN_FRONTEND" = 1 ]; then
   log "Frontend: http://localhost:5173"
-  (cd "$FRONTEND" && exec npm run dev) &
+  # run vite directly (not through npm) so stopping this process stops the server
+  (cd "$FRONTEND" && exec ./node_modules/.bin/vite) &
   PIDS+=($!)
 fi
 

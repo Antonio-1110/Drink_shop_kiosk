@@ -150,7 +150,15 @@ REST_FRAMEWORK = {
 # API contract: served at /api/schema/ (browse it at /api/docs/) and committed as openapi.yaml
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Drink Shop Kiosk API',
-    'DESCRIPTION': 'Backend for the self-order kiosk: menu, stock, orders and PayNow payment.',
+    'DESCRIPTION': (
+        'Backend for the self-order kiosk and the mobile ordering app: menu, stock, orders and '
+        'PayNow payment.\n\n'
+        'Base URL: `http://localhost:8000` in development. The kiosk UI and the mobile app in a '
+        'browser reach it through their dev-server proxy at `/api`. A phone on the same Wi-Fi uses '
+        '`http://<computer IP>:8000`: start the backend with `./dev.sh --lan`, which listens on the '
+        'network and adds that address to `DJANGO_ALLOWED_HOSTS`.\n\n'
+        'Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).'
+    ),
     'VERSION': '0.1.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],

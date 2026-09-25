@@ -2,7 +2,12 @@ openapi: 3.0.3
 info:
   title: Drink Shop Kiosk API
   version: 0.1.0
-  description: 'Backend for the self-order kiosk: menu, stock, orders and PayNow payment.'
+  description: |-
+    Backend for the self-order kiosk and the mobile ordering app: menu, stock, orders and PayNow payment.
+
+    Base URL: `http://localhost:8000` in development. The kiosk UI and the mobile app in a browser reach it through their dev-server proxy at `/api`. A phone on the same Wi-Fi uses `http://<computer IP>:8000`: start the backend with `./dev.sh --lan`, which listens on the network and adds that address to `DJANGO_ALLOWED_HOSTS`.
+
+    Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).
 paths:
   /operation/inventory/shop/{shop}/ingredient/{ingredient}/:
     patch:
