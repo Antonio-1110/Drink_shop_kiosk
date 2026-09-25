@@ -1,7 +1,11 @@
 from operation.models import Drink, DrinkIngredient, Shop, Inventory
+from .models import Order
+from django.db import transaction
 from django.db.models import F, Case, When, DecimalField
 from decimal import Decimal
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 import base64
 import io
 import qrcode
@@ -70,6 +74,40 @@ def inventory_update(shop, cart : list = []):
         Inventory.objects.filter(shop=shop, ingredient_id=ingredient_id).update(
             current_stock=F('current_stock') - amount)
     return True
+
+def inventory_restock(shop, cart : list = []):
+    # puts back the ingredients a cancelled order had taken
+    a_d = aggregate_ingredients(cart)
+    for ingredient_id, amount in a_d.items():
+        Inventory.objects.filter(shop=shop, ingredient_id=ingredient_id).update(
+            current_stock=F('current_stock') + amount)
+    return True
+
+def cancel_order(order):
+    # the status update only matches while the order is still pending, so two
+    # callers racing to cancel the same order can't return its stock twice
+    with transaction.atomic():
+        if not Order.objects.filter(pk=order.pk, status=Order.Status.PENDING).update(
+                status=Order.Status.CANCELLED):
+            return False
+        inventory_restock(order.shop, list(order.items.values_list('drink_id', flat=True)))
+    return True
+
+def mark_order_paid(order):
+    # TBM ("to be made") is the paid state until the Order model gets a proper Paid status
+    return bool(Order.objects.filter(pk=order.pk, status=Order.Status.PENDING).update(
+        status=Order.Status.TBM))
+
+def payment_deadline(order):
+    return order.time + timedelta(minutes=settings.ORDER_PAYMENT_TIMEOUT_MINUTES)
+
+def expire_unpaid_orders(shop=None):
+    # cancels orders left unpaid past the timeout and returns their stock
+    cutoff = timezone.now() - timedelta(minutes=settings.ORDER_PAYMENT_TIMEOUT_MINUTES)
+    stale = Order.objects.filter(status=Order.Status.PENDING, time__lt=cutoff)
+    if shop is not None:
+        stale = stale.filter(shop=shop)
+    return sum(cancel_order(order) for order in stale)
 
 def inventory_check(shop, cart : list = []):
     a_d = aggregate_ingredients(cart)

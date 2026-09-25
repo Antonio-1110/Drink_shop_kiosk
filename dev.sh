@@ -16,6 +16,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$ROOT/kiosk_backend"
 FRONTEND="$ROOT/frontend/kiosk-app"
 VENV="$BACKEND/.venv"
+# local development settings (see kiosk_backend/kiosk_backend/settings.py)
+export DJANGO_DEBUG="${DJANGO_DEBUG:-1}"
 PY="$VENV/bin/python"
 
 RUN_BACKEND=1

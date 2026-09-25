@@ -14,25 +14,30 @@ Inventory, Nutri-Grade module). Fold them into that work or do them after it lan
 
 ## 1. Fix before building more
 
-- [ ] **Unpaid orders keep their stock forever.** `key_in_order` deducts stock when the order is
+- [x] **Unpaid orders keep their stock forever.** `key_in_order` deducts stock when the order is
       created, but nothing marks an order paid, and nothing cancels an abandoned one. Add an order
       expiry (for example 10 minutes in `PENDING`) that sets `CANCELLED` and puts the stock back,
       plus a way to mark an order paid (admin action now, payment webhook later).
-- [ ] **Every endpoint is public.** DRF's default permission is `AllowAny`, so anyone who can reach
+      Done: unpaid orders expire after `ORDER_PAYMENT_TIMEOUT_MINUTES` and staff mark orders paid
+      in the admin. Still to do: automatic payment confirmation, and a proper Paid status once the
+      models work adds one (paid orders use `TBM` until then).
+- [x] **Every endpoint is public.** DRF's default permission is `AllowAny`, so anyone who can reach
       the server can `PATCH /operation/inventory/...` and change stock. Put inventory behind
       staff auth or an API key per kiosk, and set `DEFAULT_PERMISSION_CLASSES` in settings.
-- [ ] **Settings are dev-only.** `SECRET_KEY` is committed, `DEBUG = True`, `ALLOWED_HOSTS = []`.
+- [x] **Settings are dev-only.** `SECRET_KEY` is committed, `DEBUG = True`, `ALLOWED_HOSTS = []`.
       Read all three from environment variables (with a `.env.example`), and rotate the key.
+      Done: all three come from environment variables (see the README) and the committed key is no
+      longer used.
 - [ ] **Sales history can be deleted by accident** **(models)**. `Order.shop` and `OrderItem.drink`
       use `on_delete=CASCADE`, so deleting a shop or a drink wipes its orders. Use `PROTECT`, and
       add `is_active` to `Drink` so drinks can be retired instead of deleted.
 - [ ] **Order line prices are not stored** **(models)**. Revenue is computed from the drink's
       current price, but each `OrderItem` should keep the price it sold at so reports stay right
       after a price change.
-- [ ] Small cleanups in `operation/views.py`: remove the stray `print(1)` and the `try/except`
+- [x] Small cleanups in `operation/views.py`: remove the stray `print(1)` and the `try/except`
       around `get_object_or_404` (it never raises `DoesNotExist`). In `ordering/views.py`, stop
       returning `str(e)` to the client on unexpected errors, and rename `avaliable_drinks`.
-- [ ] Delete `common/models/drinks.py`; it is an unused plain Python class from before Django.
+- [x] Delete `common/models/drinks.py`; it is an unused plain Python class from before Django.
 - [ ] Sugar and ice default to 0% on the model but 100% in the UI **(models)**; pick one.
 
 ## 2. Make it easy to work on

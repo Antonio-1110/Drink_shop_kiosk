@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +21,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l35)u@^w1u4*m_%2x-f(grv#1_7dak30@g$q7n$lvrdgi*ueb2'
+# Everything that differs between a laptop and a real deployment comes from environment
+# variables. For local development set DJANGO_DEBUG=1 (./dev.sh does this for you).
+DEBUG = os.environ.get('DJANGO_DEBUG', '').lower() in ('1', 'true', 'yes')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'Set DJANGO_SECRET_KEY, or set DJANGO_DEBUG=1 for local development.')
+    SECRET_KEY = 'django-insecure-local-development-only'
 
-ALLOWED_HOSTS = []
+# comma-separated, e.g. "kiosk.example.com,10.0.0.5"; localhost is allowed when DEBUG is on
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 
 # Application definition
@@ -129,3 +136,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # PayNow details used in the order QR code; set these for the real shop
 PAYNOW_UEN = os.environ.get('PAYNOW_UEN', '000000000X')
 PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk')
+
+# how long an unpaid order holds its ingredients before it is cancelled and the stock returned
+ORDER_PAYMENT_TIMEOUT_MINUTES = int(os.environ.get('ORDER_PAYMENT_TIMEOUT_MINUTES', '10'))
+
+REST_FRAMEWORK = {
+    # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
+}

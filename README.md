@@ -17,13 +17,26 @@ Backend (http://localhost:8000):
 
 ```
 cd kiosk_backend
+export DJANGO_DEBUG=1              # local development settings
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser   # then add a shop, drinks, recipes and stock at /admin
 python manage.py runserver
 ```
 
-Set `PAYNOW_UEN` and `PAYNOW_MERCHANT_NAME` in the environment so payment QR codes pay the right account.
+Settings come from environment variables:
+
+| Variable | What it does |
+| --- | --- |
+| `DJANGO_DEBUG` | `1` for local development. Leave unset in production. |
+| `DJANGO_SECRET_KEY` | Required when `DJANGO_DEBUG` is off. |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated host names the server answers to in production. |
+| `PAYNOW_UEN`, `PAYNOW_MERCHANT_NAME` | The account the PayNow QR codes pay. |
+| `ORDER_PAYMENT_TIMEOUT_MINUTES` | How long an unpaid order holds its ingredients (default 10). |
+
+Unpaid orders are cancelled and their stock returned after the timeout. This happens whenever the kiosk loads the menu or places an order; `python manage.py expire_orders` does the same from a cron job. Staff mark orders paid (or cancel them) from **Orders** in `/admin`.
+
+Only the kiosk's ordering endpoints are public. Everything else, including `PATCH /operation/inventory/...`, needs a staff login.
 
 Frontend (http://localhost:5173, proxies `/api` to the backend):
 
@@ -38,7 +51,7 @@ The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 ## Tests
 
 ```
-cd kiosk_backend && python manage.py test
+cd kiosk_backend && DJANGO_DEBUG=1 python manage.py test
 ```
 
 
