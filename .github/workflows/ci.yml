@@ -1,10 +1,11 @@
-# Runs on every push and pull request. Each job checks that its folder exists
+# Runs on every pull request and on pushes to main. Each job checks that its folder exists
 # first and passes without doing anything when it doesn't, so branches that
 # don't have the mobile app (or anything else) yet still go green.
 name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
