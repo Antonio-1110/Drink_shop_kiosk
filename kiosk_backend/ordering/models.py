@@ -1,5 +1,5 @@
 from django.db import models
-from operation.models import Shop, Drink
+from operation.models import Shop, Drink, Ingredient
 
 # Create your models here.
 
@@ -50,7 +50,7 @@ class OrderItem(models.Model):
         choices=Level.choices,
         default=Level.NORMAL,
     )
-    drink = models.ForeignKey(Drink, on_delete=models.PROTECT) # retire drinks with is_active instead
+    drink = models.ForeignKey(Drink, on_delete=models.PROTECT, null=True, blank=True) # empty for designer drinks; retire menu drinks with is_active
     unit_price = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True) # price at time of sale
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     custom_settings = models.JSONField(default=dict, blank=True)
@@ -59,9 +59,21 @@ class OrderItem(models.Model):
     sugar_g_per_100ml = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     saturated_fat_g_per_100ml = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     def apply_nutri_grade(self):
-        from operation.health_metrics import grade_drink
-        result = grade_drink(self.drink, sugar_level=self.sugar, ice_level=self.ice)
+        from operation.health_metrics import grade_drink, grade_ingredient_lines
+        if self.drink_id:
+            result = grade_drink(self.drink, sugar_level=self.sugar, ice_level=self.ice)
+        else:
+            result = grade_ingredient_lines(
+                (line.ingredient, line.amount) for line in self.custom_ingredients.select_related('ingredient'))
         self.nutri_grade = result.grade
         self.sugar_g_per_100ml = result.sugar_g_per_100ml
         self.saturated_fat_g_per_100ml = result.saturated_fat_g_per_100ml
         return result
+
+
+class OrderItemIngredient(models.Model):
+    # one ingredient of a designer drink, with the amount and price it was sold at
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='custom_ingredients')
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=8, decimal_places=2) # in the ingredient's unit_of_measure
+    unit_price = models.DecimalField(max_digits=4, decimal_places=2)

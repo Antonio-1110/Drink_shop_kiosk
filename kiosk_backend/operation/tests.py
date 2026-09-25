@@ -130,3 +130,50 @@ class StockAndTemperatureLogTests(TestCase):
         self.inv.record_temperature(D('3'))
         self.kiosk.refresh_from_db()
         self.assertTrue(self.kiosk.sfa_locked)
+
+
+class DesignerTests(TestCase):
+    def setUp(self):
+        from .models import DesignerConfig
+        L, T, O = Ingredient.Kind.LIQUID, Ingredient.Kind.TOPPING, Ingredient.Kind.OTHER
+        self.tea = Ingredient.objects.create(name='Black tea', code='BT', unit_of_measure='mL', kind=L, share=3)
+        self.milk = Ingredient.objects.create(name='Fresh milk', code='FM', unit_of_measure='mL', kind=L, share=2,
+                                              sugar_per_100=D('4.8'), saturated_fat_per_100=D('2.3'))
+        self.pearls = Ingredient.objects.create(name='Tapioca pearls', code='TP', unit_of_measure='g', kind=T,
+                                                exclude_from_grade=True, designer_price=D('0.80'))
+        self.jelly = Ingredient.objects.create(name='Grass jelly', code='GJ', unit_of_measure='g', kind=T)
+        syrup = Ingredient.objects.create(name='Brown sugar syrup', code='BS', unit_of_measure='mL', kind=O,
+                                          sugar_per_100=D('65'))
+        self.config = DesignerConfig.load()
+        self.config.sweetener = syrup
+        self.config.save()
+
+    def test_config_is_a_single_row(self):
+        from .models import DesignerConfig
+        DesignerConfig().save()
+        self.assertEqual(DesignerConfig.objects.count(), 1)
+
+    def test_amounts_share_the_cup_and_price_adds_up(self):
+        lines, total = self.config.build([self.tea, self.milk, self.pearls, self.jelly], size=1, sugar_level=2)
+        amounts = {i.code: a for i, a, _ in lines}
+        self.assertEqual(amounts, {'BT': D('300.00'), 'FM': D('200.00'), 'TP': D('40.00'),
+                                   'GJ': D('40.00'), 'BS': D('20.00')})
+        # 3.40 cup + 0.50 + 0.50 liquids + 0.80 pearls override + 0.60 jelly default
+        self.assertEqual(total, D('5.80'))
+
+    def test_needs_a_liquid(self):
+        with self.assertRaises(ValueError):
+            self.config.build([self.pearls], size=0, sugar_level=4)
+
+    def test_custom_order_item_is_graded_from_its_lines(self):
+        from ordering.models import Order, OrderItem, OrderItemIngredient
+        shop = Shop.objects.create(name='Kiosk 1', address='Somewhere')
+        order = Order.objects.create(shop=shop, revenue=D('0'))
+        item = OrderItem.objects.create(order=order, drink=None, size=1, sugar=2)
+        lines, _ = self.config.build([self.tea, self.milk, self.pearls], size=1, sugar_level=2)
+        for ingredient, amount, price in lines:
+            OrderItemIngredient.objects.create(order_item=item, ingredient=ingredient, amount=amount, unit_price=price)
+        result = item.apply_nutri_grade()
+        # (9.6 g milk sugar + 13 g syrup) / 520 mL = 4.35 g; 4.6 g fat / 520 mL = 0.88 g
+        self.assertEqual(result.sugar_g_per_100ml, D('4.35'))
+        self.assertEqual(item.nutri_grade, 'B')

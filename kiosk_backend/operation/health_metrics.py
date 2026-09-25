@@ -106,11 +106,9 @@ def grade_drink(drink, sugar_level: int = LEVEL_STEPS, ice_level: int = LEVEL_ST
     Ingredients flagged exclude_from_grade (e.g. toppings, whose sugar is
     declared separately on the menu) are skipped.
     """
-    components = []
+    lines = []
     for line in drink.required.select_related('ingredient'):
         ingredient = line.ingredient
-        if ingredient.exclude_from_grade:
-            continue
         quantity = Decimal(line.required_quantity)
         if line.scaling == line.Scaling.SUGAR:
             quantity = quantity * sugar_level / LEVEL_STEPS
@@ -118,12 +116,21 @@ def grade_drink(drink, sugar_level: int = LEVEL_STEPS, ice_level: int = LEVEL_ST
             if not count_ice_volume:
                 continue
             quantity = quantity * ice_level / LEVEL_STEPS
-        if quantity <= 0:
+        lines.append((ingredient, quantity))
+    return grade_ingredient_lines(lines)
+
+
+def grade_ingredient_lines(lines) -> NutriGradeResult:
+    """Grade (ingredient, amount) pairs; amounts are in each ingredient's unit_of_measure."""
+    components = []
+    for ingredient, amount in lines:
+        amount = Decimal(amount)
+        if ingredient.exclude_from_grade or amount <= 0:
             continue
         components.append(Component(
-            volume_ml=ingredient.to_millilitres(quantity),
-            sugar_g=quantity * ingredient.sugar_per_100 / 100,
-            saturated_fat_g=quantity * ingredient.saturated_fat_per_100 / 100,
+            volume_ml=ingredient.to_millilitres(amount),
+            sugar_g=amount * ingredient.sugar_per_100 / 100,
+            saturated_fat_g=amount * ingredient.saturated_fat_per_100 / 100,
             contains_sweetener=ingredient.contains_sweetener,
         ))
     return calculate_nutri_grade(components)

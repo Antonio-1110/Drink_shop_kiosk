@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk, StockMovement, TemperatureReading
+from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk, StockMovement, TemperatureReading, DesignerConfig
 
 # Register your models here.
 
@@ -16,7 +16,8 @@ class ShopAdmin(admin.ModelAdmin):
     
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'unit_of_measure')
+    list_display = ('id', 'code', 'name', 'kind', 'unit_of_measure', 'offered_in_designer', 'designer_price')
+    list_filter = ('kind', 'offered_in_designer')
 
 @admin.register(DrinkIngredient)
 class DrinkIngredientAdmin(admin.ModelAdmin):
@@ -45,3 +46,9 @@ class StockMovementAdmin(admin.ModelAdmin):
 class TemperatureReadingAdmin(admin.ModelAdmin):
     list_display = ('recorded_at', 'inventory', 'temp_c', 'within_bounds')
     list_filter = ('within_bounds', 'inventory__shop')
+
+
+@admin.register(DesignerConfig)
+class DesignerConfigAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return not DesignerConfig.objects.exists()
