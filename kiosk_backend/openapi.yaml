@@ -9,6 +9,37 @@ info:
 
     Ordering endpoints are public. Everything else needs a staff login (session or HTTP Basic).
 paths:
+  /checkout/webhooks/{method}/:
+    post:
+      operationId: checkout_webhooks_create
+      description: Each provider posts here with its own format and signature, checked
+        by that provider's code.
+      summary: Payment notification from a payment provider
+      parameters:
+      - in: path
+        name: method
+        schema:
+          type: string
+        required: true
+      tags:
+      - checkout
+      security:
+      - {}
+      responses:
+        '200':
+          description: Processed
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
   /operation/inventory/shop/{shop}/ingredient/{ingredient}/:
     patch:
       operationId: operation_inventory_shop_ingredient_partial_update
@@ -70,8 +101,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -98,6 +127,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
           description: ''
+  /ordering/designer/options/:
+    get:
+      operationId: ordering_designer_options_retrieve
+      description: Sizes, prices and the ingredients a customer can build a drink
+        from at this shop. `available` means the shop has enough of the ingredient
+        for the most a large cup could use. Order a designed drink by sending its
+        ingredient codes as `custom` in POST /ordering/log-order/.
+      summary: Drink designer options
+      parameters:
+      - in: query
+        name: shop_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesignerOptions'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /ordering/drinks/:
     get:
       operationId: ordering_drinks_list
@@ -123,8 +189,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -150,8 +214,9 @@ paths:
   /ordering/log-order/:
     post:
       operationId: ordering_log_order_create
-      description: Reserves the ingredients and creates an unpaid order. Unpaid orders
-        are cancelled after ORDER_PAYMENT_TIMEOUT_MINUTES and the stock is returned.
+      description: 'Holds the ingredients and creates an unpaid order. Start paying
+        with POST /ordering/orders/{id}/payments/; the hold lasts as long as that
+        payment. Keep order_token: cancelling needs it.'
       summary: Place an order
       tags:
       - ordering
@@ -168,15 +233,13 @@ paths:
               $ref: '#/components/schemas/OrderRequest'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
+                $ref: '#/components/schemas/OrderCreated'
           description: ''
         '400':
           description: 'Invalid order: errors keyed by field.'
@@ -186,9 +249,125 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
           description: ''
+  /ordering/orders/{order_id}/cancel/:
+    post:
+      operationId: ordering_orders_cancel_create
+      description: For the customer's Cancel button or the kiosk's idle timeout. Puts
+        the ingredients back on sale straight away. Needs the order_token from placing
+        the order.
+      summary: Cancel an unpaid order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCancelled'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+  /ordering/orders/{order_id}/payments/:
+    post:
+      operationId: ordering_orders_payments_create
+      description: Opens a payment with the chosen method (see PAYMENT_METHODS) and
+        holds the order's ingredients until the payment expires. Calling it again
+        returns the same open payment.
+      summary: Start paying for an order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StartPaymentRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStarted'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
   /ordering/orders/{order_id}/paynow-qr/:
     get:
       operationId: ordering_orders_paynow_qr_retrieve
+      description: Shortcut for starting a PayNow payment; same as POST .../payments/
+        with method paynow.
       summary: PayNow QR code for an unpaid order
       parameters:
       - in: path
@@ -199,15 +378,95 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaynowQr'
+                $ref: '#/components/schemas/PaymentStarted'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+  /ordering/orders/{order_id}/status/:
+    get:
+      operationId: ordering_orders_status_retrieve
+      summary: Payment status of an order
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPaymentStatus'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
+  /ordering/pickup/:
+    post:
+      operationId: ordering_pickup_create
+      description: The kiosk sends the 6-digit pickup PIN the customer typed, or the
+        token from their scanned pickup QR code. A paid order is handed over once
+        and becomes COLLECTED. Limited to a few attempts a minute per machine, so
+        PINs can't be guessed.
+      summary: Collect an order at the machine
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PickupRequestRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
           description: ''
         '404':
           content:
@@ -215,12 +474,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
-        '503':
+        '409':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+        '429':
+          description: Too many attempts; wait a minute.
   /ordering/shops/:
     get:
       operationId: ordering_shops_list
@@ -228,8 +489,6 @@ paths:
       tags:
       - ordering
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -242,6 +501,14 @@ paths:
           description: ''
 components:
   schemas:
+    CancelOrderRequest:
+      type: object
+      properties:
+        order_token:
+          type: string
+          minLength: 1
+      required:
+      - order_token
     CategoryEnum:
       type: string
       enum:
@@ -250,6 +517,165 @@ components:
       - Smoothie
       - Coffee
       - Others
+    CheckoutError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
+    DesignerCupPrice:
+      type: object
+      properties:
+        '0':
+          type: string
+        '1':
+          type: string
+      required:
+      - '0'
+      - '1'
+    DesignerIngredient:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        category:
+          type: string
+        share:
+          type: number
+          format: double
+          description: Liquids split the cup by share.
+        color:
+          type: string
+        available:
+          type: boolean
+        sugar:
+          type: number
+          format: double
+        sat_fat:
+          type: number
+          format: double
+        sweetener:
+          type: boolean
+          description: Contains a non-sugar sweetener.
+        exclude_from_grade:
+          type: boolean
+      required:
+      - available
+      - category
+      - code
+      - color
+      - exclude_from_grade
+      - kind
+      - name
+      - sat_fat
+      - share
+      - sugar
+      - sweetener
+    DesignerOptions:
+      type: object
+      properties:
+        sizes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DesignerSize'
+        pricing:
+          $ref: '#/components/schemas/DesignerPricing'
+        sweetener:
+          allOf:
+          - $ref: '#/components/schemas/DesignerSweetener'
+          nullable: true
+          description: Added at 100% sugar and scaled down with the sugar level; null
+            if none is set.
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DesignerIngredient'
+      required:
+      - ingredients
+      - pricing
+      - sizes
+      - sweetener
+    DesignerPricing:
+      type: object
+      properties:
+        cup:
+          $ref: '#/components/schemas/DesignerCupPrice'
+        liquid:
+          type: string
+          description: Default price per liquid picked.
+        topping:
+          type: string
+          description: Default price per topping picked.
+        overrides:
+          type: object
+          additionalProperties:
+            type: string
+          description: Price by ingredient code, where it differs.
+      required:
+      - cup
+      - liquid
+      - overrides
+      - topping
+    DesignerSize:
+      type: object
+      properties:
+        value:
+          type: integer
+        label:
+          type: string
+        liquid_ml:
+          type: number
+          format: double
+        topping_g:
+          type: number
+          format: double
+      required:
+      - label
+      - liquid_ml
+      - topping_g
+      - value
+    DesignerSweetener:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        sugar:
+          type: number
+          format: double
+          description: g per 100 mL
+        sat_fat:
+          type: number
+          format: double
+        ml:
+          $ref: '#/components/schemas/DesignerSweetenerMl'
+      required:
+      - code
+      - color
+      - ml
+      - name
+      - sat_fat
+      - sugar
+    DesignerSweetenerMl:
+      type: object
+      properties:
+        '0':
+          type: number
+          format: double
+        '1':
+          type: number
+          format: double
+      required:
+      - '0'
+      - '1'
     Drink:
       type: object
       properties:
@@ -277,6 +703,8 @@ components:
         description:
           type: string
           maxLength: 300
+        is_active:
+          type: boolean
       required:
       - category
       - id
@@ -299,6 +727,14 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
       - current_stock
+    KindEnum:
+      enum:
+      - liquid
+      - topping
+      type: string
+      description: |-
+        * `liquid` - liquid
+        * `topping` - topping
     LevelEnum:
       enum:
       - 4
@@ -359,11 +795,79 @@ components:
           type: string
       required:
       - status
+    OrderCancelled:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    OrderCreated:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        shop:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+        time:
+          type: string
+          format: date-time
+          readOnly: true
+        item_quantity:
+          type: integer
+          readOnly: true
+        user_id:
+          type: string
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        order_token:
+          type: string
+          readOnly: true
+          description: Proof you placed this order; needed to cancel it.
+        pickup_pin:
+          type: string
+          readOnly: true
+          description: 6 digits (may start with 0) to type at the machine.
+        pickup_qr:
+          type: string
+          readOnly: true
+          description: PNG data URL of the pickup QR code to scan at the machine.
+      required:
+      - id
+      - item_quantity
+      - items
+      - order_token
+      - pickup_pin
+      - pickup_qr
+      - revenue
+      - shop
+      - status
+      - time
     OrderItem:
       type: object
       properties:
         drink:
           type: integer
+          nullable: true
+        custom:
+          type: array
+          items:
+            type: string
+            maxLength: 4
+          description: Ingredient codes for a designer drink, instead of `drink`.
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'
@@ -379,13 +883,19 @@ components:
           - $ref: '#/components/schemas/LevelEnum'
           minimum: -9223372036854775808
           maximum: 9223372036854775807
-      required:
-      - drink
     OrderItemRequest:
       type: object
       properties:
         drink:
           type: integer
+          nullable: true
+        custom:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 4
+          description: Ingredient codes for a designer drink, instead of `drink`.
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'
@@ -401,8 +911,25 @@ components:
           - $ref: '#/components/schemas/LevelEnum'
           minimum: -9223372036854775808
           maximum: 9223372036854775807
+    OrderPaymentStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          description: PENDING until paid; then the paid status, or CANCELLED.
+        hold_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'While PENDING: when the order is cancelled if still unpaid.'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentAttemptSummary'
       required:
-      - drink
+      - hold_expires_at
+      - payments
+      - status
     OrderRequest:
       type: object
       properties:
@@ -434,10 +961,16 @@ components:
           items:
             type: integer
           description: Ingredients that ran short.
+        options:
+          type: array
+          items:
+            type: string
+          description: Designer ingredient codes that ran short.
       required:
       - drinks
       - error
       - ingredients
+      - options
     PatchedInventoryRequest:
       type: object
       properties:
@@ -445,31 +978,60 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-    PaynowQr:
+    PaymentAttemptSummary:
       type: object
       properties:
+        method:
+          type: string
         status:
           type: string
-        qr_code:
-          type: string
-          description: 'PNG image as a data: URL, ready for an <img> src.'
-        reference:
-          type: string
-          description: Payment reference shown to the customer, e.g. ORDER12.
-        amount:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
         expires_at:
           type: string
           format: date-time
-          description: After this the order is cancelled if still unpaid.
+      required:
+      - expires_at
+      - method
+      - status
+    PaymentStarted:
+      type: object
+      properties:
+        attempt:
+          type: integer
+        method:
+          type: string
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        expires_at:
+          type: string
+          format: date-time
+          description: The ingredients are held until then; after it the order is
+            cancelled if unpaid.
+        qr_code:
+          type: string
+          description: 'PayNow: PNG image as a data: URL.'
+        reference:
+          type: string
+          description: 'PayNow: reference shown in the customer''s bank app.'
       required:
       - amount
+      - attempt
       - expires_at
-      - qr_code
-      - reference
-      - status
+      - method
+    PickupRequestRequest:
+      type: object
+      properties:
+        shop:
+          type: integer
+          description: The machine's shop ID.
+        code:
+          type: string
+          minLength: 1
+          description: The pickup PIN, or the token read from the pickup QR code.
+      required:
+      - code
+      - shop
     Shop:
       type: object
       properties:
@@ -505,18 +1067,30 @@ components:
       description: |-
         * `1` - Large
         * `0` - Small
+    StartPaymentRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          minLength: 1
+      required:
+      - method
     StatusEnum:
       enum:
       - PENDING
       - COMPLETED
       - CANCELLED
       - TBM
+      - PAID
+      - COLLECTED
       type: string
       description: |-
         * `PENDING` - Pending
         * `COMPLETED` - Completed
         * `CANCELLED` - Cancelled
         * `TBM` - To Be Made
+        * `PAID` - Paid / Ready for Dispense
+        * `COLLECTED` - Collected
   securitySchemes:
     basicAuth:
       type: http

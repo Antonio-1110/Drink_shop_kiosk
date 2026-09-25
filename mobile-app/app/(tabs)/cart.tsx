@@ -14,9 +14,7 @@ export default function CartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
-  // STUB: drinks built on the placeholder designer options can't be ordered until the backend supports them
-  const stubItems = cartItems.some((item) => item.custom?.stub);
-  const blocked = cartItems.length === 0 || submitting || stubItems;
+  const blocked = cartItems.length === 0 || submitting;
 
   const checkout = async () => {
     if (!shop) return;
@@ -27,10 +25,13 @@ export default function CartScreen() {
       setLastOrder(order);
       router.push({ pathname: '/payment/[orderId]', params: { orderId: order.id } });
     } catch (err) {
-      // the backend lists the drinks it no longer has stock for
+      // the backend lists the drinks and designer ingredients it no longer has stock for
       const soldOutIds: number[] = (err as ApiError).data?.drinks ?? [];
+      const soldOutCodes: string[] = (err as ApiError).data?.options ?? [];
       const soldOut = cartItems
-        .filter((item) => !item.custom && soldOutIds.includes(item.drink.id))
+        .filter((item) => (item.custom
+          ? item.custom.picks.some((code) => soldOutCodes.includes(code))
+          : soldOutIds.includes(item.drink.id)))
         .map((item) => item.drink.name);
       setError(soldOut.length
         ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
@@ -66,9 +67,6 @@ export default function CartScreen() {
       />
 
       <ErrorBanner message={error} />
-      <ErrorBanner message={stubItems
-        ? "Drinks you designed can't be paid for yet: the shop server doesn't take custom drinks. Remove them to order the rest."
-        : null} />
 
       <View style={styles.footer}>
         <View>

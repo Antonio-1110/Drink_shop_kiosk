@@ -116,7 +116,6 @@ function DesignerPage({ addCustomToCart }) {
         <div className="designer-page">
             <div className="designer-options">
                 <h1>Design your own drink</h1>
-                {options.stub && <p className="stub-note">Demo prices: the shop hasn't set them yet.</p>}
 
                 <form className="code-box" onSubmit={(e) => { e.preventDefault(); loadCode(options, codeText); }}>
                     <span>Designed a drink in the app? Scan its QR code at the reader, or type the code:</span>

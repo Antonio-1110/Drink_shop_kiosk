@@ -20,19 +20,20 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0).toFixed(2);
-    // STUB: drinks built on the placeholder designer options can't be ordered until the backend supports them
-    const stubItems = cartItems.some((item) => item.custom?.stub);
 
     const checkout = async () => {
         setSubmitting(true);
         setError(null);
         try {
             const order = await placeOrder(cartItems);
-            navigate(`/payment/${order.id}`);
+            // the token proves this kiosk placed the order, so the payment screen can cancel it
+            navigate(`/payment/${order.id}`, { state: { orderToken: order.order_token } });
         } catch (err) {
-            // the backend lists the drinks it no longer has stock for
+            // the backend lists the drinks and designer ingredients it no longer has stock for
             const soldOut = cartItems
-                .filter((item) => err.data?.drinks?.includes(item.drink.id))
+                .filter((item) => (item.custom
+                    ? item.custom.picks.some((code) => err.data?.options?.includes(code))
+                    : err.data?.drinks?.includes(item.drink.id)))
                 .map((item) => item.drink.name);
             setError(soldOut.length
                 ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
@@ -67,9 +68,6 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
             </div>
 
             {error && <p className="error-banner">{error}</p>}
-            {stubItems && <p className="error-banner">
-                Drinks you designed can't be paid for yet: the shop server doesn't take custom drinks. Remove them to order the rest.
-            </p>}
 
             <div className="cart-summary">
                 <h3>Total: ${total}</h3>
@@ -84,7 +82,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
 
                 {/* Right Button */}
                 <button className="action-btn pay-btn" onClick={checkout}
-                    disabled={cartItems.length === 0 || submitting || stubItems}>
+                    disabled={cartItems.length === 0 || submitting}>
                     {submitting ? 'Placing order...' : 'Proceed to Payment →'}
                 </button>
             </div>

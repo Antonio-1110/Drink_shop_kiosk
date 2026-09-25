@@ -23,16 +23,17 @@ export function togglePick(options, design, code) {
 const picked = (options, design, kind) =>
     design.picks.map((code) => findIngredient(options, code)).filter((i) => i.kind === kind);
 
-// Each picked ingredient's amount. Liquids share the cup by their `share`; the sugar level's syrup
-// comes out of the same volume. Toppings split the size's topping allowance evenly.
+// Each picked ingredient's amount, worked out the same way as the backend's DesignerConfig.build():
+// liquids share the size's liquid volume by their `share`, the sugar level's syrup goes on top,
+// and toppings split the size's topping allowance evenly.
 export function recipe(options, design) {
     const size = options.sizes.find((s) => s.value === design.size);
     const lines = [];
-    const syrupMl = (options.sweetener.ml[design.size] * design.sugar) / 4;
+    const syrupMl = options.sweetener ? (options.sweetener.ml[design.size] * design.sugar) / 4 : 0;
     const liquids = picked(options, design, 'liquid');
     const shares = liquids.reduce((sum, i) => sum + (i.share ?? 1), 0) || 1;
     for (const i of liquids) {
-        lines.push({ ...i, amount: ((size.liquid_ml - syrupMl) * (i.share ?? 1)) / shares, unit: 'mL' });
+        lines.push({ ...i, amount: (size.liquid_ml * (i.share ?? 1)) / shares, unit: 'mL' });
     }
     if (syrupMl > 0) lines.push({ ...options.sweetener, kind: 'liquid', amount: syrupMl, unit: 'mL' });
     const toppings = picked(options, design, 'topping');
@@ -97,7 +98,7 @@ export function decodeDesign(options, text) {
 export function designToCartItem(options, design) {
     return {
         drink: { id: null, name: designName(options, design) },
-        custom: { picks: design.picks, price: designPrice(options, design), stub: Boolean(options.stub) },
+        custom: { picks: design.picks, price: designPrice(options, design) },
         size: design.size,
         sugar: design.sugar,
         ice: design.ice,

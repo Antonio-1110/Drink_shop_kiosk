@@ -18,9 +18,11 @@ Inventory, Nutri-Grade module). Fold them into that work or do them after it lan
       created, but nothing marks an order paid, and nothing cancels an abandoned one. Add an order
       expiry (for example 10 minutes in `PENDING`) that sets `CANCELLED` and puts the stock back,
       plus a way to mark an order paid (admin action now, payment webhook later).
-      Done: unpaid orders expire after `ORDER_PAYMENT_TIMEOUT_MINUTES` and staff mark orders paid
-      in the admin. Still to do: automatic payment confirmation, and a proper Paid status once the
-      models work adds one (paid orders use `TBM` until then).
+      Done: holds last as long as each payment is open (per payment method), Cancel releases them
+      at once, and all methods confirm through one path that refunds late payments when stock ran
+      out (`kiosk_backend/checkout/`). Staff mark PayNow payments paid in the admin. Still to do:
+      connect a payment gateway so payments confirm automatically, a kiosk idle timeout that
+      cancels, and the Paid status from the models work (paid orders use `TBM` until then).
 - [x] **Every endpoint is public.** DRF's default permission is `AllowAny`, so anyone who can reach
       the server can `PATCH /operation/inventory/...` and change stock. Put inventory behind
       staff auth or an API key per kiosk, and set `DEFAULT_PERMISSION_CLASSES` in settings.

@@ -82,8 +82,6 @@ export default function DesignerScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {options.stub && <Text style={styles.stubNote}>Demo prices: the shop hasn&apos;t set them yet.</Text>}
-
         <View style={styles.preview}>
           <Cup lines={lines} ice={design.ice} />
           <View style={styles.previewText}>
@@ -173,7 +171,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 14, paddingBottom: 24 },
   loading: { textAlign: 'center', color: colors.muted, marginTop: 40 },
-  stubNote: { backgroundColor: colors.header, color: colors.accent, padding: 10, borderRadius: 8, marginBottom: 12 },
   preview: { flexDirection: 'row', gap: 16, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
   previewText: { flex: 1, gap: 4 },
   name: { fontSize: 17, fontWeight: 'bold', color: colors.text, marginBottom: 2 },

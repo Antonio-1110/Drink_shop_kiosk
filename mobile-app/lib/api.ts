@@ -3,7 +3,6 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import type { DesignerOptions } from './designer';
-import { DESIGNER_OPTIONS_STUB } from './designerStub';
 import type { CartItem, Drink, Shop } from './menu';
 
 function defaultApiBase() {
@@ -45,7 +44,7 @@ export function fetchShops() {
 // drinks the shop can still make after the ones already in the cart
 export function fetchAvailableDrinks(shopId: number, cartItems: CartItem[]) {
   const params = new URLSearchParams({ shop_id: String(shopId) });
-  // custom drinks aren't menu drinks, so the backend can't count them yet
+  // only menu drinks count here; designed drinks are checked when the order is placed
   cartItems.forEach((item) => { if (!item.custom) params.append('cart', String(item.drink.id)); });
   return request<Drink[]>(`/ordering/drinks/?${params}`);
 }
@@ -73,13 +72,7 @@ export function fetchPaynowQr(orderId: string | number) {
   return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`);
 }
 
-// What the drink designer offers at this shop. Until the backend has the endpoint
-// (a 404), the designer runs on the placeholder options in lib/designerStub.ts.
-export async function fetchDesignerOptions(shopId: number) {
-  try {
-    return await request<DesignerOptions>(`/ordering/designer/options/?shop_id=${shopId}`);
-  } catch (err) {
-    if ((err as ApiError).status === 404) return DESIGNER_OPTIONS_STUB;
-    throw err;
-  }
+// what the drink designer offers at this shop: ingredients, their amounts and prices
+export function fetchDesignerOptions(shopId: number) {
+  return request<DesignerOptions>(`/ordering/designer/options/?shop_id=${shopId}`);
 }

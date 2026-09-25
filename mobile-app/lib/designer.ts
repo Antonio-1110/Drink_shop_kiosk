@@ -4,7 +4,7 @@
 import type { CustomCartItem, Size } from './menu';
 import { nutriGrade } from './nutrigrade';
 
-// The shape of GET /ordering/designer/options/ (see lib/designerStub.ts until it exists).
+// The shape of GET /ordering/designer/options/.
 // Nutrition values are g per 100 mL or g.
 export type Ingredient = {
   code: string;
@@ -21,10 +21,10 @@ export type Ingredient = {
 };
 
 export type DesignerOptions = {
-  stub?: boolean;
   sizes: { value: Size; label: string; liquid_ml: number; topping_g: number }[];
   pricing: { cup: Record<number, string>; liquid: string; topping: string; overrides?: Record<string, string> };
-  sweetener: { code: string; name: string; color: string; sugar: number; sat_fat: number; ml: Record<number, number> };
+  // null when the shop hasn't set which ingredient the sugar level adds
+  sweetener: null | { code: string; name: string; color: string; sugar: number; sat_fat: number; ml: Record<number, number> };
   ingredients: Ingredient[];
 };
 
@@ -53,18 +53,19 @@ export function togglePick(options: DesignerOptions, design: Design, code: strin
 const picked = (options: DesignerOptions, design: Design, kind: Ingredient['kind']) =>
   design.picks.map((code) => ingredient(options, code)).filter((i) => i.kind === kind);
 
-// Each picked ingredient's amount. Liquids share the cup by their `share`; the sugar level's syrup
-// comes out of the same volume. Toppings split the size's topping allowance evenly.
+// Each picked ingredient's amount, worked out the same way as the backend's DesignerConfig.build():
+// liquids share the size's liquid volume by their `share`, the sugar level's syrup goes on top,
+// and toppings split the size's topping allowance evenly.
 export function recipe(options: DesignerOptions, design: Design): RecipeLine[] {
   const size = options.sizes.find((s) => s.value === design.size)!;
   const lines: RecipeLine[] = [];
-  const syrupMl = (options.sweetener.ml[design.size] * design.sugar) / 4;
+  const syrupMl = options.sweetener ? (options.sweetener.ml[design.size] * design.sugar) / 4 : 0;
   const liquids = picked(options, design, 'liquid');
   const shares = liquids.reduce((sum, i) => sum + (i.share ?? 1), 0) || 1;
   for (const i of liquids) {
-    lines.push({ ...i, amount: ((size.liquid_ml - syrupMl) * (i.share ?? 1)) / shares, unit: 'mL' });
+    lines.push({ ...i, amount: (size.liquid_ml * (i.share ?? 1)) / shares, unit: 'mL' });
   }
-  if (syrupMl > 0) lines.push({ ...options.sweetener, kind: 'liquid', amount: syrupMl, unit: 'mL' });
+  if (options.sweetener && syrupMl > 0) lines.push({ ...options.sweetener, kind: 'liquid', amount: syrupMl, unit: 'mL' });
   const toppings = picked(options, design, 'topping');
   for (const i of toppings) lines.push({ ...i, amount: size.topping_g / toppings.length, unit: 'g' });
   return lines;
@@ -107,7 +108,7 @@ export const encodeDesign = (design: Design) =>
 export function designToCartItem(options: DesignerOptions, design: Design): CustomCartItem {
   return {
     drink: { id: null, name: designName(options, design) },
-    custom: { picks: design.picks, price: designPrice(options, design), stub: Boolean(options.stub) },
+    custom: { picks: design.picks, price: designPrice(options, design) },
     size: design.size,
     sugar: design.sugar,
     ice: design.ice,

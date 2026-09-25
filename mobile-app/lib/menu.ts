@@ -34,8 +34,8 @@ export type Shop = {
 };
 
 export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar: number; ice: number };
-// a drink built in the designer (see lib/designer.ts); stub is true while it uses the placeholder options
-export type CustomDrink = { picks: string[]; price: number; stub: boolean };
+// a drink built in the designer (see lib/designer.ts)
+export type CustomDrink = { picks: string[]; price: number };
 export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number };
 export type CartItem = MenuCartItem | CustomCartItem;
 

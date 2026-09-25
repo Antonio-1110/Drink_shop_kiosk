@@ -36,9 +36,20 @@ Settings come from environment variables:
 | `PAYNOW_PROXY_VALUE` | The company's UEN, or the mobile number as `+6591234567`. Required when `DJANGO_DEBUG` is off; development uses a dummy UEN. |
 | `PAYNOW_MERCHANT_NAME` | Name shown in the customer's banking app (25 characters max). |
 | `PAYNOW_MERCHANT_CITY`, `PAYNOW_MERCHANT_CATEGORY_CODE` | Optional; default `Singapore` and `0000`. |
-| `ORDER_PAYMENT_TIMEOUT_MINUTES` | How long an unpaid order holds its ingredients (default 10). |
+| `PAYMENT_METHODS` | Payment methods customers can use, comma-separated (default `paynow`). |
+| `PAYNOW_HOLD_MINUTES`, `PAYMENT_HOLD_MINUTES` | How long a PayNow payment (or any other method) stays open, default 10. The order's ingredients are held that long. |
+| `PAYMENT_START_GRACE_MINUTES` | Time to start paying after ordering, or to try another method after one fails (default 2). |
+| `ORDER_MAX_HOLD_MINUTES` | The longest any order can hold stock (default 30). |
 
-Unpaid orders are cancelled and their stock returned after the timeout. This happens whenever the kiosk loads the menu or places an order; `python manage.py expire_orders` does the same from a cron job. Staff mark orders paid (or cancel them) from **Orders** in `/admin`.
+How stock and payment fit together (`kiosk_backend/checkout/`):
+
+- Placing an order holds its ingredients, so nobody else can buy them.
+- The hold lasts as long as the customer's payment is open. Each payment method sets that time, so there is no single fixed timeout. Tapping **Cancel** on the payment screen releases the hold at once.
+- When a payment runs out, the payment method is asked whether it was paid after all before the order is cancelled.
+- Every payment method confirms payment through one function, `checkout.services.confirm_payment`. A payment that arrives after its order was cancelled gets the ingredients back if they are still there. If they have sold out, it is refunded, or flagged for staff under **Payment attempts** when the method can't refund automatically.
+- Adding GrabPay, cards or a PayNow gateway means writing one `Provider` class in `checkout/providers.py`. Payment notifications arrive at `/checkout/webhooks/<method>/`.
+- `python manage.py expire_orders` runs the same clean-up from a cron job. It also runs whenever the kiosk loads the menu or takes an order.
+- Until a payment gateway is connected, staff confirm PayNow payments with **Mark as paid** under **Orders** in `/admin`.
 
 Only the kiosk's ordering endpoints are public. Everything else, including `PATCH /operation/inventory/...`, needs a staff login.
 
@@ -53,6 +64,10 @@ npm run dev
 The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 
 PayNow QR codes are built by `kiosk_backend/payments/paynow.py`, a standalone module that follows the SGQR (EMVCo) format and has no Django dependency, so the kiosk's edge service can reuse it. Order codes are single-use, carry the amount and an `ORDER<id>` reference, and stop working after the day the order expires. A payment provider is still needed to confirm automatically that a customer paid.
+
+Drink designer: `GET /ordering/designer/options/?shop_id=` lists the sizes, prices and ingredients customers can build a drink from, and an order item can carry `custom: [ingredient codes]` instead of `drink`. Amounts and price come from **Drink designer settings** in `/admin`, and the ingredients are held like any menu drink.
+
+Pickup: every order gets a 6-digit PIN and a QR code, returned only in the reply to placing it. At the machine the customer types the PIN or scans the code, and the kiosk calls `POST /ordering/pickup/`. That hands over a paid order once and marks it collected. Attempts are limited per machine (`PICKUP_ATTEMPTS_PER_MINUTE`, default 10), so PINs can't be guessed.
 
 ## Testing the mobile app on a phone
 
@@ -83,7 +98,7 @@ See [mobile-app/README.md](mobile-app/README.md) for running it on a phone.
 
 Customers can build their own drink from the shop's ingredients, on the kiosk ("Design your own") and in the mobile app. Liquids share the cup by each ingredient's `share` (tea 3 : milk 2 : fruit 1), so picking more of them makes each smaller; toppings split the size's topping allowance. The sugar level sets the Brown sugar syrup and the ice level sets the ice.
 
-Prices are one block of settings: a cup price per size, a default price per liquid and per topping, and per-ingredient overrides. Until the backend serves `GET /ordering/designer/options/`, both apps use the placeholders in `frontend/kiosk-app/src/designerStub.js` and `mobile-app/lib/designerStub.ts` (keep them the same), and designed drinks can't be paid for yet.
+Staff set prices and amounts in the Django admin: the designer settings hold a cup price per size, a default price per liquid and per topping, and the amounts per size, and each ingredient can override its price. Both apps read these from `GET /ordering/designer/options/`.
 
 In the app, "Kiosk QR" shows the drink as a code like `DD1:144:OT-OM-TP`: size, sugar and ice digits, then each ingredient's short code. The kiosk's designer page reads it from a QR reader that types like a keyboard, from a `?code=` link, or typed into the box, and fills in the drink.
 
