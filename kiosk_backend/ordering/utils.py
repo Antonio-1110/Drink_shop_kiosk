@@ -6,49 +6,16 @@ from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-import base64
-import io
-import qrcode
+from zoneinfo import ZoneInfo
+from payments import paynow
+from payments.config import paynow_config_from_settings
 
 
-def _tlv(tag, value):
-    # EMVCo fields are tag + 2-digit length + value
-    return f"{tag}{len(value):02d}{value}"
-
-def _crc16(payload):
-    # CRC-16/CCITT-FALSE, required as the last field of an SGQR code
-    crc = 0xFFFF
-    for byte in payload.encode():
-        crc ^= byte << 8
-        for _ in range(8):
-            crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else crc << 1
-            crc &= 0xFFFF
-    return f"{crc:04X}"
-
-def paynow_payload(amount, reference):
-    merchant = (_tlv("00", "SG.PAYNOW")
-                + _tlv("01", "2")  # proxy type 2 = UEN
-                + _tlv("02", settings.PAYNOW_UEN)
-                + _tlv("03", "0"))  # amount is not editable
-    payload = (_tlv("00", "01")
-               + _tlv("01", "12")  # dynamic QR, used once per order
-               + _tlv("26", merchant)
-               + _tlv("52", "0000")
-               + _tlv("53", "702")  # SGD
-               + _tlv("54", f"{Decimal(amount):.2f}")
-               + _tlv("58", "SG")
-               + _tlv("59", settings.PAYNOW_MERCHANT_NAME[:25])
-               + _tlv("60", "Singapore")
-               + _tlv("62", _tlv("01", str(reference)[:25]))
-               + "6304")
-    return payload + _crc16(payload)
-
-def qr_gen(rev, reference):
+def qr_gen(rev, reference, expires_on=None):
     # returns the PayNow QR as a base64 PNG the frontend can put in an <img>
-    img = qrcode.make(paynow_payload(rev, reference))
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    payload = paynow.build_payload(paynow_config_from_settings(), amount=rev, reference=reference,
+                                   expires_on=expires_on)
+    return paynow.qr_png_data_url(payload)
 
 def verify_drink_ids(incoming_drink_ids):
     valid_ids_list = [int(i) for i in incoming_drink_ids if str(i).isdigit()]
@@ -100,6 +67,11 @@ def mark_order_paid(order):
 
 def payment_deadline(order):
     return order.time + timedelta(minutes=settings.ORDER_PAYMENT_TIMEOUT_MINUTES)
+
+def paynow_expiry_date(order):
+    # PayNow expiry is a whole day, so this stops the code working after the Singapore date the
+    # order expires on; the order itself is cancelled much sooner
+    return payment_deadline(order).astimezone(ZoneInfo("Asia/Singapore")).date()
 
 def expire_unpaid_orders(shop=None):
     # cancels orders left unpaid past the timeout and returns their stock

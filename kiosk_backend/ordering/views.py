@@ -13,7 +13,8 @@ from django.db.models import F, Q
 from django.db import transaction
 from .models import Order
 from .utils import (qr_gen, inventory_check, inventory_update, verify_drink_ids, check_cart_fulfillment,
-                    expire_unpaid_orders, payment_deadline)
+                    expire_unpaid_orders, payment_deadline, paynow_expiry_date)
+from payments.paynow import PayNowError
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def check_order_availability(request): #add data verification later
     
 
 @extend_schema(summary="PayNow QR code for an unpaid order",
-               responses={200: schema.PaynowQr, 404: schema.Error})
+               responses={200: schema.PaynowQr, 404: schema.Error, 503: schema.Error})
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def paynow_qr(request, order_id):
@@ -103,7 +104,13 @@ def paynow_qr(request, order_id):
     except Order.DoesNotExist:
         return Response({"error": "Order not found or payment status is resolved."}, status=status.HTTP_404_NOT_FOUND)
     reference = f"ORDER{order.id}"
-    qr_img = qr_gen(order.revenue, reference)
+    try:
+        qr_img = qr_gen(order.revenue, reference, expires_on=paynow_expiry_date(order))
+    except PayNowError as e:
+        # usually missing company PayNow settings; staff need to see why, customers don't
+        logger.error("Can't make a PayNow QR for order %s: %s", order.id, e)
+        return Response({"error": "Payment is not available right now. Please ask staff."},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
     return Response({'status': 'QR code generated', 'qr_code': qr_img, 'reference': reference,
                      'amount': str(order.revenue),
                      'expires_at': payment_deadline(order)}, status=status.HTTP_200_OK)

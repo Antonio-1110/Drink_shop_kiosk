@@ -134,9 +134,14 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# PayNow details used in the order QR code; set these for the real shop
-PAYNOW_UEN = os.environ.get('PAYNOW_UEN', '000000000X')
+# The PayNow account order QR codes pay (payments/paynow.py). These are company credentials, so
+# they only come from the environment. In development a dummy UEN is used so the QR screen works;
+# without DEBUG, the QR endpoint refuses to make codes until PAYNOW_PROXY_VALUE is set.
+PAYNOW_PROXY_TYPE = os.environ.get('PAYNOW_PROXY_TYPE', 'UEN')  # UEN or MOBILE
+PAYNOW_PROXY_VALUE = os.environ.get('PAYNOW_PROXY_VALUE', '000000000X' if DEBUG else '')
 PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk')
+PAYNOW_MERCHANT_CITY = os.environ.get('PAYNOW_MERCHANT_CITY', 'Singapore')
+PAYNOW_MERCHANT_CATEGORY_CODE = os.environ.get('PAYNOW_MERCHANT_CATEGORY_CODE', '0000')
 
 # how long an unpaid order holds its ingredients before it is cancelled and the stock returned
 ORDER_PAYMENT_TIMEOUT_MINUTES = int(os.environ.get('ORDER_PAYMENT_TIMEOUT_MINUTES', '10'))

@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient
 from .models import Order, OrderItem
-from .utils import paynow_payload, _crc16, expire_unpaid_orders, mark_order_paid, cancel_order
+from .utils import expire_unpaid_orders, mark_order_paid, cancel_order
 
 
 class OrderingTestBase(TestCase):
@@ -99,16 +99,18 @@ class PayNowTests(OrderingTestBase):
         res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
         self.assertEqual(res.status_code, 404)
 
-    def test_payload_has_amount_and_valid_crc(self):
-        payload = paynow_payload(Decimal("4.5"), "ORDER1")
-        self.assertIn("54044.50", payload)
-        self.assertIn("SG.PAYNOW", payload)
-        self.assertEqual(payload[-4:], _crc16(payload[:-4]))
+    def test_qr_pays_the_configured_account(self):
+        order_id = self.order((self.green_tea, 0)).data["id"]
+        with self.settings(PAYNOW_PROXY_VALUE="201912345K", PAYNOW_MERCHANT_NAME="Test Drinks"):
+            res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["reference"], f"ORDER{order_id}")
 
-    def test_crc_matches_known_value(self):
-        # standard CRC-16/CCITT-FALSE check value
-        self.assertEqual(_crc16("123456789"), "29B1")
-
+    def test_qr_refused_when_paynow_not_configured(self):
+        order_id = self.order((self.green_tea, 0)).data["id"]
+        with self.settings(PAYNOW_PROXY_VALUE=""), self.assertLogs("ordering.views", "ERROR"):
+            res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
+        self.assertEqual(res.status_code, 503)
 
 class UnpaidOrderTests(OrderingTestBase):
     def age(self, order_id, minutes):

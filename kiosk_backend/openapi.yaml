@@ -215,6 +215,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /ordering/shops/:
     get:
       operationId: ordering_shops_list
