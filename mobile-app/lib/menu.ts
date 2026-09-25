@@ -33,13 +33,9 @@ export type Shop = {
   shop_type: string;
 };
 
-export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar: number; ice: number };
-// a drink built in the designer (see lib/designer.ts)
-export type CustomDrink = { picks: string[]; price: number };
-export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number };
-export type CartItem = MenuCartItem | CustomCartItem;
+export type CartItem = { drink: Drink; size: Size; sugar: number; ice: number };
 
-export const itemPrice = (item: CartItem) => item.custom ? item.custom.price :
+export const itemPrice = (item: CartItem) =>
   Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
 
 export const formatPrice = (value: number | string) => `$${Number(value).toFixed(2)}`;

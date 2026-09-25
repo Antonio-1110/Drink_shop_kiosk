@@ -1,15 +1,14 @@
 import { createContext, ReactNode, useContext, useState } from 'react';
 
 import type { PlacedOrder } from './api';
-import { CartItem, CustomCartItem, Drink, Shop, Size } from './menu';
+import { CartItem, Drink, Shop, Size } from './menu';
 
 type CartState = {
   shop: Shop | null;
   cartItems: CartItem[];
   chooseShop: (shop: Shop) => void;
   addToCart: (drink: Drink, size: Size) => void;
-  addCustomToCart: (item: CustomCartItem) => void;
-  updateCartItem: (index: number, changes: Partial<Pick<CartItem, 'sugar' | 'ice'>>) => void;
+  updateCartItem: (index: number, changes: Partial<CartItem>) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
   // the order just placed, with its pickup code
@@ -33,7 +32,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setShop(next);
     },
     addToCart: (drink, size) => setCartItems((items) => [...items, { drink, size, sugar: 4, ice: 4 }]),
-    addCustomToCart: (item) => setCartItems((items) => [...items, item]),
     updateCartItem: (index, changes) =>
       setCartItems((items) => items.map((item, i) => (i === index ? { ...item, ...changes } : item))),
     removeFromCart: (index) => setCartItems((items) => items.filter((_, i) => i !== index)),

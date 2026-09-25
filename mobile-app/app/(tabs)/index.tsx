@@ -1,4 +1,4 @@
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -52,11 +52,6 @@ export default function MenuScreen() {
         </ScrollView>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={() => router.push('/designer')} style={styles.designer}>
-        <Text style={styles.designerTitle}>Design your own drink</Text>
-        <Text style={styles.designerText}>Pick your tea, milk, fruit and toppings →</Text>
-      </Pressable>
-
       <ErrorBanner message={loadError && `Could not load the menu: ${loadError}`} />
 
       <FlatList
@@ -96,9 +91,6 @@ const styles = StyleSheet.create({
   categorySelected: { backgroundColor: colors.primary },
   categoryText: { color: colors.primary },
   categoryTextSelected: { color: colors.surface, fontWeight: 'bold' },
-  designer: { marginHorizontal: 12, marginBottom: 6, padding: 14, borderRadius: 12, backgroundColor: colors.accent },
-  designerTitle: { color: colors.surface, fontSize: 17, fontWeight: 'bold' },
-  designerText: { color: colors.cream, marginTop: 2 },
   grid: { paddingHorizontal: 6, paddingBottom: 20 },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 40 },
 });

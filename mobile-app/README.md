@@ -9,8 +9,10 @@ the cart → place the order → pay with the PayNow QR → collect at the machi
 pickup QR or keying in a PIN.
 
 The pickup QR and PIN come from the `pickup_qr` and `pickup_pin` fields of the
-`POST /ordering/log-order/` response. Until the backend returns them, the app falls back to
-showing the order number.
+`POST /ordering/log-order/` response (the only place the backend returns them). The order
+screen polls `GET /ordering/orders/{id}/status/` to show when the order is paid, collected or
+cancelled, and cancels with the `order_token` from the same response. These need the backend
+from PR #3.
 
 ## Run it
 
