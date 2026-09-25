@@ -33,9 +33,13 @@ export type Shop = {
   shop_type: string;
 };
 
-export type CartItem = { drink: Drink; size: Size; sugar: number; ice: number };
+export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar: number; ice: number };
+// a drink built in the designer (see lib/designer.ts); stub is true while it uses the placeholder options
+export type CustomDrink = { selections: Record<string, string[]>; price: number; stub: boolean };
+export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number };
+export type CartItem = MenuCartItem | CustomCartItem;
 
-export const itemPrice = (item: CartItem) =>
+export const itemPrice = (item: CartItem) => item.custom ? item.custom.price :
   Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
 
 export const formatPrice = (value: number | string) => `$${Number(value).toFixed(2)}`;

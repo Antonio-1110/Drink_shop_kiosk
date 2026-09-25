@@ -14,6 +14,9 @@ export default function CartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
+  // STUB: drinks built on the placeholder designer options can't be ordered until the backend supports them
+  const stubItems = cartItems.some((item) => item.custom?.stub);
+  const blocked = cartItems.length === 0 || submitting || stubItems;
 
   const checkout = async () => {
     if (!shop) return;
@@ -26,7 +29,9 @@ export default function CartScreen() {
     } catch (err) {
       // the backend lists the drinks it no longer has stock for
       const soldOutIds: number[] = (err as ApiError).data?.drinks ?? [];
-      const soldOut = cartItems.filter((item) => soldOutIds.includes(item.drink.id)).map((item) => item.drink.name);
+      const soldOut = cartItems
+        .filter((item) => !item.custom && soldOutIds.includes(item.drink.id))
+        .map((item) => item.drink.name);
       setError(soldOut.length
         ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
         : (err as Error).message);
@@ -45,7 +50,10 @@ export default function CartScreen() {
         renderItem={({ item, index }) => (
           <View style={styles.item}>
             <View style={styles.itemHeader}>
-              <Text style={styles.itemName}>{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</Text>
+              <Text style={styles.itemName}>
+                {item.custom && <Text style={styles.customTag}>Designed </Text>}
+                {item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})
+              </Text>
               <Text style={styles.itemPrice}>{formatPrice(itemPrice(item))}</Text>
             </View>
             <LevelPicker label="Sugar" value={item.sugar} onChange={(sugar) => updateCartItem(index, { sugar })} />
@@ -58,6 +66,9 @@ export default function CartScreen() {
       />
 
       <ErrorBanner message={error} />
+      <ErrorBanner message={stubItems
+        ? "Drinks you designed can't be paid for yet: the shop server doesn't take custom drinks. Remove them to order the rest."
+        : null} />
 
       <View style={styles.footer}>
         <View>
@@ -67,8 +78,8 @@ export default function CartScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={checkout}
-          disabled={cartItems.length === 0 || submitting}
-          style={[styles.payButton, (cartItems.length === 0 || submitting) && { opacity: 0.5 }]}>
+          disabled={blocked}
+          style={[styles.payButton, blocked && { opacity: 0.5 }]}>
           <Text style={styles.payText}>{submitting ? 'Placing order...' : 'Place order →'}</Text>
         </Pressable>
       </View>
@@ -82,6 +93,7 @@ const styles = StyleSheet.create({
   item: { backgroundColor: colors.surface, borderRadius: 10, padding: 12, gap: 8 },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   itemName: { fontSize: 16, fontWeight: '600', color: colors.text, flexShrink: 1 },
+  customTag: { color: colors.primary, fontWeight: 'bold' },
   itemPrice: { fontSize: 16, fontWeight: '600', color: colors.accent },
   remove: { alignSelf: 'flex-end', backgroundColor: colors.errorBg, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
   removeText: { color: colors.errorText },
