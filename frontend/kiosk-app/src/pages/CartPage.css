@@ -98,3 +98,13 @@
   height: 280px;
   margin: 20px 0;
 }
+
+.custom-tag {
+  background: #dcefe7;
+  color: #0f5c4d;
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-right: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}

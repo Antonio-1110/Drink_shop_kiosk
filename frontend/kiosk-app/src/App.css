@@ -42,6 +42,11 @@ body, html, #root {
   transition: 0.2s;
 }
 
+.designer-link {
+  background-color: #fde68a;
+  font-weight: bold;
+}
+
 .nav-btn:hover {
   background-color: #93c5fd;
   font-weight: bold;

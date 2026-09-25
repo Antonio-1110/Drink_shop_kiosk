@@ -20,6 +20,8 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0).toFixed(2);
+    // STUB: drinks built on the placeholder designer options can't be ordered until the backend supports them
+    const stubItems = cartItems.some((item) => item.custom?.stub);
 
     const checkout = async () => {
         setSubmitting(true);
@@ -51,7 +53,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
                     <ul>
                         {cartItems.map((item, index) => (
                             <li key={index} className="cart-item">
-                                <span>{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</span>
+                                <span>{item.custom && <span className="custom-tag">Designed</span>}{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</span>
                                 <LevelSelect label="Sugar" value={item.sugar}
                                     onChange={(sugar) => updateCartItem(index, { sugar })} />
                                 <LevelSelect label="Ice" value={item.ice}
@@ -65,6 +67,9 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
             </div>
 
             {error && <p className="error-banner">{error}</p>}
+            {stubItems && <p className="error-banner">
+                Drinks you designed can't be paid for yet: the shop server doesn't take custom drinks. Remove them to order the rest.
+            </p>}
 
             <div className="cart-summary">
                 <h3>Total: ${total}</h3>
@@ -79,7 +84,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
 
                 {/* Right Button */}
                 <button className="action-btn pay-btn" onClick={checkout}
-                    disabled={cartItems.length === 0 || submitting}>
+                    disabled={cartItems.length === 0 || submitting || stubItems}>
                     {submitting ? 'Placing order...' : 'Proceed to Payment →'}
                 </button>
             </div>

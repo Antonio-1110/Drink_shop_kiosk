@@ -1,0 +1,205 @@
+/* src/pages/DesignerPage.css */
+.designer-page {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.designer-options {
+  flex: 1;
+}
+
+.designer-options h1 {
+  font-size: 40px;
+  color: #1e3a8a;
+  margin: 0 0 12px;
+}
+
+.stub-note {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.designer-group h2 {
+  font-size: 22px;
+  margin: 24px 0 10px;
+}
+
+.group-hint {
+  font-size: 15px;
+  font-weight: normal;
+  color: #64748b;
+  margin-left: 8px;
+}
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* big touch targets for the kiosk screen */
+.option-tile {
+  min-width: 150px;
+  min-height: 90px;
+  padding: 12px 16px;
+  border: 3px solid #cbd5e1;
+  border-radius: 12px;
+  background: white;
+  font-size: 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.option-tile.small {
+  min-width: 90px;
+  min-height: 56px;
+}
+
+.option-tile.selected {
+  border-color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.option-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #94a3b8;
+}
+
+.option-price {
+  color: #b45309;
+  font-weight: bold;
+}
+
+.option-reason {
+  font-size: 13px;
+  color: #991b1b;
+}
+
+.designer-summary {
+  position: sticky;
+  top: 40px;
+  width: 300px;
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.designer-summary h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* a tapered cup: liquids stacked bottom first, toppings sinking to the bottom */
+.cup {
+  position: relative;
+  width: 160px;
+  height: 220px;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
+  background: #f1f5f9;
+}
+
+.cup-liquid {
+  position: absolute;
+  inset: 12% 0 0 0;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.cup-layer {
+  transition: flex-grow 0.3s;
+}
+
+.cup-ice {
+  position: absolute;
+  top: 16%;
+  width: 100%;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 6px;
+}
+
+.cup-toppings {
+  position: absolute;
+  bottom: 4px;
+  left: 16%;
+  right: 16%;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  gap: 3px;
+}
+
+.topping-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.grade-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.grade-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  color: white;
+  font-size: 30px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grade-detail {
+  font-size: 13px;
+  color: #475569;
+}
+
+.designer-total {
+  font-size: 30px;
+  font-weight: bold;
+  color: #b45309;
+}
+
+.designer-summary .pay-btn {
+  width: 100%;
+}
+
+.designer-summary .pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: #1e3a8a;
+  text-decoration: underline;
+  font-size: 15px;
+  cursor: pointer;
+}

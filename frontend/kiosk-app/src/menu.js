@@ -17,5 +17,5 @@ export const CATEGORIES = [
     { path: 'others', label: 'Others' },
 ];
 
-export const itemPrice = (item) =>
+export const itemPrice = (item) => item.custom ? item.custom.price :
     Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
