@@ -59,7 +59,8 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
   });
 }
 
-export type PaynowQr = { qr_code: string; reference: string; amount: string };
+// expires_at: unpaid orders are cancelled after this time
+export type PaynowQr = { qr_code: string; reference: string; amount: string; expires_at?: string };
 
 export function fetchPaynowQr(orderId: string | number) {
   return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`);

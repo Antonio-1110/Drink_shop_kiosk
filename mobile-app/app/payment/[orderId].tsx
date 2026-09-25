@@ -38,6 +38,11 @@ export default function PaymentScreen() {
             <Image source={{ uri: qr.qr_code }} style={styles.qr} accessibilityLabel="PayNow QR code" />
             <Text style={styles.amount}>Amount: {formatPrice(qr.amount)}</Text>
             <Text style={styles.muted}>Reference: {qr.reference}</Text>
+            {qr.expires_at && (
+              <Text style={styles.deadline}>
+                Pay by {new Date(qr.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} or the order is cancelled.
+              </Text>
+            )}
             <Text style={styles.hint}>
               Take a screenshot of this code, then open your banking app, choose Scan & Pay and pick the screenshot from your gallery.
             </Text>
@@ -76,6 +81,7 @@ const styles = StyleSheet.create({
   stepTitle: { alignSelf: 'flex-start', fontSize: 17, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
   qr: { width: 220, height: 220, marginVertical: 8 },
   amount: { fontSize: 20, fontWeight: 'bold', color: colors.accent },
+  deadline: { color: colors.errorText, fontWeight: '600', textAlign: 'center' },
   hint: { textAlign: 'center', color: colors.text, backgroundColor: colors.primarySoft, borderRadius: 8, padding: 12, marginTop: 8 },
   newOrder: { backgroundColor: colors.secondary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22, marginTop: 20 },
   newOrderText: { color: colors.text, fontWeight: 'bold' },
