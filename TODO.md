@@ -80,7 +80,7 @@ Inventory, Nutri-Grade module). Fold them into that work or do them after it lan
 - [ ] **Payments.** Add a `Payment` model and an order status flow of `PENDING → PAID → MAKING →
       COMPLETED` (or `CANCELLED`). Integrate a payment provider that issues SGQR codes and sends a
       webhook when paid (the current PayNow QR cannot tell us the customer paid), then GrabPay.
-      Replace the placeholder `PAYNOW_UEN` with the real business UEN.
+      Set `PAYNOW_PROXY_VALUE` to the real business UEN (QR generation itself is in `payments/paynow.py`).
 - [ ] **Edge service** (new `edge/` folder, Python). Runs on each kiosk: serves the kiosk UI,
       keeps a local order queue so the kiosk works through short internet outages, syncs orders
       and stock with the cloud, and talks to the hardware through an abstract interface (dispenser,
