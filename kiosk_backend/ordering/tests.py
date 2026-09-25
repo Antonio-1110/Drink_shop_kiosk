@@ -1,6 +1,10 @@
+import io
 from datetime import timedelta
+from pathlib import Path
 from decimal import Decimal
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -175,3 +179,31 @@ class PermissionTests(OrderingTestBase):
         self.assertEqual(self.client.get("/ordering/shops/").status_code, 200)
         self.assertEqual(self.client.get("/ordering/drinks/", {"shop_id": self.shop.id}).status_code, 200)
         self.assertEqual(self.order((self.green_tea, 0)).status_code, 201)
+
+
+class ApiContractTests(TestCase):
+    def test_committed_schema_is_up_to_date(self):
+        # openapi.yaml is the API contract the frontend and mobile app build against
+        out = io.StringIO()
+        call_command("spectacular", stdout=out)
+        committed = (Path(settings.BASE_DIR) / "openapi.yaml").read_text()
+        self.assertEqual(out.getvalue(), committed,
+                         "openapi.yaml is out of date: run `python manage.py spectacular --file openapi.yaml`")
+
+    def test_schema_and_docs_are_served(self):
+        self.assertEqual(self.client.get("/api/schema/").status_code, 200)
+        self.assertEqual(self.client.get("/api/docs/").status_code, 200)
+
+
+class SeedDemoTests(TestCase):
+    def test_seed_is_orderable_and_safe_to_rerun(self):
+        call_command("seed_demo", stdout=io.StringIO())
+        call_command("seed_demo", stdout=io.StringIO())
+        self.assertEqual(Shop.objects.count(), 2)
+        shop = Shop.objects.first()
+        res = APIClient().get("/ordering/drinks/", {"shop_id": shop.id})
+        self.assertEqual(len(res.data), Drink.objects.count())
+        drink = Drink.objects.get(name="Classic Milk Tea")
+        res = APIClient().post("/ordering/log-order/", {
+            "shop": shop.id, "items": [{"drink": drink.id, "size": 1, "sugar": 2, "ice": 2}]}, format="json")
+        self.assertEqual(res.status_code, 201, res.data)

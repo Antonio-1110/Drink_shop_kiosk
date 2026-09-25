@@ -52,6 +52,12 @@ setup_backend() {
   fi
   log "Applying database migrations"
   (cd "$BACKEND" && "$PY" manage.py migrate --noinput)
+  # a brand-new database has no shops or drinks, so load the demo menu
+  if ! (cd "$BACKEND" && "$PY" manage.py shell -c \
+      "from operation.models import Shop; exit(0 if Shop.objects.exists() else 1)" >/dev/null 2>&1); then
+    log "Empty database: loading demo data (run 'manage.py seed_demo' again any time to restock it)"
+    (cd "$BACKEND" && "$PY" manage.py seed_demo)
+  fi
 }
 
 setup_frontend() {

@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+from . import schema
 from .serializer import OrderSerializer
 from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db.models import F, Q
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 # The kiosk screen calls these endpoints without logging in, so each one opts out of the
 # staff-only default set in settings.REST_FRAMEWORK.
 
+@extend_schema(summary="List shops", responses=ShopSerializer(many=True))
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def shops(request): # need to use request for membership programs
@@ -25,6 +28,10 @@ def shops(request): # need to use request for membership programs
     serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
 
+@extend_schema(summary="Drinks the shop can still make",
+               description="Drinks with enough stock for one more cup after everything already in the cart.",
+               parameters=[schema.SHOP_ID, schema.CART],
+               responses={200: DrinkSerializer(many=True), 400: schema.Error, 404: schema.Error})
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def available_drinks(request):
@@ -53,6 +60,8 @@ def available_drinks(request):
     
 
 
+@extend_schema(summary="Check the cart can be made", parameters=[schema.SHOP_ID, schema.CART],
+               responses={200: schema.OrderOk, 400: schema.Error, 404: schema.Error, 409: schema.Unavailable})
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def check_order_availability(request): #add data verification later
@@ -83,6 +92,8 @@ def check_order_availability(request): #add data verification later
         return Response({"error": "Something went wrong."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
+@extend_schema(summary="PayNow QR code for an unpaid order",
+               responses={200: schema.PaynowQr, 404: schema.Error})
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def paynow_qr(request, order_id):
@@ -99,6 +110,11 @@ def paynow_qr(request, order_id):
 
 
 
+@extend_schema(summary="Place an order",
+               description="Reserves the ingredients and creates an unpaid order. Unpaid orders are "
+                           "cancelled after ORDER_PAYMENT_TIMEOUT_MINUTES and the stock is returned.",
+               request=OrderSerializer, responses={201: OrderSerializer, 400: OpenApiResponse(description="Invalid order: errors keyed by field."),
+                          409: schema.Unavailable})
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def key_in_order(request): # handling orders with more than one drink

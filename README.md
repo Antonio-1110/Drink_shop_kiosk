@@ -20,7 +20,8 @@ cd kiosk_backend
 export DJANGO_DEBUG=1              # local development settings
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py createsuperuser   # then add a shop, drinks, recipes and stock at /admin
+python manage.py seed_demo          # demo shops, drinks, recipes and stock
+python manage.py createsuperuser    # for /admin
 python manage.py runserver
 ```
 
@@ -47,6 +48,10 @@ npm run dev
 ```
 
 The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
+
+## API contract
+
+The backend's endpoints are described in [`kiosk_backend/openapi.yaml`](kiosk_backend/openapi.yaml) (OpenAPI 3). With the backend running, browse it at http://localhost:8000/api/docs/. After changing an endpoint, regenerate the file with `python manage.py spectacular --file openapi.yaml`; a test fails if it is out of date.
 
 ## Tests
 

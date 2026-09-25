@@ -42,17 +42,18 @@ Inventory, Nutri-Grade module). Fold them into that work or do them after it lan
 
 ## 2. Make it easy to work on
 
-- [ ] **Demo data.** A fresh database has no shops or drinks, so the kiosk shows an empty menu.
+- [x] **Demo data.** A fresh database has no shops or drinks, so the kiosk shows an empty menu.
       Add a `seed_demo` management command (a shop, ingredients, stock, a few drinks with recipes)
-      and have `./dev.sh` offer to run it on an empty database. Write it after the models work
-      lands so it matches the new schema.
+      and have `./dev.sh` offer to run it on an empty database. Done against the current models;
+      update `seed_demo.py` when the Kiosk/Recipe changes land.
 - [ ] **CI.** A GitHub Actions workflow that runs `python manage.py test`, `npm run lint` and
       `npm run build` on every pull request.
-- [ ] **API contract.** Add `drf-spectacular` to publish an OpenAPI schema, move routes under
+- [x] **API contract.** Add `drf-spectacular` to publish an OpenAPI schema, move routes under
       `/api/v1/`, and generate the frontend client from it. The mobile app will need the same
-      contract.
-- [ ] Replace the Vite boilerplate in `frontend/kiosk-app/README.md`, and add a few frontend tests
-      (Vitest + Testing Library) for the cart and checkout flow.
+      contract. Done: `kiosk_backend/openapi.yaml` and `/api/docs/`. Still to do: `/api/v1/` and a
+      generated client.
+- [x] Replace the Vite boilerplate in `frontend/kiosk-app/README.md`.
+- [ ] Add a few frontend tests (Vitest + Testing Library) for the cart and checkout flow.
 - [ ] Merge PR #1 so `main` has the real code, then delete the old `branch-backend` and
       `branch-frontend` branches.
 

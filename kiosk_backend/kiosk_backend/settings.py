@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_spectacular',
     'ordering',
     'rest_framework',
     'operation'
@@ -143,4 +144,18 @@ ORDER_PAYMENT_TIMEOUT_MINUTES = int(os.environ.get('ORDER_PAYMENT_TIMEOUT_MINUTE
 REST_FRAMEWORK = {
     # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# API contract: served at /api/schema/ (browse it at /api/docs/) and committed as openapi.yaml
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Drink Shop Kiosk API',
+    'DESCRIPTION': 'Backend for the self-order kiosk: menu, stock, orders and PayNow payment.',
+    'VERSION': '0.1.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    # separate request and response shapes, so read-only fields like an order's id aren't asked for
+    'COMPONENT_SPLIT_REQUEST': True,
+    # sugar and ice share the same 0-4 level choices
+    'ENUM_NAME_OVERRIDES': {'LevelEnum': 'ordering.models.OrderItem.Level'},
 }
