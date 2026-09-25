@@ -35,6 +35,17 @@ npm run dev
 
 The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 
+## Mobile app
+
+`mobile-app/` is an Expo (React Native) app for customers to pre-order from their phone,
+using the same backend and look as the kiosk. It also runs in a browser:
+
+```
+cd mobile-app && npm install && npm run web
+```
+
+See [mobile-app/README.md](mobile-app/README.md) for running it on a phone.
+
 ## Tests
 
 ```
