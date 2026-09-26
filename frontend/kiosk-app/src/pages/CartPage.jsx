@@ -29,9 +29,11 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
             // the token proves this kiosk placed the order, so the payment screen can cancel it
             navigate(`/payment/${order.id}`, { state: { orderToken: order.order_token } });
         } catch (err) {
-            // the backend lists the drinks it no longer has stock for
+            // the backend lists the drinks and designer ingredients it no longer has stock for
             const soldOut = cartItems
-                .filter((item) => err.data?.drinks?.includes(item.drink.id))
+                .filter((item) => (item.custom
+                    ? item.custom.picks.some((code) => err.data?.options?.includes(code))
+                    : err.data?.drinks?.includes(item.drink.id)))
                 .map((item) => item.drink.name);
             setError(soldOut.length
                 ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
@@ -52,7 +54,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
                     <ul>
                         {cartItems.map((item, index) => (
                             <li key={index} className="cart-item">
-                                <span>{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</span>
+                                <span>{item.custom && <span className="custom-tag">Designed</span>}{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</span>
                                 <LevelSelect label="Sugar" value={item.sugar}
                                     onChange={(sugar) => updateCartItem(index, { sugar })} />
                                 <LevelSelect label="Ice" value={item.ice}

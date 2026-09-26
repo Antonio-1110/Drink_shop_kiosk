@@ -9,6 +9,7 @@ function Sidebar({ cartCount}) {
 
             <div className="nav-links">
                 {/* We use Link to navigate without reloading the page */}
+                <Link to="/designer" className="nav-btn designer-link">Design your own</Link>
                 <Link to="/" className="nav-btn">All Drinks</Link>
                 {CATEGORIES.map(({ path, label }) => (
                     <Link key={path} to={`/${path}`} className="nav-btn">{label}</Link>

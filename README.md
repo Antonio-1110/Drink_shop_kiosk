@@ -83,6 +83,25 @@ No CORS setup is needed: the phone app isn't a browser page, and the browser ver
 
 The backend's endpoints are described in [`kiosk_backend/openapi.yaml`](kiosk_backend/openapi.yaml) (OpenAPI 3). With the backend running, browse it at http://localhost:8000/api/docs/. After changing an endpoint, regenerate the file with `python manage.py spectacular --file openapi.yaml`; a test fails if it is out of date.
 
+## Mobile app
+
+`mobile-app/` is an Expo (React Native) app for customers to pre-order from their phone,
+using the same backend and look as the kiosk. It also runs in a browser:
+
+```
+cd mobile-app && npm install && npm run web
+```
+
+See [mobile-app/README.md](mobile-app/README.md) for running it on a phone.
+
+## Drink designer
+
+Customers can build their own drink from the shop's ingredients, on the kiosk ("Design your own") and in the mobile app. Liquids share the cup by each ingredient's `share` (tea 3 : milk 2 : fruit 1), so picking more of them makes each smaller; toppings split the size's topping allowance. The sugar level sets the Brown sugar syrup and the ice level sets the ice.
+
+Staff set prices and amounts in the Django admin: the designer settings hold a cup price per size, a default price per liquid and per topping, and the amounts per size, and each ingredient can override its price. Both apps read these from `GET /ordering/designer/options/`.
+
+In the app, "Kiosk QR" shows the drink as a code like `DD1:144:OT-OM-TP`: size, sugar and ice digits, then each ingredient's short code. The kiosk's designer page reads it from a QR reader that types like a keyboard, from a `?code=` link, or typed into the box, and fills in the drink.
+
 ## Tests
 
 ```

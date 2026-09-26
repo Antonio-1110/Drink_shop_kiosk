@@ -4,7 +4,7 @@ import Sidebar from "./components/Sidebar";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import PaymentPage from "./pages/PaymentPage";
-import CollectPage from "./pages/CollectPage";
+import DesignerPage from "./pages/DesignerPage";
 import { fetchAvailableDrinks } from "./api";
 import { CATEGORIES } from "./menu";
 import './App.css';
@@ -27,6 +27,8 @@ function App() {
   const addToCart = (drink, size) => {
     setCartItems([...cartItems, { drink, size, sugar: 4, ice: 4 }]);
   }
+  // a drink built in the designer, already shaped as a cart line (see designToCartItem)
+  const addCustomToCart = (item) => setCartItems([...cartItems, item]);
   const updateCartItem = (index, changes) => {
     setCartItems(cartItems.map((item, i) => (i === index ? { ...item, ...changes } : item)));
   }
@@ -49,6 +51,7 @@ function App() {
                 <MenuPage title={label} drinks={drinks.filter((d) => d.category === label)} addToCart={addToCart} />
               } />
             ))}
+            <Route path="/designer" element={<DesignerPage addCustomToCart={addCustomToCart} />} />
             <Route path="/cart" element={
               <CartPage cartItems={cartItems} updateCartItem={updateCartItem} removeFromCart={removeFromCart} />
             } />
