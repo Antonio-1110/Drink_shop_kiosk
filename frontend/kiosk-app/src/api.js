@@ -6,7 +6,7 @@ async function request(path, options) {
     const res = await fetch(`${API_BASE}${path}`, options);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        const error = new Error(data.error ?? 'Request failed');
+        const error = new Error(data.error ?? data.detail ?? 'Request failed');
         error.data = data;
         error.status = res.status;
         throw error;

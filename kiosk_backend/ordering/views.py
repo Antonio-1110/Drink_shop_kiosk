@@ -147,7 +147,7 @@ def key_in_order(request): # handling orders with more than one drink
                            "their scanned pickup QR code. A paid order is handed over once and becomes "
                            "COLLECTED. Limited to a few attempts a minute per machine, so PINs can't be guessed.",
                request=schema.PickupRequest,
-               responses={200: OrderSerializer, 400: schema.Error, 404: schema.Error, 409: schema.Error,
+               responses={200: OrderSerializer, 400: schema.Error, 404: schema.PickupFailed, 409: schema.PickupFailed,
                           429: OpenApiResponse(description="Too many attempts; wait a minute.")})
 @api_view(['POST'])
 @authentication_classes([])
@@ -160,7 +160,7 @@ def collect_order(request):
     try:
         order = pickup.collect(int(shop), str(request.data.get('code', '')))
     except pickup.PickupError as e:
-        return Response({'error': str(e)}, status=e.status)
+        return Response({'error': str(e), 'reason': e.reason}, status=e.status)
     return Response(OrderSerializer(order).data)
 
 

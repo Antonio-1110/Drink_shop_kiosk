@@ -55,6 +55,7 @@ function App() {
             <Route path="/cart" element={
               <CartPage cartItems={cartItems} updateCartItem={updateCartItem} removeFromCart={removeFromCart} />
             } />
+            <Route path="/collect" element={<CollectPage />} />
             <Route path="/payment/:orderId" element={<PaymentPage clearCart={clearCart} />} />
           </Routes>
         </div>

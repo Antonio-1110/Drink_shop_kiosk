@@ -75,7 +75,8 @@ Inventory, Nutri-Grade module). Fold them into that work or do them after it lan
 - [ ] Offline drink images. `Drink.image_url` points at the internet; store images with Django's
       `ImageField` and let the edge service cache them on the kiosk.
 - [ ] Touch-friendly layout and full-screen kiosk mode (Chromium `--kiosk`).
-- [ ] Order number screen / receipt for pickup.
+- [x] Order number screen / receipt for pickup. Done: pickup PIN and QR on each order, and a
+      "Collect my order" screen at `/collect` that confirms the pickup.
 
 ## 5. Platform roadmap
 

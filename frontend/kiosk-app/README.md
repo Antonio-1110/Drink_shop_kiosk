@@ -43,6 +43,12 @@ Set these in the environment or in a `.env.local` file next to this README.
    countdown. The ingredients are held until the countdown ends. The page asks the backend every
    few seconds whether the order is paid, and switches to "Payment received" or "Order cancelled".
    **Cancel order** releases the ingredients at once (it sends the `order_token` from step 2).
+   Placing the order also returns a 6-digit pickup PIN and a pickup QR token.
+4. **Collect** (`/collect`, "Collect my order" in the sidebar): the screen at the machine. The
+   customer types their PIN on the keypad, or scans their pickup QR. QR scanners that act as a
+   keyboard work out of the box: the page keeps a hidden input focused and submits on Enter. The
+   screen then shows "Order collected", or says the order isn't paid yet, was already collected,
+   or the code isn't recognised, and goes back to the keypad after 8 seconds.
 
 ## Code map
 
@@ -51,7 +57,7 @@ Set these in the environment or in a `.env.local` file next to this README.
 | `src/App.jsx` | Routes, cart state, and the menu reload when the cart changes |
 | `src/api.js` | Every call to the backend |
 | `src/menu.js` | Sizes, sugar/ice levels and categories. These mirror the backend's choices, so change both together |
-| `src/pages/` | Menu, cart and payment screens |
+| `src/pages/` | Menu, cart, payment and collect screens |
 | `src/components/` | Sidebar navigation, drink cards |
 
 ## Backend API
@@ -67,3 +73,4 @@ also browse it at http://localhost:8000/api/docs/.
 | `GET /ordering/orders/{id}/paynow-qr/` | Starting the PayNow payment and getting its QR code |
 | `GET /ordering/orders/{id}/status/` | Checking whether the order is paid |
 | `POST /ordering/orders/{id}/cancel/` | The Cancel button |
+| `POST /ordering/pickup/` | Collecting a paid order with its PIN or QR token |

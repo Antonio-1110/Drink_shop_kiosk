@@ -16,6 +16,9 @@ function Sidebar({ cartCount}) {
                 ))}
             </div>
 
+            {/* for customers who ordered ahead in the app */}
+            <Link to="/collect" className="nav-btn">Collect my order</Link>
+
             {/* create new segment for cart link */}
             <Link to="/cart" className="cart-link">
                 <div>View Cart</div>    

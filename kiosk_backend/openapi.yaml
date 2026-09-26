@@ -472,13 +472,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/PickupFailed'
           description: ''
         '409':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/PickupFailed'
           description: ''
         '429':
           description: Too many attempts; wait a minute.
@@ -1019,6 +1019,16 @@ components:
       - attempt
       - expires_at
       - method
+    PickupFailed:
+      type: object
+      properties:
+        error:
+          type: string
+        reason:
+          $ref: '#/components/schemas/ReasonEnum'
+      required:
+      - error
+      - reason
     PickupRequestRequest:
       type: object
       properties:
@@ -1032,6 +1042,16 @@ components:
       required:
       - code
       - shop
+    ReasonEnum:
+      enum:
+      - not_found
+      - not_paid
+      - already_collected
+      type: string
+      description: |-
+        * `not_found` - not_found
+        * `not_paid` - not_paid
+        * `already_collected` - already_collected
     Shop:
       type: object
       properties:

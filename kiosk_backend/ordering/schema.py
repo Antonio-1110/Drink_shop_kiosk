@@ -63,3 +63,8 @@ DesignerOptions = inline_serializer('DesignerOptions', {
         'sweetener': serializers.BooleanField(help_text="Contains a non-sugar sweetener."),
         'exclude_from_grade': serializers.BooleanField()}, many=True),
 })
+
+PickupFailed = inline_serializer('PickupFailed', {
+    'error': serializers.CharField(),
+    'reason': serializers.ChoiceField(choices=['not_found', 'not_paid', 'already_collected']),
+})
