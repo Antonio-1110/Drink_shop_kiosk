@@ -2,6 +2,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import type { DesignerOptions } from './designer';
 import type { CartItem, Drink, Shop } from './menu';
 
 function defaultApiBase() {
@@ -16,9 +17,11 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? defaultApiBase();
 
 export class ApiError extends Error {
   data: any;
-  constructor(message: string, data: any) {
+  status?: number;
+  constructor(message: string, data: any, status?: number) {
     super(message);
     this.data = data;
+    this.status = status;
   }
 }
 
@@ -30,7 +33,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new ApiError(`Can't reach the shop server at ${API_BASE}`, {});
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error ?? 'Request failed', data);
+  if (!res.ok) throw new ApiError(data.error ?? 'Request failed', data, res.status);
   return data;
 }
 
@@ -41,7 +44,8 @@ export function fetchShops() {
 // drinks the shop can still make after the ones already in the cart
 export function fetchAvailableDrinks(shopId: number, cartItems: CartItem[]) {
   const params = new URLSearchParams({ shop_id: String(shopId) });
-  cartItems.forEach((item) => params.append('cart', String(item.drink.id)));
+  // only menu drinks count here; designed drinks are checked when the order is placed
+  cartItems.forEach((item) => { if (!item.custom) params.append('cart', String(item.drink.id)); });
   return request<Drink[]>(`/ordering/drinks/?${params}`);
 }
 
@@ -61,7 +65,9 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       shop: shopId,
-      items: cartItems.map(({ drink, size, sugar, ice }) => ({ drink: drink.id, size, sugar, ice })),
+      items: cartItems.map(({ drink, custom, size, sugar, ice }) => (custom
+        ? { custom: custom.picks, size, sugar, ice }
+        : { drink: drink.id, size, sugar, ice })),
     }),
   });
 }
@@ -72,6 +78,11 @@ export type PaynowQr = { qr_code: string; reference: string; amount: string; exp
 // starts the PayNow payment (or returns the open one); ingredients are held until expires_at
 export function fetchPaynowQr(orderId: string | number) {
   return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`);
+}
+
+// what the drink designer offers at this shop: ingredients, their amounts and prices
+export function fetchDesignerOptions(shopId: number) {
+  return request<DesignerOptions>(`/ordering/designer/options/?shop_id=${shopId}`);
 }
 
 export type OrderStatus = { status: string; hold_expires_at?: string | null };

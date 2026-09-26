@@ -27,6 +27,7 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <Stack screenOptions={{ headerStyle: { backgroundColor: colors.header }, headerTintColor: colors.primary }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="designer" options={{ title: 'Design your own' }} />
           <Stack.Screen name="shops" options={{ title: 'Choose a shop', presentation: 'modal' }} />
           <Stack.Screen name="payment/[orderId]" options={{ title: 'Your order', headerBackVisible: false, headerLeft: () => null, gestureEnabled: false }} />
         </Stack>
