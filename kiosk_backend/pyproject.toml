@@ -1,0 +1,20 @@
+# Tool settings for the backend. Dependencies live in requirements.txt.
+
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# Only checks that catch real bugs (undefined names, unused imports, shadowed
+# definitions, mutable default arguments). Formatting is not enforced.
+select = ["F", "E9", "B"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["*/migrations/*", "*/tests.py", "manage.py", ".venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
+sort = "cover"
+
+fail_under = 85

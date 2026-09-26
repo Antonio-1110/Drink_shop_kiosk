@@ -1,0 +1,43 @@
+# Looks for known security problems in the packages the apps ship with.
+# Runs on pull requests, on pushes to main, and every Monday, because new
+# advisories appear without any change to this repo.
+name: Security audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python packages (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: pip-audit
+        if: hashFiles('kiosk_backend/requirements.txt') != ''
+        run: pipx run pip-audit -r kiosk_backend/requirements.txt
+
+  npm:
+    name: npm packages (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend/kiosk-app, mobile-app]
+    steps:
+      - uses: actions/checkout@v4
+      # Only what ships to users (not build tools), and only high or critical
+      # advisories fail the check; the full list is printed either way.
+      - name: npm audit
+        if: hashFiles(format('{0}/package-lock.json', matrix.app)) != ''
+        working-directory: ${{ matrix.app }}
+        run: |
+          npm audit --omit=dev || true
+          npm audit --omit=dev --audit-level=high

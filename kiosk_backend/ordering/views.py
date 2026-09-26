@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from operation.models import Shop, Drink, DrinkIngredient, Inventory
 import logging
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -9,9 +8,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from . import schema
 from .serializer import OrderSerializer
 from operation.serializer import ShopSerializer, DrinkSerializer
-from django.db.models import F, Q
 from django.db import transaction
-from .models import Order
 from .utils import (inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
                     aggregate_ingredients, custom_needs)
 from checkout.services import expire_unpaid_orders, hold_stock, order_token

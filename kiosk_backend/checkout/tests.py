@@ -9,7 +9,7 @@ from ordering.models import Order, OrderItem
 from ordering.tests import OrderingTestBase
 from . import services
 from .models import PaymentAttempt, StockHold
-from .providers import PROVIDERS, Provider, SUCCEEDED, FAILED, PENDING
+from .providers import PROVIDERS, Provider, SUCCEEDED
 
 
 class FakeProvider(Provider):

@@ -11,7 +11,6 @@ import base64
 import io
 import re
 from dataclasses import dataclass
-from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 PROXY_MOBILE = "0"  # a +65 mobile number registered with PayNow

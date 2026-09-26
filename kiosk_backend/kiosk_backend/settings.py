@@ -35,6 +35,21 @@ if not SECRET_KEY:
 # comma-separated, e.g. "kiosk.example.com,10.0.0.5"; localhost is allowed when DEBUG is on
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
 
+# Set DJANGO_HTTPS=1 when the site is served over HTTPS (usually behind a proxy that handles TLS).
+# It sends plain-HTTP visitors to HTTPS, keeps cookies HTTPS-only and turns on HSTS.
+if os.environ.get('DJANGO_HTTPS', '').lower() in ('1', 'true', 'yes'):
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # start short; raise it (e.g. to 31536000, one year) once HTTPS is known to work everywhere
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '3600'))
+    # the proxy in front says whether the visitor used HTTPS; without this the redirect would loop
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# HSTS for subdomains and the browser preload list depend on the company's domain, so they are
+# left off; set SECURE_HSTS_INCLUDE_SUBDOMAINS / SECURE_HSTS_PRELOAD here once that is decided.
+SILENCED_SYSTEM_CHECKS = ['security.W005', 'security.W021']
+
 
 # Application definition
 
