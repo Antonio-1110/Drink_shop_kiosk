@@ -111,4 +111,4 @@ cd kiosk_backend && DJANGO_DEBUG=1 python manage.py test
 
 ## What's next
 
-See [TODO.md](TODO.md).
+The to-do list lives in [issue #12](https://github.com/Antonio-1110/Drink_shop_kiosk/issues/12).
