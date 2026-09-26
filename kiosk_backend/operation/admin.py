@@ -26,7 +26,7 @@ class DrinkIngredientAdmin(admin.ModelAdmin):
     list_filter = ('drink',)
 
 @admin.register(Inventory)
-class DrinkIngredientAdmin(admin.ModelAdmin):
+class InventoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'shop', 'ingredient', 'current_stock')
     list_editable = ('current_stock',)
     list_filter = ('shop',)

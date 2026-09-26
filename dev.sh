@@ -31,7 +31,7 @@ for arg in "$@"; do
     --backend) RUN_FRONTEND=0 ;;
     --frontend) RUN_BACKEND=0 ;;
     --setup) MODE=setup ;;
-    --test) MODE=test ;;
+    --test) MODE="test" ;;
     --lan) LAN=1 ;;
     -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;

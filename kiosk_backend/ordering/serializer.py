@@ -35,7 +35,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
                     [found[c] for c in codes], attrs.get('size', OrderItem.Size.SMALL),
                     attrs.get('sugar', OrderItem.Level.NORMAL))
             except ValueError as e:
-                raise serializers.ValidationError({'custom': str(e)})
+                raise serializers.ValidationError({'custom': str(e)}) from e
         return attrs
 
     def to_representation(self, instance):
