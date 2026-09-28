@@ -33,7 +33,7 @@ jobs:
           if [ -f kiosk_backend/manage.py ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
           else echo "No kiosk_backend/ on this branch, skipping."; fi
       - if: steps.present.outputs.yes
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
