@@ -19,7 +19,7 @@ jobs:
     name: Python packages (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: pip-audit
         if: hashFiles('kiosk_backend/requirements.txt') != ''
         run: pipx run pip-audit -r kiosk_backend/requirements.txt
@@ -32,7 +32,7 @@ jobs:
       matrix:
         app: [frontend/kiosk-app, mobile-app]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Only what ships to users (not build tools), and only high or critical
       # advisories fail the check; the full list is printed either way.
       - name: npm audit
