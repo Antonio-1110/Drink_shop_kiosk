@@ -140,7 +140,7 @@ def confirm_payment(order, method, amount, provider_ref=''):
     """Records that money arrived. The one path every payment method uses. Safe to call twice
     for the same provider_ref. Returns the attempt; its status says what happened:
     SUCCEEDED (order is paid) or REFUND_NEEDED / REFUNDED (we couldn't take the payment)."""
-    provider = PROVIDERS[method]
+    PROVIDERS[method]  # an unknown method fails here, before anything is written
     amount = Decimal(str(amount))
     with transaction.atomic():
         if provider_ref:

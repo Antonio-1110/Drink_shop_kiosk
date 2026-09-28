@@ -1,4 +1,4 @@
-from operation.models import Drink, DrinkIngredient, Shop, Inventory
+from operation.models import Drink, DrinkIngredient, Inventory
 from django.db.models import F, Case, When, DecimalField
 from decimal import Decimal
 
@@ -20,8 +20,8 @@ def aggregate_ingredients(drinks):
         else:a_d[i['ingredient']] += i['required_quantity'] * drinks.count(int(i['drink']))
     return a_d
 
-def inventory_check(shop, cart : list = []):
-    a_d = aggregate_ingredients(cart)
+def inventory_check(shop, cart : list | None = None):
+    a_d = aggregate_ingredients(cart or [])
     inventories_with_reserved = Inventory.objects.filter(shop=shop).annotate(
     effective_stock=Case(
         *[When(ingredient_id=k, then=F('current_stock') - a_d[k]) for k in a_d.keys()],
@@ -35,8 +35,8 @@ def inventory_check(shop, cart : list = []):
     ).values_list('drink__id', flat=True).distinct()
     return unfulfillable_drink_ids
     
-def check_cart_fulfillment(shop, cart : list = []):
-    a_d = aggregate_ingredients(cart)
+def check_cart_fulfillment(shop, cart : list | None = None):
+    a_d = aggregate_ingredients(cart or [])
     inventories_with_reserved = Inventory.objects.filter(shop=shop).annotate(
     effective_stock=Case(
         *[When(ingredient_id=k, then=F('current_stock') - a_d[k]) for k in a_d.keys()],

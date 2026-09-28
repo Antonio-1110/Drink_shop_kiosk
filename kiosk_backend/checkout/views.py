@@ -10,7 +10,6 @@ from rest_framework.response import Response
 from ordering.models import Order
 from payments.paynow import PayNowError
 from . import services
-from .models import PaymentAttempt
 from .providers import PROVIDERS, get_provider, SUCCEEDED, FAILED
 
 logger = logging.getLogger(__name__)

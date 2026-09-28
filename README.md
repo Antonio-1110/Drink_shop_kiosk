@@ -32,6 +32,8 @@ Settings come from environment variables:
 | `DJANGO_DEBUG` | `1` for local development. Leave unset in production. |
 | `DJANGO_SECRET_KEY` | Required when `DJANGO_DEBUG` is off. |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated host names the server answers to in production. |
+| `DJANGO_HTTPS` | `1` when the site is served over HTTPS: redirects HTTP to HTTPS, HTTPS-only cookies, HSTS. |
+| `DJANGO_HSTS_SECONDS` | How long browsers remember to use HTTPS (default 3600). Raise it once HTTPS is known to work. |
 | `PAYNOW_PROXY_TYPE` | `UEN` (a company, the default) or `MOBILE` (a +65 number registered with PayNow). |
 | `PAYNOW_PROXY_VALUE` | The company's UEN, or the mobile number as `+6591234567`. Required when `DJANGO_DEBUG` is off; development uses a dummy UEN. |
 | `PAYNOW_MERCHANT_NAME` | Name shown in the customer's banking app (25 characters max). |
