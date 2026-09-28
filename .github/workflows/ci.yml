@@ -92,7 +92,7 @@ jobs:
           if [ -f frontend/kiosk-app/package.json ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
           else echo "No frontend/kiosk-app/ on this branch, skipping."; fi
       - if: steps.present.outputs.yes
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -120,7 +120,7 @@ jobs:
           if [ -f mobile-app/package.json ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
           else echo "No mobile-app/ on this branch, skipping."; fi
       - if: steps.present.outputs.yes
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
