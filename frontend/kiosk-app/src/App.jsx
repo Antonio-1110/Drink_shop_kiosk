@@ -5,6 +5,7 @@ import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import PaymentPage from "./pages/PaymentPage";
 import DesignerPage from "./pages/DesignerPage";
+import CollectPage from "./pages/CollectPage";
 import { fetchAvailableDrinks } from "./api";
 import { CATEGORIES } from "./menu";
 import './App.css';
