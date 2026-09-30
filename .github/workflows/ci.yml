@@ -83,20 +83,20 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend/kiosk-app
+        working-directory: kiosk-app
     steps:
       - uses: actions/checkout@v7
       - id: present
         working-directory: .
         run: |
-          if [ -f frontend/kiosk-app/package.json ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
-          else echo "No frontend/kiosk-app/ on this branch, skipping."; fi
+          if [ -f kiosk-app/package.json ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
+          else echo "No kiosk-app/ on this branch, skipping."; fi
       - if: steps.present.outputs.yes
         uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/kiosk-app/package-lock.json
+          cache-dependency-path: kiosk-app/package-lock.json
       - if: steps.present.outputs.yes
         run: npm ci --no-audit --no-fund
       - name: Lint

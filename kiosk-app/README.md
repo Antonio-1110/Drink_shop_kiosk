@@ -63,7 +63,7 @@ Set these in the environment or in a `.env.local` file next to this README.
 ## Backend API
 
 The endpoints this app uses are described in the backend's API contract,
-[`kiosk_backend/openapi.yaml`](../../kiosk_backend/openapi.yaml). With the backend running you can
+[`kiosk_backend/openapi.yaml`](../kiosk_backend/openapi.yaml). With the backend running you can
 also browse it at http://localhost:8000/api/docs/.
 
 | Call | Used for |

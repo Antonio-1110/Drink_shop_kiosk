@@ -11,7 +11,7 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: npm
-    directory: /frontend/kiosk-app
+    directory: /kiosk-app
     schedule:
       interval: weekly
     groups:

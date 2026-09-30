@@ -1,4 +1,4 @@
-// Same values as frontend/kiosk-app/src/menu.js, which match the backend models.
+// Same values as kiosk-app/src/menu.js, which match the backend models.
 
 // OrderItem.Size
 export const SIZE = { SMALL: 0, LARGE: 1 } as const;

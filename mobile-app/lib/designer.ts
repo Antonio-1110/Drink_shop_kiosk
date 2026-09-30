@@ -1,6 +1,6 @@
 // Building your own drink: how much of each ingredient goes in, its price, its Nutri-Grade,
 // and the drink code customers bring to the kiosk.
-// frontend/kiosk-app/src/designer.js is the same logic for the kiosk; change both together.
+// kiosk-app/src/designer.js is the same logic for the kiosk; change both together.
 import type { CustomCartItem, Size } from './menu';
 import { nutriGrade } from './nutrigrade';
 

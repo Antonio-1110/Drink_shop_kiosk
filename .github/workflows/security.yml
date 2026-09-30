@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [frontend/kiosk-app, mobile-app]
+        app: [kiosk-app, mobile-app]
     steps:
       - uses: actions/checkout@v7
       # Only what ships to users (not build tools), and only high or critical

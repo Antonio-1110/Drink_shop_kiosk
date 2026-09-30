@@ -1,7 +1,7 @@
 # Drink Shop mobile app
 
 Customer pre-ordering app built with Expo (React Native). It follows the kiosk UI in
-`frontend/kiosk-app`: same menu categories, S/L sizes, sugar and ice levels and
+`kiosk-app`: same menu categories, S/L sizes, sugar and ice levels and
 PayNow checkout, and it calls the same Django endpoints.
 
 Flow: pick the shop you'll collect from → browse the menu → add drinks → set sugar/ice in

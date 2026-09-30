@@ -11,12 +11,12 @@
 #                         combine with --backend to skip the kiosk UI
 #
 # Ctrl-C stops everything. The backend always runs on port 8000 because
-# frontend/kiosk-app/vite.config.js proxies /api there.
+# kiosk-app/vite.config.js proxies /api there.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$ROOT/kiosk_backend"
-FRONTEND="$ROOT/frontend/kiosk-app"
+FRONTEND="$ROOT/kiosk-app"
 VENV="$BACKEND/.venv"
 # local development settings (see kiosk_backend/kiosk_backend/settings.py)
 export DJANGO_DEBUG="${DJANGO_DEBUG:-1}"

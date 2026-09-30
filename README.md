@@ -58,7 +58,7 @@ Only the kiosk's ordering endpoints are public. Everything else, including `PATC
 Frontend (http://localhost:5173, proxies `/api` to the backend):
 
 ```
-cd frontend/kiosk-app
+cd kiosk-app
 npm install
 npm run dev
 ```
