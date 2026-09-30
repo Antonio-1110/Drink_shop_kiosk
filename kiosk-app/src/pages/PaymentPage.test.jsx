@@ -46,7 +46,7 @@ describe('payment screen idle timeout', () => {
         await act(async () => {});
         wait(IDLE_MS);
         wait(PROMPT_MS);
-        expect(api.cancelOrder).toHaveBeenCalledWith('42', 'tok');
+        expect(api.cancelOrder).toHaveBeenCalledWith('42', 'tok', 'idle_timeout');
         expect(screen.getByText('the menu')).toBeTruthy();
     });
 });

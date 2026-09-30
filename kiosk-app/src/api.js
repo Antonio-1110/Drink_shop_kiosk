@@ -44,11 +44,12 @@ export function fetchOrderStatus(orderId) {
     return request(`/ordering/orders/${orderId}/status/`);
 }
 
-export function cancelOrder(orderId, orderToken) {
+// reason 'idle_timeout' tells the backend the kiosk cancelled it, not the customer
+export function cancelOrder(orderId, orderToken, reason) {
     return request(`/ordering/orders/${orderId}/cancel/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_token: orderToken }),
+        body: JSON.stringify(reason ? { order_token: orderToken, reason } : { order_token: orderToken }),
     });
 }
 

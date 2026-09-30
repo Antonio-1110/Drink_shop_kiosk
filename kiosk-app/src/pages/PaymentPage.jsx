@@ -49,7 +49,7 @@ function PaymentPage({ clearCart }) {
     // if the timeout does fire with the order unpaid (e.g. the QR code never loaded), cancel it so
     // the ingredients go back on sale straight away
     const cancelIfUnpaid = useCallback(() => {
-        if (pending && orderToken) cancelOrder(orderId, orderToken).catch(() => {});
+        if (pending && orderToken) cancelOrder(orderId, orderToken, 'idle_timeout').catch(() => {});
     }, [pending, orderId, orderToken]);
     useIdleCleanup(cancelIfUnpaid);
 
