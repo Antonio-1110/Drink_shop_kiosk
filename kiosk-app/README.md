@@ -54,9 +54,11 @@ Set these in the environment or in a `.env.local` file next to this README.
 
 **Idle timeout.** If nobody touches the screen for 60 seconds, a "Still there?" prompt counts down
 10 seconds. A touch (or a scanner keystroke) keeps the order going. Otherwise the cart is cleared,
-an unpaid order on the payment screen is cancelled through the cancel endpoint so its ingredients go
-back on sale, and the kiosk returns to the menu. It stays quiet on the menu with an empty cart, and
-never fires while the collect screen is checking a code or showing its result. Pages hold it off
+an unpaid order is cancelled through the cancel endpoint so its ingredients go back on sale, and the
+kiosk returns to the menu. It stays quiet on the menu with an empty cart, never fires while the
+collect screen is checking a code or showing its result, and is held off on the payment screen while
+the QR code is up waiting for payment (the customer is on their phone; the payment window releases
+the ingredients if they walked away). Pages hold it off
 with `useIdlePause(true)` and add timeout clean-up with `useIdleCleanup(fn)` (`src/idleContext.js`).
 
 ## Code map

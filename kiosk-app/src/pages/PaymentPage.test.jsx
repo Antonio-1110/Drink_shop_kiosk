@@ -10,7 +10,7 @@ import * as api from '../api';
 vi.mock('../api', () => ({
     cancelOrder: vi.fn(() => Promise.resolve({ status: 'CANCELLED' })),
     fetchOrderStatus: vi.fn(() => Promise.resolve({ status: 'PENDING' })),
-    fetchPaynowQr: vi.fn(() => new Promise(() => {})),
+    fetchPaynowQr: vi.fn(),
 }));
 
 const wait = (ms) => act(() => { vi.advanceTimersByTime(ms); });
@@ -19,8 +19,7 @@ describe('payment screen idle timeout', () => {
     beforeEach(() => { vi.useFakeTimers(); });
     afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); });
 
-    it('cancels the unpaid order with its order_token and goes back to the menu', () => {
-        render(
+    const renderPayment = () => render(
             <MemoryRouter initialEntries={[{ pathname: '/payment/42', state: { orderToken: 'tok' } }]}>
                 <IdleProvider hasSession={false} onReset={() => {}}>
                     <Routes>
@@ -30,6 +29,21 @@ describe('payment screen idle timeout', () => {
                 </IdleProvider>
             </MemoryRouter>,
         );
+
+    it('does not time out while the QR code is up waiting for payment', async () => {
+        api.fetchPaynowQr.mockResolvedValue({ qr_code: 'data:,', amount: '4.50', reference: 'R1',
+            expires_at: new Date(Date.now() + 600_000).toISOString() });
+        renderPayment();
+        await act(async () => {});
+        wait(IDLE_MS * 3);
+        expect(screen.queryByText('Still there?')).toBeNull();
+        expect(api.cancelOrder).not.toHaveBeenCalled();
+    });
+
+    it('cancels the unpaid order with its order_token if it times out without a QR code', async () => {
+        api.fetchPaynowQr.mockRejectedValue(new Error('PayNow is down'));
+        renderPayment();
+        await act(async () => {});
         wait(IDLE_MS);
         wait(PROMPT_MS);
         expect(api.cancelOrder).toHaveBeenCalledWith('42', 'tok');
