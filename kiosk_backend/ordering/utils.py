@@ -1,6 +1,7 @@
 from operation.models import Drink, DrinkIngredient, Inventory
 from django.db.models import F, Case, When, DecimalField
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from operation.health_metrics import LEVEL_STEPS
 
 
 def verify_drink_ids(incoming_drink_ids):
@@ -69,3 +70,24 @@ def add_needs(*needs):
 def custom_needs(lines):
     # lines from DesignerConfig.build: (ingredient, amount, price)
     return add_needs(*({ingredient.pk: amount} for ingredient, amount, _ in lines))
+
+def menu_needs(lines):
+    """{ingredient_id: amount} for menu drinks as ordered. lines are (drink_id, sugar, ice) per cup.
+    Recipe lines that scale with sugar or ice use that share of their amount (level / 4), the
+    same way the Nutri-Grade is worked out, so a 0% sugar drink uses no syrup."""
+    lines = list(lines)
+    recipes = {}
+    for drink_id, ingredient_id, quantity, scaling in DrinkIngredient.objects.filter(
+            drink_id__in={line[0] for line in lines}).values_list(
+            'drink_id', 'ingredient_id', 'required_quantity', 'scaling'):
+        recipes.setdefault(drink_id, []).append((ingredient_id, quantity, scaling))
+    total = {}
+    for drink_id, sugar, ice in lines:
+        for ingredient_id, quantity, scaling in recipes.get(drink_id, []):
+            if scaling == DrinkIngredient.Scaling.SUGAR:
+                quantity = quantity * sugar / LEVEL_STEPS
+            elif scaling == DrinkIngredient.Scaling.ICE:
+                quantity = quantity * ice / LEVEL_STEPS
+            total[ingredient_id] = total.get(ingredient_id, 0) + quantity
+    # stock is kept to 2 decimal places
+    return {i: Decimal(a).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) for i, a in total.items()}

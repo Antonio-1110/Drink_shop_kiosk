@@ -108,7 +108,7 @@ class PayNowTests(OrderingTestBase):
 
     def test_qr_refused_once_order_is_resolved(self):
         order_id = self.order((self.green_tea, 0)).data["id"]
-        Order.objects.filter(pk=order_id).update(status=Order.Status.COMPLETED)
+        Order.objects.filter(pk=order_id).update(status=Order.Status.COLLECTED)
         res = self.client.get(f"/ordering/orders/{order_id}/paynow-qr/")
         self.assertEqual(res.status_code, 409)
 

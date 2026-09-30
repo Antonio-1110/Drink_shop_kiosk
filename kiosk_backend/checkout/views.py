@@ -109,7 +109,7 @@ def cancel_order(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
     if not services.check_order_token(order, request.data.get('order_token')):
         return Response({'error': "Not your order."}, status=status.HTTP_403_FORBIDDEN)
-    if not services.cancel_order(order, reason="Cancelled by customer."):
+    if not services.cancel_order(order, reason="Cancelled by the customer.", actor="customer"):
         return Response({'error': "Only unpaid orders can be cancelled."}, status=status.HTTP_409_CONFLICT)
     return Response({'status': Order.Status.CANCELLED})
 

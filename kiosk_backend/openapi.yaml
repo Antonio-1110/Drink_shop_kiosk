@@ -1046,11 +1046,13 @@ components:
       enum:
       - not_found
       - not_paid
+      - cancelled
       - already_collected
       type: string
       description: |-
         * `not_found` - not_found
         * `not_paid` - not_paid
+        * `cancelled` - cancelled
         * `already_collected` - already_collected
     Shop:
       type: object
@@ -1098,19 +1100,15 @@ components:
     StatusEnum:
       enum:
       - PENDING
-      - COMPLETED
-      - CANCELLED
-      - TBM
       - PAID
       - COLLECTED
+      - CANCELLED
       type: string
       description: |-
-        * `PENDING` - Pending
-        * `COMPLETED` - Completed
-        * `CANCELLED` - Cancelled
-        * `TBM` - To Be Made
-        * `PAID` - Paid / Ready for Dispense
+        * `PENDING` - Waiting for payment
+        * `PAID` - Paid
         * `COLLECTED` - Collected
+        * `CANCELLED` - Cancelled
   securitySchemes:
     basicAuth:
       type: http

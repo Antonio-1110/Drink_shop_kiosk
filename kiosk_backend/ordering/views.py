@@ -10,7 +10,9 @@ from .serializer import OrderSerializer
 from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db import transaction
 from .utils import (inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
-                    aggregate_ingredients, custom_needs)
+                    custom_needs, menu_needs)
+from .models import OrderItem
+from .status import record_placed
 from checkout.services import expire_unpaid_orders, hold_stock, order_token
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import throttle_classes
@@ -114,7 +116,9 @@ def key_in_order(request): # handling orders with more than one drink
     items = serializer.validated_data['items']
     # one entry per drink ordered, so two of the same drink uses stock twice
     cart = [item['drink'].id for item in items if item.get('drink')]
-    needed = add_needs(aggregate_ingredients(cart),
+    normal = OrderItem.Level.NORMAL
+    needed = add_needs(menu_needs((item['drink'].id, item.get('sugar', normal), item.get('ice', normal))
+                                  for item in items if item.get('drink')),
                        *(custom_needs(item['designer_lines']) for item in items if 'designer_lines' in item))
     # free up stock held by abandoned orders before checking this one
     expire_unpaid_orders(shop)
@@ -131,6 +135,7 @@ def key_in_order(request): # handling orders with more than one drink
                 {'error': 'order unavailable', 'drinks': drinks, 'ingredients': short, 'options': options},
                 status=status.HTTP_409_CONFLICT)
         order = serializer.save()
+        record_placed(order)
         hold_stock(order, needed)
         pickup.assign_pickup_codes(order)
     # the pickup codes and order token go only to whoever placed the order, never in other responses

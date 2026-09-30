@@ -66,5 +66,5 @@ DesignerOptions = inline_serializer('DesignerOptions', {
 
 PickupFailed = inline_serializer('PickupFailed', {
     'error': serializers.CharField(),
-    'reason': serializers.ChoiceField(choices=['not_found', 'not_paid', 'already_collected']),
+    'reason': serializers.ChoiceField(choices=['not_found', 'not_paid', 'cancelled', 'already_collected']),
 })

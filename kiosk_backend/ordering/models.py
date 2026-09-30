@@ -4,13 +4,14 @@ from operation.models import Shop, Drink, Ingredient
 # Create your models here.
 
 class Order(models.Model):
+    # how an order moves: PENDING -> PAID -> COLLECTED, or PENDING -> CANCELLED. A payment that
+    # arrives after the order was cancelled can still make it PAID. Change it only through
+    # ordering.status.change_status, which checks the move and records it as an OrderEvent.
     class Status(models.TextChoices):
-        PENDING = 'PENDING', 'Pending'
-        COMPLETED = 'COMPLETED', 'Completed'
-        CANCELLED = 'CANCELLED', 'Cancelled'
-        TBM = 'TBM', 'To Be Made'
-        PAID = 'PAID', 'Paid / Ready for Dispense'
+        PENDING = 'PENDING', 'Waiting for payment'
+        PAID = 'PAID', 'Paid'
         COLLECTED = 'COLLECTED', 'Collected'
+        CANCELLED = 'CANCELLED', 'Cancelled'
     status = models.CharField(
         max_length=10,
         choices=Status.choices,
@@ -77,3 +78,20 @@ class OrderItemIngredient(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=8, decimal_places=2) # in the ingredient's unit_of_measure
     unit_price = models.DecimalField(max_digits=4, decimal_places=2)
+
+
+class OrderEvent(models.Model):
+    """One change in an order's status, kept as its history: what changed, when, who did it, why."""
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='events')
+    from_status = models.CharField(max_length=10, blank=True)  # empty when the order was placed
+    to_status = models.CharField(max_length=10, choices=Order.Status.choices)
+    at = models.DateTimeField(auto_now_add=True)
+    # customer, kiosk, system (automatic), payment:<method> or staff:<username>
+    actor = models.CharField(max_length=100, blank=True)
+    reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['at', 'pk']
+
+    def __str__(self):
+        return f"Order {self.order_id}: {self.from_status or 'placed'} -> {self.to_status}"

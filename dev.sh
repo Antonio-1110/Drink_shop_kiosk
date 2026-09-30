@@ -42,9 +42,19 @@ log() { printf '\033[1;36m[dev]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[dev]\033[0m %s\n' "$*" >&2; exit 1; }
 
 setup_backend() {
-  local python
-  python="$(command -v python3 || command -v python || true)"
-  [ -n "$python" ] || die "Python 3 is not installed."
+  # Django 6 needs Python 3.12 or newer; use the newest one installed
+  local python="" candidate
+  for candidate in python3.14 python3.13 python3.12 python3 python; do
+    if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys; exit(sys.version_info < (3, 12))' 2>/dev/null; then
+      python="$(command -v "$candidate")"; break
+    fi
+  done
+  [ -n "$python" ] || die "Python 3.12 or newer is needed (Django 6). Install it and run ./dev.sh again."
+  # a virtualenv made with an older Python can't install Django 6, so start it again
+  if [ -x "$PY" ] && ! "$PY" -c 'import sys; exit(sys.version_info < (3, 12))' 2>/dev/null; then
+    log "Recreating kiosk_backend/.venv with $("$python" --version)"
+    rm -rf "$VENV"
+  fi
   if [ ! -x "$PY" ]; then
     log "Creating Python virtualenv in kiosk_backend/.venv"
     "$python" -m venv "$VENV"
