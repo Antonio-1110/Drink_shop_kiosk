@@ -99,7 +99,10 @@ def order_status(request, order_id):
 @extend_schema(summary="Cancel an unpaid order",
                description="For the customer's Cancel button or the kiosk's idle timeout. Puts the "
                            "ingredients back on sale straight away. Needs the order_token from placing the order.",
-               request=inline_serializer('CancelOrder', {'order_token': serializers.CharField()}),
+               request=inline_serializer('CancelOrder', {
+                   'order_token': serializers.CharField(),
+                   'reason': serializers.ChoiceField(choices=['customer', 'idle_timeout'], required=False,
+                                                     help_text="idle_timeout when the kiosk cancels an abandoned order.")}),
                responses={200: inline_serializer('OrderCancelled', {'status': serializers.CharField()}),
                           403: Error, 404: Error, 409: Error})
 @api_view(['POST'])
@@ -109,7 +112,12 @@ def cancel_order(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
     if not services.check_order_token(order, request.data.get('order_token')):
         return Response({'error': "Not your order."}, status=status.HTTP_403_FORBIDDEN)
-    if not services.cancel_order(order, reason="Cancelled by the customer.", actor="customer"):
+    # only known values, so the history never holds free text from the request
+    if request.data.get('reason') == 'idle_timeout':
+        who = dict(actor="timeout", reason="Cancelled by the kiosk idle timeout.")
+    else:
+        who = dict(actor="customer", reason="Cancelled by the customer.")
+    if not services.cancel_order(order, **who):
         return Response({'error': "Only unpaid orders can be cancelled."}, status=status.HTTP_409_CONFLICT)
     return Response({'status': Order.Status.CANCELLED})
 

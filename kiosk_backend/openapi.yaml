@@ -501,12 +501,28 @@ paths:
           description: ''
 components:
   schemas:
+    CancelOrderReasonEnum:
+      enum:
+      - customer
+      - idle_timeout
+      type: string
+      description: |-
+        * `customer` - customer
+        * `idle_timeout` - idle_timeout
     CancelOrderRequest:
       type: object
       properties:
         order_token:
           type: string
           minLength: 1
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/CancelOrderReasonEnum'
+          description: |-
+            idle_timeout when the kiosk cancels an abandoned order.
+
+            * `customer` - customer
+            * `idle_timeout` - idle_timeout
       required:
       - order_token
     CategoryEnum:
@@ -1025,10 +1041,22 @@ components:
         error:
           type: string
         reason:
-          $ref: '#/components/schemas/ReasonEnum'
+          $ref: '#/components/schemas/PickupFailedReasonEnum'
       required:
       - error
       - reason
+    PickupFailedReasonEnum:
+      enum:
+      - not_found
+      - not_paid
+      - cancelled
+      - already_collected
+      type: string
+      description: |-
+        * `not_found` - not_found
+        * `not_paid` - not_paid
+        * `cancelled` - cancelled
+        * `already_collected` - already_collected
     PickupRequestRequest:
       type: object
       properties:
@@ -1042,18 +1070,6 @@ components:
       required:
       - code
       - shop
-    ReasonEnum:
-      enum:
-      - not_found
-      - not_paid
-      - cancelled
-      - already_collected
-      type: string
-      description: |-
-        * `not_found` - not_found
-        * `not_paid` - not_paid
-        * `cancelled` - cancelled
-        * `already_collected` - already_collected
     Shop:
       type: object
       properties:

@@ -308,6 +308,14 @@ class OrderLifecycleTests(CheckoutTestBase):
         self.assertEqual(self.history(order), [('', 'PENDING', 'customer'), ('PENDING', 'CANCELLED', 'customer')])
         self.assert_stock_balanced(order, start)
 
+    def test_cancelled_by_idle_timeout(self):
+        order, token = self.place(self.milk_tea)
+        res = self.client.post(f"/ordering/orders/{order.pk}/cancel/",
+                               {'order_token': token, 'reason': 'idle_timeout'}, format='json')
+        self.assertEqual(res.status_code, 200)
+        event = order.events.last()
+        self.assertEqual((event.actor, event.reason), ('timeout', "Cancelled by the kiosk idle timeout."))
+
     def test_expired(self):
         start = self.stock()
         order, _ = self.place(self.milk_tea)
