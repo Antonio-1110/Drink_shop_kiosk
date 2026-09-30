@@ -43,8 +43,9 @@ class KeyInOrderTests(OrderingTestBase):
         self.assertEqual(order.status, Order.Status.PENDING)
         self.milk_stock.refresh_from_db()
         self.tea_stock.refresh_from_db()
-        self.assertEqual(self.milk_stock.current_stock, Decimal("50"))
-        self.assertEqual(self.tea_stock.current_stock, Decimal("500"))
+        # recipes are for a small cup; a large one takes 500/360 as much (the designer's cup sizes)
+        self.assertEqual(self.milk_stock.current_stock, Decimal("11.11"))  # 150 - 138.89
+        self.assertEqual(self.tea_stock.current_stock, Decimal("422.22"))  # 1000 - 277.78 - 300
 
     def test_items_keep_sale_price_and_nutri_grade(self):
         res = self.order((self.milk_tea, OrderItem.Size.LARGE))

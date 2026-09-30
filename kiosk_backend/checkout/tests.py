@@ -363,6 +363,15 @@ class OrderLifecycleTests(CheckoutTestBase):
         self.assertEqual(res.status_code, 409)
         self.assertEqual(res.data['reason'], 'cancelled')
 
+    def test_new_orders_avoid_pins_of_recently_cancelled_ones(self):
+        # a cancelled order can still be paid late, so its PIN must not be handed to someone else
+        from ordering import pickup
+        order, _ = self.place(self.green_tea)
+        services.cancel_order(order)
+        with mock.patch.object(pickup.secrets, 'randbelow', side_effect=[int(order.pickup_pin), 424242]):
+            other, _ = self.place(self.green_tea)
+        self.assertEqual(other.pickup_pin, '424242')
+
     def test_staff_actions_name_the_staff_member(self):
         from django.contrib.admin.sites import site
         from django.contrib.auth import get_user_model
@@ -410,6 +419,13 @@ class SugarAndIceStockTests(CheckoutTestBase):
         self.assertEqual(self.left(), (Decimal("100"), Decimal("425")))
         self.place_with(sugar=OrderItem.Level.TQ, ice=OrderItem.Level.NORMAL)
         self.assertEqual(self.left(), (Decimal("77.50"), Decimal("275")))
+
+    def test_large_cup_takes_more(self):
+        res = self.client.post("/ordering/log-order/", {"shop": self.shop.id, "items": [
+            {"drink": self.green_tea.id, "size": 1, "sugar": 4, "ice": 4}]}, format="json")
+        self.assertEqual(res.status_code, 201, res.data)
+        # 30 mL syrup and 150 g ice for a small cup, times 500/360 for a large one
+        self.assertEqual(self.left(), (Decimal("58.33"), Decimal("291.67")))
 
     def test_zero_sugar_holds_no_syrup(self):
         order = self.place_with(sugar=OrderItem.Level.ZERO, ice=OrderItem.Level.ZERO)

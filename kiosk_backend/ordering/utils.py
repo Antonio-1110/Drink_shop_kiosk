@@ -72,18 +72,27 @@ def custom_needs(lines):
     return add_needs(*({ingredient.pk: amount} for ingredient, amount, _ in lines))
 
 def menu_needs(lines):
-    """{ingredient_id: amount} for menu drinks as ordered. lines are (drink_id, sugar, ice) per cup.
+    """{ingredient_id: amount} for menu drinks as ordered. lines are (drink_id, size, sugar, ice) per cup.
+    Recipe amounts are for a small cup at 100%. A large cup takes more in the same proportion as
+    the drink designer's cup sizes (liquid_ml_large / liquid_ml_small, and topping_g for toppings).
     Recipe lines that scale with sugar or ice use that share of their amount (level / 4), the
     same way the Nutri-Grade is worked out, so a 0% sugar drink uses no syrup."""
+    from operation.models import DesignerConfig, Ingredient
+    from ordering.models import OrderItem
     lines = list(lines)
+    config = DesignerConfig.load()
+    large = {Ingredient.Kind.TOPPING: config.topping_g_large / config.topping_g_small}
+    large_default = config.liquid_ml_large / config.liquid_ml_small
     recipes = {}
-    for drink_id, ingredient_id, quantity, scaling in DrinkIngredient.objects.filter(
+    for drink_id, ingredient_id, quantity, scaling, kind in DrinkIngredient.objects.filter(
             drink_id__in={line[0] for line in lines}).values_list(
-            'drink_id', 'ingredient_id', 'required_quantity', 'scaling'):
-        recipes.setdefault(drink_id, []).append((ingredient_id, quantity, scaling))
+            'drink_id', 'ingredient_id', 'required_quantity', 'scaling', 'ingredient__kind'):
+        recipes.setdefault(drink_id, []).append((ingredient_id, quantity, scaling, kind))
     total = {}
-    for drink_id, sugar, ice in lines:
-        for ingredient_id, quantity, scaling in recipes.get(drink_id, []):
+    for drink_id, size, sugar, ice in lines:
+        for ingredient_id, quantity, scaling, kind in recipes.get(drink_id, []):
+            if size == OrderItem.Size.LARGE:
+                quantity = quantity * large.get(kind, large_default)
             if scaling == DrinkIngredient.Scaling.SUGAR:
                 quantity = quantity * sugar / LEVEL_STEPS
             elif scaling == DrinkIngredient.Scaling.ICE:

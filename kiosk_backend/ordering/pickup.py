@@ -5,7 +5,9 @@ Only the customer who placed the order sees them (in the reply to placing it). T
 over an order once: it must be paid, and collecting it marks it COLLECTED.
 """
 import secrets
+from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from payments.paynow import qr_png_data_url
@@ -18,7 +20,10 @@ UNCOLLECTED = [Order.Status.PENDING, Order.Status.PAID]
 
 def assign_pickup_codes(order):
     """Gives a new order its PIN and token. Call inside the transaction that creates it."""
-    in_use = set(Order.objects.filter(shop=order.shop, status__in=UNCOLLECTED)
+    # a recently cancelled order can still be paid late and come back, so its PIN stays reserved
+    recent = timezone.now() - timedelta(days=1)
+    in_use = set(Order.objects.filter(shop=order.shop)
+                 .filter(Q(status__in=UNCOLLECTED) | Q(status=Order.Status.CANCELLED, time__gte=recent))
                  .exclude(pk=order.pk).values_list('pickup_pin', flat=True))
     for _ in range(50):
         pin = f"{secrets.randbelow(1_000_000):06d}"

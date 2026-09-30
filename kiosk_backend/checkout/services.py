@@ -58,7 +58,7 @@ def check_order_token(order, token):
 
 def order_needs(order):
     """{ingredient_id: amount} for everything in the order, menu and designer drinks alike."""
-    menu = order.items.filter(drink__isnull=False).values_list('drink_id', 'sugar', 'ice')
+    menu = order.items.filter(drink__isnull=False).values_list('drink_id', 'size', 'sugar', 'ice')
     custom = OrderItemIngredient.objects.filter(order_item__order=order).values_list('ingredient_id', 'amount')
     return add_needs(menu_needs(menu), *({i: a} for i, a in custom))
 

@@ -117,7 +117,8 @@ def key_in_order(request): # handling orders with more than one drink
     # one entry per drink ordered, so two of the same drink uses stock twice
     cart = [item['drink'].id for item in items if item.get('drink')]
     normal = OrderItem.Level.NORMAL
-    needed = add_needs(menu_needs((item['drink'].id, item.get('sugar', normal), item.get('ice', normal))
+    needed = add_needs(menu_needs((item['drink'].id, item.get('size', OrderItem.Size.SMALL),
+                                   item.get('sugar', normal), item.get('ice', normal))
                                   for item in items if item.get('drink')),
                        *(custom_needs(item['designer_lines']) for item in items if 'designer_lines' in item))
     # free up stock held by abandoned orders before checking this one
