@@ -1,0 +1,39 @@
+.idle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.idle-dialog {
+  background: white;
+  color: #333;
+  border-radius: 16px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 480px;
+}
+
+.idle-dialog h2 {
+  margin-top: 0;
+  font-size: 32px;
+}
+
+.idle-dialog p {
+  font-size: 20px;
+}
+
+.idle-continue {
+  margin-top: 16px;
+  padding: 18px 36px;
+  font-size: 20px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  background-color: #1e3a8a;
+  color: white;
+  cursor: pointer;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import MenuPage from "./pages/MenuPage";
@@ -8,6 +8,7 @@ import DesignerPage from "./pages/DesignerPage";
 import CollectPage from "./pages/CollectPage";
 import { fetchAvailableDrinks } from "./api";
 import { CATEGORIES } from "./menu";
+import IdleProvider from "./IdleProvider";
 import './App.css';
 
 function App() {
@@ -36,10 +37,11 @@ function App() {
   const removeFromCart = (index) => {
     setCartItems(cartItems.filter((_, i) => i !== index));
   }
-  const clearCart = () => setCartItems([]);
+  const clearCart = useCallback(() => setCartItems([]), []);
 
   return (
     <BrowserRouter>
+      <IdleProvider hasSession={cartItems.length > 0} onReset={clearCart}>
       <div className="app-layout">
         <Sidebar cartCount={cartItems.length} />
 
@@ -61,6 +63,7 @@ function App() {
           </Routes>
         </div>
       </div>
+      </IdleProvider>
     </BrowserRouter>
   );
 }

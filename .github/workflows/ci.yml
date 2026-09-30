@@ -102,6 +102,9 @@ jobs:
       - name: Lint
         if: steps.present.outputs.yes
         run: npm run lint
+      - name: Test
+        if: steps.present.outputs.yes
+        run: npm test
       - name: Build
         if: steps.present.outputs.yes
         run: npm run build

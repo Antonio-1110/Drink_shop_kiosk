@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { cancelOrder, fetchOrderStatus, fetchPaynowQr } from '../api';
+import { useIdleCleanup } from '../idleContext';
 import './CartPage.css';
 
 const POLL_MS = 3000;
@@ -40,6 +41,14 @@ function PaymentPage({ clearCart }) {
         const tick = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(tick);
     }, []);
+
+    // if the customer walks away before paying, the idle timeout cancels the order so the
+    // ingredients go back on sale straight away instead of waiting for the payment to expire
+    const pending = orderStatus === 'PENDING';
+    const cancelIfUnpaid = useCallback(() => {
+        if (pending && orderToken) cancelOrder(orderId, orderToken).catch(() => {});
+    }, [pending, orderId, orderToken]);
+    useIdleCleanup(cancelIfUnpaid);
 
     const cancel = async () => {
         try {
