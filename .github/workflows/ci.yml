@@ -26,7 +26,7 @@ jobs:
     env:
       DJANGO_DEBUG: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: present
         working-directory: .
         run: |
@@ -66,7 +66,7 @@ jobs:
     name: Python and shell lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: present
         run: |
           if [ -f kiosk_backend/pyproject.toml ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
@@ -85,7 +85,7 @@ jobs:
       run:
         working-directory: frontend/kiosk-app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: present
         working-directory: .
         run: |
@@ -113,7 +113,7 @@ jobs:
       run:
         working-directory: mobile-app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: present
         working-directory: .
         run: |
