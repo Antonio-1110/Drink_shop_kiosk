@@ -56,3 +56,12 @@ export function cancelOrder(orderId, orderToken) {
 export function fetchDesignerOptions() {
     return request(`/ordering/designer/options/?shop_id=${SHOP_ID}`);
 }
+
+// code is the 6-digit pickup PIN the customer typed, or the token their pickup QR code holds
+export function collectOrder(code) {
+    return request('/ordering/pickup/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: Number(SHOP_ID), code }),
+    });
+}

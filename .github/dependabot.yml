@@ -27,9 +27,30 @@ updates:
         update-types: [minor, patch]
     # Expo SDK upgrades move many packages together and are done with
     # `npx expo install --fix`, so major versions are left to a person.
+    # Each Expo SDK pins the versions of the packages below; a minor bump
+    # (React Native 0.86 -> 0.87, React 19.2 -> 19.3) needs the next SDK, so
+    # only patch releases are taken until that upgrade.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-reanimated"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-worklets"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-safe-area-context"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-screens"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-web"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
