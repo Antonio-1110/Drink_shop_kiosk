@@ -1,6 +1,6 @@
 // Resets the kiosk when a customer walks away: after IDLE_MS with no touches a "Still there?"
-// prompt counts down for PROMPT_MS, then the cart is cleared, any unpaid order is cancelled and
-// the kiosk goes back to the menu.
+// screen offers Continue or Start over and counts down PROMPT_MS. Start over, or no answer, clears
+// the cart, cancels any unpaid order and goes back to the menu.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IDLE_MS, IdleContext, PROMPT_MS } from './idleContext';
@@ -33,8 +33,22 @@ function IdleProvider({ hasSession, onReset, children }) {
     const active = pauses === 0 && (hasSession || pathname !== '/');
     const prompting = active && promptLeft !== null;
 
+    const reset = useCallback(() => {
+        cleanups.current.forEach((cleanup) => cleanup());
+        onReset();
+        setPromptLeft(null);
+        navigate('/');
+    }, [onReset, navigate]);
+
+    const keepGoing = () => { setActivity((n) => n + 1); setPromptLeft(null); };
+
     useEffect(() => {
-        const touched = () => { setActivity((n) => n + 1); setPromptLeft(null); };
+        // touches on the prompt itself only count through its buttons
+        const touched = (e) => {
+            if (e.target instanceof Element && e.target.closest('.idle-overlay')) return;
+            setActivity((n) => n + 1);
+            setPromptLeft(null);
+        };
         ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, touched, true));
         return () => ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, touched, true));
     }, []);
@@ -50,14 +64,9 @@ function IdleProvider({ hasSession, onReset, children }) {
     useEffect(() => {
         if (!prompting) return undefined;
         const tick = setInterval(() => setPromptLeft((left) => (left === null ? null : Math.max(0, left - 1))), 1000);
-        const reset = setTimeout(() => {
-            cleanups.current.forEach((cleanup) => cleanup());
-            onReset();
-            setPromptLeft(null);
-            navigate('/');
-        }, PROMPT_MS);
-        return () => { clearInterval(tick); clearTimeout(reset); };
-    }, [prompting, onReset, navigate]);
+        const timeout = setTimeout(reset, PROMPT_MS);
+        return () => { clearInterval(tick); clearTimeout(timeout); };
+    }, [prompting, reset]);
 
     return (
         <IdleContext.Provider value={{ pause, addCleanup }}>
@@ -66,8 +75,11 @@ function IdleProvider({ hasSession, onReset, children }) {
                 <div className="idle-overlay" role="alertdialog" aria-labelledby="idle-title">
                     <div className="idle-dialog">
                         <h2 id="idle-title">Still there?</h2>
-                        <p>Touch the screen to keep going. Starting over in {promptLeft}…</p>
-                        <button className="idle-continue">I'm still here</button>
+                        <p>Your order will be cleared in {promptLeft} seconds.</p>
+                        <div className="idle-actions">
+                            <button className="idle-continue" onClick={keepGoing}>Continue</button>
+                            <button className="idle-start-over" onClick={reset}>Start over</button>
+                        </div>
                     </div>
                 </div>
             )}

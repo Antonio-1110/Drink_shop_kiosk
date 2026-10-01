@@ -35,7 +35,7 @@ describe('kiosk idle timeout', () => {
 
     it('waits 60 seconds by default', () => {
         expect(IDLE_MS).toBe(60_000);
-        expect(PROMPT_MS).toBe(10_000);
+        expect(PROMPT_MS).toBe(30_000);
     });
 
     it('asks "Still there?" after the idle time, then resets and goes back to the menu', () => {
@@ -44,9 +44,11 @@ describe('kiosk idle timeout', () => {
         expect(screen.queryByText('Still there?')).toBeNull();
         wait(1);
         expect(screen.getByText('Still there?')).toBeTruthy();
-        expect(screen.getByText(/Starting over in 10/)).toBeTruthy();
+        expect(screen.getByText(/cleared in 30 seconds/)).toBeTruthy();
+        wait(1000);
+        expect(screen.getByText(/cleared in 29 seconds/)).toBeTruthy();
 
-        wait(PROMPT_MS - 1000);
+        wait(PROMPT_MS - 2000);
         expect(onReset).not.toHaveBeenCalled();
         wait(1000);
         expect(onCleanup).toHaveBeenCalledTimes(1);
@@ -66,15 +68,33 @@ describe('kiosk idle timeout', () => {
         expect(onReset).not.toHaveBeenCalled();
     });
 
-    it('a touch on the prompt keeps the order going', () => {
+    it('Continue keeps the order going', () => {
         const { onReset, onCleanup } = renderKiosk();
         wait(IDLE_MS + 5000);
-        fireEvent.pointerDown(screen.getByText("I'm still here"));
+        fireEvent.click(screen.getByText('Continue'));
         expect(screen.queryByText('Still there?')).toBeNull();
         wait(PROMPT_MS);
         expect(onReset).not.toHaveBeenCalled();
         expect(onCleanup).not.toHaveBeenCalled();
         expect(screen.getByText('some page')).toBeTruthy();
+    });
+
+    it('Start over resets straight away', () => {
+        const { onReset, onCleanup } = renderKiosk();
+        wait(IDLE_MS);
+        fireEvent.pointerDown(screen.getByText('Start over'));
+        fireEvent.click(screen.getByText('Start over'));
+        expect(onCleanup).toHaveBeenCalledTimes(1);
+        expect(onReset).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('the menu')).toBeTruthy();
+        expect(screen.queryByText('Still there?')).toBeNull();
+    });
+
+    it('touching the prompt outside its buttons does not dismiss it', () => {
+        renderKiosk();
+        wait(IDLE_MS);
+        fireEvent.pointerDown(screen.getByText('Still there?'));
+        expect(screen.getByText('Still there?')).toBeTruthy();
     });
 
     it('scanner typing counts as activity', () => {

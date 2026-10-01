@@ -31,7 +31,7 @@ Set these in the environment or in a `.env.local` file next to this README.
 | --- | --- | --- |
 | `VITE_SHOP_ID` | `1` | Which shop's menu and stock this kiosk uses |
 | `VITE_API_BASE` | `/api` | Where the backend is. Set a full URL when the backend isn't behind the Vite proxy |
-| `VITE_IDLE_TIMEOUT_SECONDS` | `60` | Seconds with no touches before the "Still there?" prompt. The prompt then counts down 10 seconds |
+| `VITE_IDLE_TIMEOUT_SECONDS` | `60` | Seconds with no touches before the "Still there?" screen. It then counts down 30 seconds |
 
 ## How an order flows
 
@@ -52,8 +52,9 @@ Set these in the environment or in a `.env.local` file next to this README.
    screen then shows "Order collected", or says the order isn't paid yet, was already collected,
    or the code isn't recognised, and goes back to the keypad after 8 seconds.
 
-**Idle timeout.** If nobody touches the screen for 60 seconds, a "Still there?" prompt counts down
-10 seconds. A touch (or a scanner keystroke) keeps the order going. Otherwise the cart is cleared,
+**Idle timeout.** If nobody touches the screen for 60 seconds, a "Still there?" screen asks whether to
+**Continue** or **Start over** and counts down 30 seconds. Continue keeps the order going. Start over,
+or no answer, clears the cart,
 an unpaid order is cancelled through the cancel endpoint so its ingredients go back on sale, and the
 kiosk returns to the menu. It stays quiet on the menu with an empty cart, never fires while the
 collect screen is checking a code or showing its result, and is held off on the payment screen while

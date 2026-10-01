@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect } from 'react';
 
 export const IDLE_MS = Number(import.meta.env.VITE_IDLE_TIMEOUT_SECONDS ?? 60) * 1000;
-export const PROMPT_MS = 10 * 1000;
+export const PROMPT_MS = 30 * 1000;
 
 export const IdleContext = createContext(null);
 
