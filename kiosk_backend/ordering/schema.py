@@ -66,5 +66,21 @@ DesignerOptions = inline_serializer('DesignerOptions', {
 
 PickupFailed = inline_serializer('PickupFailed', {
     'error': serializers.CharField(),
-    'reason': serializers.ChoiceField(choices=['not_found', 'not_paid', 'cancelled', 'already_collected']),
+    'reason': serializers.ChoiceField(choices=['not_found', 'not_paid', 'preparing', 'failed', 'refunding',
+                                               'cancelled', 'already_collected']),
+})
+
+ProgressRequest = inline_serializer('ProgressRequest', {
+    'status': serializers.ChoiceField(choices=['PREPARING', 'READY', 'FAILED'],
+                                      help_text="PREPARING when the machine starts (or retries) the drink, READY "
+                                                "when it can be collected, FAILED if it couldn't be made."),
+    'reason': serializers.CharField(required=False, help_text="What went wrong, for FAILED (shown to staff)."),
+})
+
+ProgressReply = inline_serializer('ProgressReply', {
+    'id': serializers.IntegerField(), 'status': serializers.CharField(),
+})
+
+ProgressRefused = inline_serializer('ProgressRefused', {
+    'error': serializers.CharField(), 'status': serializers.CharField(help_text="The order's status now."),
 })

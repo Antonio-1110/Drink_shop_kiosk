@@ -404,6 +404,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutError'
           description: ''
+  /ordering/orders/{order_id}/progress/:
+    post:
+      operationId: ordering_orders_progress_create
+      description: 'The machine''s edge service reports each step: PREPARING when
+        it starts (or retries) the drink, READY when it can be collected, FAILED if
+        it couldn''t be made, with a reason for staff. Only orders at the kiosk''s
+        own shop. Sending the status the order already has is accepted, so a repeated
+        report is harmless.'
+      summary: Report progress making an order (kiosk edge service only)
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ordering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProgressRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProgressRequestRequest'
+        required: true
+      security:
+      - kioskKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressReply'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressRefused'
+          description: ''
   /ordering/orders/{order_id}/status/:
     get:
       operationId: ordering_orders_status_retrieve
@@ -765,6 +821,16 @@ components:
         * `2` - 50%
         * `1` - 25%
         * `0` - 0%
+    MachineStepEnum:
+      enum:
+      - PREPARING
+      - READY
+      - FAILED
+      type: string
+      description: |-
+        * `PREPARING` - PREPARING
+        * `READY` - READY
+        * `FAILED` - FAILED
     Order:
       type: object
       properties:
@@ -794,7 +860,7 @@ components:
           maxLength: 100
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/OrderStatusEnum'
           readOnly: true
       required:
       - id
@@ -847,7 +913,7 @@ components:
           maxLength: 100
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/OrderStatusEnum'
           readOnly: true
         order_token:
           type: string
@@ -932,7 +998,9 @@ components:
       properties:
         status:
           type: string
-          description: PENDING until paid; then the paid status, or CANCELLED.
+          description: PENDING until paid, then PAID, PREPARING (being made), READY
+            (collect it now) and COLLECTED. CANCELLED if never paid; FAILED or REFUND_NEEDED
+            if the drink couldn't be made.
         hold_expires_at:
           type: string
           format: date-time
@@ -962,6 +1030,26 @@ components:
       required:
       - items
       - shop
+    OrderStatusEnum:
+      enum:
+      - PENDING
+      - PAID
+      - PREPARING
+      - READY
+      - FAILED
+      - REFUND_NEEDED
+      - COLLECTED
+      - CANCELLED
+      type: string
+      description: |-
+        * `PENDING` - Waiting for payment
+        * `PAID` - Paid
+        * `PREPARING` - Being made
+        * `READY` - Ready to collect
+        * `FAILED` - Couldn't be made
+        * `REFUND_NEEDED` - Not made, refund needed
+        * `COLLECTED` - Collected
+        * `CANCELLED` - Cancelled
     OrderUnavailable:
       type: object
       properties:
@@ -1049,12 +1137,18 @@ components:
       enum:
       - not_found
       - not_paid
+      - preparing
+      - failed
+      - refunding
       - cancelled
       - already_collected
       type: string
       description: |-
         * `not_found` - not_found
         * `not_paid` - not_paid
+        * `preparing` - preparing
+        * `failed` - failed
+        * `refunding` - refunding
         * `cancelled` - cancelled
         * `already_collected` - already_collected
     PickupRequestRequest:
@@ -1070,6 +1164,45 @@ components:
       required:
       - code
       - shop
+    ProgressRefused:
+      type: object
+      properties:
+        error:
+          type: string
+        status:
+          type: string
+          description: The order's status now.
+      required:
+      - error
+      - status
+    ProgressReply:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+      required:
+      - id
+      - status
+    ProgressRequestRequest:
+      type: object
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MachineStepEnum'
+          description: |-
+            PREPARING when the machine starts (or retries) the drink, READY when it can be collected, FAILED if it couldn't be made.
+
+            * `PREPARING` - PREPARING
+            * `READY` - READY
+            * `FAILED` - FAILED
+        reason:
+          type: string
+          minLength: 1
+          description: What went wrong, for FAILED (shown to staff).
+      required:
+      - status
     Shop:
       type: object
       properties:
@@ -1113,18 +1246,6 @@ components:
           minLength: 1
       required:
       - method
-    StatusEnum:
-      enum:
-      - PENDING
-      - PAID
-      - COLLECTED
-      - CANCELLED
-      type: string
-      description: |-
-        * `PENDING` - Waiting for payment
-        * `PAID` - Paid
-        * `COLLECTED` - Collected
-        * `CANCELLED` - Cancelled
   securitySchemes:
     basicAuth:
       type: http
@@ -1133,3 +1254,8 @@ components:
       type: apiKey
       in: cookie
       name: sessionid
+    kioskKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: '`Kiosk <key>`, the machine''s key from `manage.py kiosk_key`.'

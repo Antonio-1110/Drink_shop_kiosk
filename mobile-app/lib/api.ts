@@ -87,8 +87,9 @@ export function fetchDesignerOptions(shopId: number) {
 
 export type OrderStatus = { status: string; hold_expires_at?: string | null };
 
-// a collected order was paid for too
-export const isPaid = (status?: string) => status === 'PAID' || status === 'COLLECTED';
+// every status after payment: being made, ready, couldn't be made (staff step in) and collected
+const PAID_STATUSES = ['PAID', 'PREPARING', 'READY', 'FAILED', 'COLLECTED'];
+export const isPaid = (status?: string) => status !== undefined && PAID_STATUSES.includes(status);
 
 export function fetchOrderStatus(orderId: string | number) {
   return request<OrderStatus>(`/ordering/orders/${orderId}/status/`);

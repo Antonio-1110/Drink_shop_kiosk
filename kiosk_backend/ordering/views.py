@@ -11,8 +11,9 @@ from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db import transaction
 from .utils import (inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
                     custom_needs, menu_needs)
-from .models import OrderItem
-from .status import record_placed
+from .models import Order, OrderItem
+from .status import change_status, record_placed
+from operation.kiosk_auth import IsKiosk, KioskKeyAuthentication
 from checkout.services import expire_unpaid_orders, hold_stock, order_token
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import throttle_classes
@@ -169,3 +170,36 @@ def collect_order(request):
 
 # ScopedRateThrottle reads the scope from the view; see DEFAULT_THROTTLE_RATES in settings
 collect_order.cls.throttle_scope = 'pickup'
+
+
+# what the machine may report; refunds and the rest are decided by staff
+MACHINE_STEPS = {Order.Status.PREPARING, Order.Status.READY, Order.Status.FAILED}
+
+
+@extend_schema(summary="Report progress making an order (kiosk edge service only)",
+               description="The machine's edge service reports each step: PREPARING when it starts (or "
+                           "retries) the drink, READY when it can be collected, FAILED if it couldn't be "
+                           "made, with a reason for staff. Only orders at the kiosk's own shop. Sending the "
+                           "status the order already has is accepted, so a repeated report is harmless.",
+               request=schema.ProgressRequest,
+               responses={200: schema.ProgressReply, 400: schema.Error, 404: schema.Error, 409: schema.ProgressRefused})
+@api_view(['POST'])
+@authentication_classes([KioskKeyAuthentication])
+@permission_classes([IsKiosk])
+def report_progress(request, order_id):
+    kiosk = request.auth
+    to = request.data.get('status')
+    if not isinstance(to, str) or to not in MACHINE_STEPS:
+        return Response({'error': "status must be PREPARING, READY or FAILED."}, status=status.HTTP_400_BAD_REQUEST)
+    reason = str(request.data.get('reason') or '')
+    order = Order.objects.filter(pk=order_id, shop_id=kiosk.shop_id).first()
+    if order is None:
+        return Response({'error': "No such order at this kiosk's shop."}, status=status.HTTP_404_NOT_FOUND)
+    if order.status != to and not change_status(order, to, actor=f"machine:{kiosk.machine_id}", reason=reason):
+        order.refresh_from_db()
+        return Response({'error': f"Can't move an order from {order.status} to {to}.", 'status': order.status},
+                        status=status.HTTP_409_CONFLICT)
+    if to == Order.Status.FAILED:
+        # staff find it in the admin under Orders, "Couldn't be made"
+        logger.error("Order %s couldn't be made at %s: %s", order.pk, kiosk.machine_id, reason or "no reason given")
+    return Response({'id': order.pk, 'status': order.status})

@@ -38,6 +38,9 @@ class Kiosk(models.Model):
     sfa_locked = models.BooleanField(default=False)
     sfa_lock_reason = models.CharField(max_length=200, blank=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
+    # SHA-256 of the key the machine's edge service sends (see operation/kiosk_auth.py); the key
+    # itself is shown once, by `manage.py kiosk_key`, and never stored
+    api_key_hash = models.CharField(max_length=64, blank=True, editable=False)
     def __str__(self):
         return self.machine_id + " @ " + str(self.shop)
 
