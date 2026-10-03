@@ -1,0 +1,5 @@
+{% extends "admin/index.html" %}
+{% block content %}
+<p class="dashboard-callout"><a href="{% url 'admin-dashboard' %}">Open the dashboard</a> for charts of orders, sales, stock and fridge temperatures.</p>
+{{ block.super }}
+{% endblock %}
