@@ -15,15 +15,6 @@ function describeFailure(err) {
     if (err.data?.reason === 'not_paid') {
         return { tone: 'warn', title: 'Not paid yet', text: 'This order is still waiting for payment. Finish paying in the app, then try again.' };
     }
-    if (err.data?.reason === 'preparing') {
-        return { tone: 'warn', title: 'Still being made', text: 'Your drink is still being made. Please wait a moment, then try again.' };
-    }
-    if (err.data?.reason === 'failed') {
-        return { tone: 'error', title: 'Drink not made', text: 'Sorry, the machine couldn\'t make this drink. Staff have been told and will help you.' };
-    }
-    if (err.data?.reason === 'refunding') {
-        return { tone: 'warn', title: 'Being refunded', text: 'Sorry, this drink couldn\'t be made. Your payment is being refunded.' };
-    }
     if (err.data?.reason === 'cancelled') {
         return { tone: 'warn', title: 'Order cancelled', text: 'This order was cancelled because it wasn\'t paid in time. Please order again.' };
     }
