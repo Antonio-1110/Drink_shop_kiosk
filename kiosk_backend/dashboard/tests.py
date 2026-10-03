@@ -3,14 +3,15 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.utils import timezone
 
 from checkout.models import PaymentAttempt
 from checkout.services import cancel_order, confirm_payment
-from operation.models import Kiosk, Shop
-from ordering.models import Order, OrderItem
+from operation.models import Kiosk, Shop, StockMovement
+from ordering.models import Order, OrderEvent, OrderItem
 from ordering.status import change_status
 from ordering.tests import OrderingTestBase
 
@@ -46,7 +47,7 @@ class DashboardNumbersTests(OrderingTestBase):
         self.assertEqual((tiles['waiting_payment'], tiles['waiting_pickup']), (1, 1))
         self.assertIsNotNone(tiles['minutes_to_pay'])
         self.assertIsNotNone(tiles['minutes_to_collect'])
-        self.assertEqual(n['drinks'], [{'name': 'Green Tea', 'cups': 1}, {'name': 'Milk Tea', 'cups': 1}])
+        self.assertEqual([(d['name'], d['cups']) for d in n['drinks']], [('Green Tea', 1), ('Milk Tea', 1)])
         self.assertEqual({c['who']: c['orders'] for c in n['cancellations']},
                          {'Customer': 1, 'Kiosk idle timeout': 1})
         self.assertEqual(sum(n['hourly']), 5)
@@ -138,3 +139,85 @@ class DashboardPageTests(TestCase):
     def test_admin_pages_link_to_it(self):
         self.client.login(username='staff', password='pw')
         self.assertContains(self.client.get('/admin/'), 'href="/admin/dashboard/"')
+
+
+class DashboardChangeTests(OrderingTestBase):
+    """Changes made from the dashboard go through the checked paths and are logged under the staff member."""
+    def setUp(self):
+        super().setUp()
+        self.boss = get_user_model().objects.create_superuser('boss', password='pw')
+        self.web = Client()
+        self.web.login(username='boss', password='pw')
+
+    def place(self):
+        res = self.order((self.green_tea, OrderItem.Size.SMALL))
+        self.assertEqual(res.status_code, 201, res.data)
+        return Order.objects.get(pk=res.data["id"])
+
+    def act(self, **fields):
+        return self.web.post('/admin/dashboard/act/', {'return': '?days=7', **fields})
+
+    def test_restock_waste_and_count_are_logged(self):
+        res = self.act(what='stock', inventory=self.tea_stock.pk, kind='restock', amount='500')
+        self.assertRedirects(res, '/admin/dashboard/?days=7', fetch_redirect_response=False)
+        self.act(what='stock', inventory=self.tea_stock.pk, kind='waste', amount='100')
+        self.act(what='stock', inventory=self.tea_stock.pk, kind='count', amount='1234.5')
+        self.tea_stock.refresh_from_db()
+        self.assertEqual(self.tea_stock.current_stock, Decimal('1234.5'))
+        moves = list(StockMovement.objects.filter(inventory=self.tea_stock).order_by('pk')
+                     .values_list('reason', 'change', 'created_by__username'))
+        self.assertEqual(moves, [('RESTOCK', Decimal('500'), 'boss'), ('WASTE', Decimal('-100'), 'boss'),
+                                 ('ADJUST', Decimal('-165.5'), 'boss')])
+
+    def test_bad_stock_changes_are_refused(self):
+        for amount in ('', '-5', 'abc', 'NaN'):
+            self.act(what='stock', inventory=self.tea_stock.pk, kind='restock', amount=amount)
+        self.act(what='stock', inventory=self.tea_stock.pk, kind='waste', amount='5000')  # more than there is
+        self.act(what='stock', inventory=self.tea_stock.pk, kind='steal', amount='5')
+        self.assertFalse(StockMovement.objects.filter(inventory=self.tea_stock).exists())
+
+    def test_order_changes_follow_the_allowed_moves_and_are_in_the_history(self):
+        order = self.place()
+        self.act(what='collect', order=order.pk)  # not paid yet: refused
+        self.act(what='mark_paid', order=order.pk)
+        self.act(what='cancel', order=order.pk)  # paid: refused
+        self.act(what='collect', order=order.pk)
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.COLLECTED)
+        self.assertIsNotNone(order.collected_at)
+        self.assertEqual(list(OrderEvent.objects.filter(order=order).values_list('to_status', 'actor')),
+                         [('PENDING', 'customer'), ('PAID', 'staff:boss'), ('COLLECTED', 'staff:boss')])
+        other = self.place()
+        self.act(what='cancel', order=other.pk)
+        other.refresh_from_db()
+        self.assertEqual(other.status, Order.Status.CANCELLED)
+        self.assertEqual(other.events.last().reason, "Cancelled from the dashboard.")
+
+    def test_mark_refunded(self):
+        order = self.place()
+        attempt = PaymentAttempt.objects.create(order=order, method='paynow', amount=order.revenue,
+                                                expires_at=timezone.now(), status=PaymentAttempt.Status.REFUND_NEEDED)
+        self.act(what='refunded', attempt=attempt.pk)
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.status, PaymentAttempt.Status.REFUNDED)
+
+    def test_needs_the_permission_for_each_change(self):
+        clerk = get_user_model().objects.create_user('clerk', password='pw', is_staff=True)
+        clerk.user_permissions.add(Permission.objects.get(codename='change_inventory'))
+        self.web.login(username='clerk', password='pw')
+        order = self.place()
+        self.assertEqual(self.act(what='cancel', order=order.pk).status_code, 403)
+        self.assertEqual(self.act(what='stock', inventory=self.tea_stock.pk, kind='restock', amount='1').status_code, 302)
+        page = self.web.get('/admin/dashboard/')
+        self.assertTrue(page.context['can']['stock'])
+        self.assertFalse(page.context['can']['orders'])
+        self.assertNotContains(page, 'Menu and prices')
+        self.assertEqual(self.web.get('/admin/dashboard/act/').status_code, 405)
+
+    def test_counting_stock_in_the_admin_is_logged(self):
+        self.web.post(f'/admin/operation/inventory/{self.tea_stock.pk}/change/', {
+            'shop': self.shop.pk, 'ingredient': self.tea.pk, 'current_stock': '900'})
+        self.tea_stock.refresh_from_db()
+        self.assertEqual(self.tea_stock.current_stock, Decimal('900'))
+        move = StockMovement.objects.get(inventory=self.tea_stock)
+        self.assertEqual((move.reason, move.change, move.created_by.username), ('ADJUST', Decimal('-100'), 'boss'))

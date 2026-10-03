@@ -28,24 +28,39 @@
     <noscript><button type="submit">Show</button></noscript>
   </form>
 
+  <nav class="dash-manage" aria-label="Add or change">
+    <span class="dash-manage-label">Add or change</span>
+    {% if can.add_drink %}<a href="{% url 'admin:operation_drink_add' %}">Add a drink</a>{% endif %}
+    {% if can.drinks %}<a href="{% url 'admin:operation_drink_changelist' %}">Menu and prices</a>{% endif %}
+    {% if can.ingredients %}<a href="{% url 'admin:operation_ingredient_changelist' %}">Ingredients</a>{% endif %}
+    {% if can.stock %}<a href="#stock-h">Stock</a>{% endif %}
+    {% if can.designer %}<a href="{% url 'admin:operation_designerconfig_changelist' %}">Drink designer settings</a>{% endif %}
+    {% if can.kiosks %}<a href="{% url 'admin:operation_kiosk_changelist' %}">Kiosks</a>{% endif %}
+    {% if can.shops %}<a href="{% url 'admin:operation_shop_changelist' %}">Shops</a>{% endif %}
+    {% if can.orders %}<a href="{% url 'admin:ordering_order_changelist' %}">Orders</a>{% endif %}
+  </nav>
+
   {% with a=n.attention %}
   {% if a.refunds or a.pending or a.uncollected or a.kiosks %}
   <section class="dash-card dash-attention" aria-labelledby="attention-h">
     <h2 id="attention-h">Needs attention</h2>
     <ul>
       {% for r in a.refunds %}
-      <li><span class="dash-status critical">Refund</span> <a href="{% url 'admin:ordering_order_change' r.order.pk %}">Order {{ r.order.pk }}</a> at {{ r.order.shop }} was paid {{ r.amount }} by {{ r.method }} after it was cancelled and needs refunding{% if r.note %} ({{ r.note }}){% endif %}.</li>
+      <li><span class="dash-status critical">Refund</span> <a href="{% url 'admin:ordering_order_change' r.order.pk %}">Order {{ r.order.pk }}</a> at {{ r.order.shop }} was paid {{ r.amount }} by {{ r.method }} after it was cancelled and needs refunding{% if r.note %} ({{ r.note }}){% endif %}.
+        {% if can.refunds %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="attempt" value="{{ r.attempt.pk }}"><button name="what" value="refunded" data-confirm="Only do this after you've sent the money back. Mark the payment for order {{ r.order.pk }} as refunded?">I've refunded it</button></form>{% endif %}</li>
       {% endfor %}
       {% for k in a.kiosks %}{% if k.locked %}
-      <li><span class="dash-status critical">Locked</span> {{ k.kiosk }}: {{ k.lock_reason|default:"food-safety lock is on" }}.</li>
+      <li><span class="dash-status critical">Locked</span> {{ k.kiosk }}: {{ k.lock_reason|default:"food-safety lock is on" }}.{% if can.kiosks %} <a href="{% url 'admin:operation_kiosk_change' k.kiosk.pk %}">Check and unlock</a>{% endif %}</li>
       {% else %}
       <li><span class="dash-status serious">Silent</span> {{ k.kiosk }} last checked in {{ k.last_heartbeat|timesince }} ago.</li>
       {% endif %}{% endfor %}
       {% for p in a.pending %}
-      <li><span class="dash-status warning">Unpaid</span> <a href="{% url 'admin:ordering_order_change' p.order.pk %}">Order {{ p.order.pk }}</a> at {{ p.order.shop }} has waited for payment for {{ p.since|timesince }}; its stock is still held.</li>
+      <li><span class="dash-status warning">Unpaid</span> <a href="{% url 'admin:ordering_order_change' p.order.pk %}">Order {{ p.order.pk }}</a> at {{ p.order.shop }} has waited for payment for {{ p.since|timesince }}; its stock is still held.
+        {% if can.orders %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="order" value="{{ p.order.pk }}"><button name="what" value="mark_paid" data-confirm="Mark order {{ p.order.pk }} as paid? Only if you've checked the money arrived.">Mark paid</button><button name="what" value="cancel" data-confirm="Cancel order {{ p.order.pk }} and return its stock?">Cancel and return stock</button></form>{% endif %}</li>
       {% endfor %}
       {% for u in a.uncollected %}
-      <li><span class="dash-status warning">Not collected</span> <a href="{% url 'admin:ordering_order_change' u.order.pk %}">Order {{ u.order.pk }}</a> at {{ u.order.shop }} was paid {{ u.since|timesince }} ago and hasn't been picked up.</li>
+      <li><span class="dash-status warning">Not collected</span> <a href="{% url 'admin:ordering_order_change' u.order.pk %}">Order {{ u.order.pk }}</a> at {{ u.order.shop }} was paid {{ u.since|timesince }} ago and hasn't been picked up.
+        {% if can.orders %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="order" value="{{ u.order.pk }}"><button name="what" value="collect" data-confirm="Mark order {{ u.order.pk }} as handed over to the customer?">Mark collected</button></form>{% endif %}</li>
       {% endfor %}
     </ul>
   </section>
@@ -54,7 +69,7 @@
 
   {% with t=n.tiles %}
   <section class="dash-tiles" aria-label="Totals">
-    <div class="dash-tile"><span class="label">Revenue</span><span class="value">${{ t.revenue|floatformat:"2g" }}</span><span class="note">from {{ t.sold }} paid order{{ t.sold|pluralize }}</span></div>
+    <div class="dash-tile"><span class="label">Revenue</span><span class="value" title="${{ t.revenue|floatformat:"2g" }}">${{ t.revenue|floatformat:"0g" }}</span><span class="note">from {{ t.sold }} paid order{{ t.sold|pluralize }}</span></div>
     <div class="dash-tile"><span class="label">Cups sold</span><span class="value">{{ t.cups }}</span><span class="note">{% if t.average %}${{ t.average }} per order{% else %}no paid orders{% endif %}</span></div>
     <div class="dash-tile"><span class="label">Orders placed</span><span class="value">{{ t.placed }}</span><span class="note">{% if t.cancel_rate is not None %}{{ t.cancel_rate }}% cancelled{% else %}none yet{% endif %}</span></div>
     <div class="dash-tile"><span class="label">Time to pay</span><span class="value">{% if t.minutes_to_pay is not None %}{{ t.minutes_to_pay }} min{% else %}–{% endif %}</span><span class="note">median, order placed to paid</span></div>
@@ -92,7 +107,7 @@
       <div class="dash-chart" data-chart="drinks"></div>
       <details><summary>Table</summary>
         <table><thead><tr><th>Drink</th><th>Cups</th></tr></thead><tbody>
-        {% for d in n.drinks %}<tr><td>{{ d.name }}</td><td>{{ d.cups }}</td></tr>{% empty %}<tr><td colspan="2">No paid orders.</td></tr>{% endfor %}
+        {% for d in n.drinks %}<tr><td>{% if d.drink and can.drinks %}<a href="{% url 'admin:operation_drink_change' d.drink %}">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}</td><td>{{ d.cups }}</td></tr>{% empty %}<tr><td colspan="2">No paid orders.</td></tr>{% endfor %}
         </tbody></table>
       </details>
     </section>
@@ -133,11 +148,11 @@
 
   <section class="dash-card" aria-labelledby="stock-h">
     <h2 id="stock-h">Stock</h2>
-    <p class="dash-hint">The {{ stock_charted }} ingredients that will run out first, at the rate orders used them over the period. All stock is in the table.</p>
+    <p class="dash-hint">The {{ stock_charted }} ingredients that will run out first, at the rate orders used them over the period. All stock is in the table{% if can.stock %}, where you can restock, write off waste or set a count; every change is logged as a stock movement under your name{% endif %}.</p>
     <div class="dash-chart" data-chart="stock"></div>
-    <details{% if not charts.stock %} open{% endif %}><summary>All stock</summary>
-      <table><thead><tr>{% if not shop %}<th>Shop</th>{% endif %}<th>Ingredient</th><th>In stock</th><th>Reorder at</th><th>Used per day</th><th>Days left</th></tr></thead><tbody>
-      {% for s in n.stock %}<tr>{% if not shop %}<td>{{ s.shop }}</td>{% endif %}<td>{{ s.ingredient }}{% if s.low %} <span class="dash-status warning">Reorder</span>{% endif %}</td><td>{{ s.stock|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.reorder_at|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.per_day|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.days_left|default_if_none:"–" }}</td></tr>{% empty %}<tr><td colspan="6">No stock recorded.</td></tr>{% endfor %}
+    <details{% if not charts.stock %} open{% endif %}><summary>All stock{% if can.stock %}: restock, write off or count{% endif %}</summary>
+      <table><thead><tr>{% if not shop %}<th>Shop</th>{% endif %}<th>Ingredient</th><th>In stock</th><th>Reorder at</th><th>Used per day</th><th>Days left</th>{% if can.stock %}<th>Change</th>{% endif %}</tr></thead><tbody>
+      {% for s in n.stock %}<tr>{% if not shop %}<td>{{ s.shop }}</td>{% endif %}<td>{% if can.stock %}<a href="{% url 'admin:operation_inventory_change' s.inventory.pk %}" title="Edit safe temperatures and more">{{ s.ingredient }}</a>{% else %}{{ s.ingredient }}{% endif %}{% if s.low %} <span class="dash-status warning">Reorder</span>{% endif %}</td><td>{{ s.stock|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.reorder_at|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.per_day|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.days_left|default_if_none:"–" }}</td>{% if can.stock %}<td><form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="what" value="stock"><input type="hidden" name="inventory" value="{{ s.inventory.pk }}"><select name="kind" aria-label="Change to {{ s.ingredient }}"><option value="restock">Add (restock)</option><option value="waste">Remove (waste)</option><option value="count">Set count to</option></select><input type="number" name="amount" min="0" step="any" required aria-label="Amount in {{ s.unit }}" placeholder="{{ s.unit }}"><button type="submit">Save</button></form></td>{% endif %}</tr>{% empty %}<tr><td colspan="7">No stock recorded.</td></tr>{% endfor %}
       </tbody></table>
     </details>
   </section>

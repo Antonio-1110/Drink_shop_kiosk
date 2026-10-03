@@ -6,6 +6,15 @@ from operation.models import Shop
 from . import data
 
 STOCK_CHARTED = 12  # the rest are in the table under the chart
+# what the signed-in staff member may change, so the page only offers what will work
+CAN = {
+    'orders': 'ordering.change_order',
+    'refunds': 'checkout.change_paymentattempt',
+    'stock': 'operation.change_inventory',
+    'add_drink': 'operation.add_drink', 'drinks': 'operation.change_drink',
+    'ingredients': 'operation.change_ingredient', 'kiosks': 'operation.change_kiosk',
+    'designer': 'operation.change_designerconfig', 'shops': 'operation.change_shop',
+}
 
 
 def dashboard(request):
@@ -18,7 +27,7 @@ def dashboard(request):
         'daily': [{'date': row['date'].isoformat(), 'revenue': float(row['revenue']),
                    **{status: row[status] for status in data.S.values}} for row in numbers['daily']],
         'hourly': numbers['hourly'],
-        'drinks': numbers['drinks'],
+        'drinks': [{'name': d['name'], 'cups': d['cups']} for d in numbers['drinks']],
         'grades': numbers['grades'],
         'cancellations': numbers['cancellations'],
         'stock': [{'name': f"{row['ingredient']}" if shop else f"{row['ingredient']} · {row['shop']}",
@@ -33,4 +42,6 @@ def dashboard(request):
         'title': 'Dashboard',
         'shops': shops, 'shop': shop, 'days': days, 'periods': data.PERIODS,
         'n': numbers, 'charts': charts, 'stock_charted': len(charts['stock']),
+        'return_query': '?' + request.GET.urlencode() if request.GET else '',
+        'can': {name: request.user.has_perm(perm) for name, perm in CAN.items()},
     })

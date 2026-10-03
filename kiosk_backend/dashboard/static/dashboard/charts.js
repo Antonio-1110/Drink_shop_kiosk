@@ -277,6 +277,12 @@
   }
 
   function start() {
+    // changes ask first; the submit button's own message says what will happen
+    document.querySelectorAll("form.dash-act").forEach((form) =>
+      form.addEventListener("submit", (e) => {
+        const ask = e.submitter && e.submitter.dataset.confirm;
+        if (ask && !window.confirm(ask)) e.preventDefault();
+      }));
     document.querySelectorAll("[data-autosubmit]").forEach((el) =>
       el.addEventListener("change", () => el.form.requestSubmit()));
     draw();

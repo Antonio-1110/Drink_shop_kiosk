@@ -112,11 +112,12 @@ def _hourly(period, tz):
 
 def _drinks(period):
     items = (OrderItem.objects.filter(order__in=period.filter(status__in=SOLD))
-             .values('drink__name').annotate(cups=Count('id')).order_by('-cups', 'drink__name'))
-    rows = [{'name': row['drink__name'] or 'Custom (drink designer)', 'cups': row['cups']} for row in items]
+             .values('drink', 'drink__name').annotate(cups=Count('id')).order_by('-cups', 'drink__name'))
+    rows = [{'name': row['drink__name'] or 'Custom (drink designer)', 'cups': row['cups'], 'drink': row['drink']}
+            for row in items]
     if len(rows) > TOP_DRINKS:
         rest = sum(row['cups'] for row in rows[TOP_DRINKS - 1:])
-        rows = rows[:TOP_DRINKS - 1] + [{'name': f'{len(rows) - TOP_DRINKS + 1} others', 'cups': rest}]
+        rows = rows[:TOP_DRINKS - 1] + [{'name': f'{len(rows) - TOP_DRINKS + 1} others', 'cups': rest, 'drink': None}]
     return rows
 
 
@@ -151,7 +152,7 @@ def _attention(orders, now):
     uncollected = [o for o in orders.filter(status=S.PAID).select_related('shop').order_by('time')
                    if now - paid_at.get(o.pk, o.time) > STUCK_UNCOLLECTED]
     return {
-        'refunds': [{'order': a.order, 'amount': a.amount, 'method': a.method, 'since': a.updated_at,
+        'refunds': [{'attempt': a, 'order': a.order, 'amount': a.amount, 'method': a.method, 'since': a.updated_at,
                      'note': a.note} for a in refunds],
         'pending': [{'order': o, 'since': o.time} for o in pending],
         'uncollected': [{'order': o, 'since': paid_at.get(o.pk, o.time)} for o in uncollected],
@@ -171,7 +172,7 @@ def _stock(shop, start, days):
     for inv in inventories:
         per_day = max(-(used.get(inv.pk) or Decimal('0')), Decimal('0')) / days
         rows.append({
-            'shop': inv.shop.name, 'ingredient': inv.ingredient.name, 'unit': inv.ingredient.unit_of_measure,
+            'inventory': inv, 'shop': inv.shop.name, 'ingredient': inv.ingredient.name, 'unit': inv.ingredient.unit_of_measure,
             'stock': inv.current_stock, 'reorder_at': inv.ingredient.reorder_threshold,
             'low': inv.needs_reorder(),
             'per_day': per_day.quantize(Decimal('0.1')),
