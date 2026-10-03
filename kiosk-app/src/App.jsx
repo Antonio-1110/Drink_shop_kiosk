@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
+import OrderBar from "./components/OrderBar";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import PaymentPage from "./pages/PaymentPage";
@@ -10,6 +11,23 @@ import { fetchAvailableDrinks } from "./api";
 import { CATEGORIES } from "./menu";
 import IdleProvider from "./IdleProvider";
 import './App.css';
+
+// the order bar shows while browsing, not on the order review, payment or pickup screens
+const BROWSING = ['/', '/designer', ...CATEGORIES.map(({ path }) => `/${path}`)];
+
+function Layout({ cartItems, children }) {
+  const { pathname } = useLocation();
+  const showBar = BROWSING.includes(pathname) && cartItems.length > 0;
+  return (
+    <div className="app-layout">
+      <Sidebar />
+      <main className={`content-area ${showBar ? 'with-order-bar' : ''}`}>
+        {children}
+        {showBar && <OrderBar cartItems={cartItems} />}
+      </main>
+    </div>
+  );
+}
 
 function App() {
   // keeps track of current cart
@@ -26,8 +44,8 @@ function App() {
     return () => { cancelled = true; };
   }, [cartItems]);
 
-  const addToCart = (drink, size) => {
-    setCartItems([...cartItems, { drink, size, sugar: 4, ice: 4 }]);
+  const addToCart = (drink, { size, sugar, ice }) => {
+    setCartItems([...cartItems, { drink, size, sugar, ice }]);
   }
   // a drink built in the designer, already shaped as a cart line (see designToCartItem)
   const addCustomToCart = (item) => setCartItems([...cartItems, item]);
@@ -42,16 +60,16 @@ function App() {
   return (
     <BrowserRouter>
       <IdleProvider hasSession={cartItems.length > 0} onReset={clearCart}>
-      <div className="app-layout">
-        <Sidebar cartCount={cartItems.length} />
-
-        <div className="content-area">
+        <Layout cartItems={cartItems}>
           {loadError && <p className="error-banner">Could not load the menu: {loadError}</p>}
           <Routes>
-            <Route path="/" element={<MenuPage title="All Drinks" drinks={drinks} addToCart={addToCart} />} />
-            {CATEGORIES.map(({ path, label }) => (
+            <Route path="/" element={
+              <MenuPage title="All drinks" subtitle="Made to order, one cup at a time." drinks={drinks} addToCart={addToCart} />
+            } />
+            {CATEGORIES.map(({ path, label, subtitle }) => (
               <Route key={path} path={`/${path}`} element={
-                <MenuPage title={label} drinks={drinks.filter((d) => d.category === label)} addToCart={addToCart} />
+                <MenuPage title={label} subtitle={subtitle}
+                  drinks={drinks.filter((d) => d.category === label)} addToCart={addToCart} />
               } />
             ))}
             <Route path="/designer" element={<DesignerPage addCustomToCart={addCustomToCart} />} />
@@ -61,8 +79,7 @@ function App() {
             <Route path="/collect" element={<CollectPage />} />
             <Route path="/payment/:orderId" element={<PaymentPage clearCart={clearCart} />} />
           </Routes>
-        </div>
-      </div>
+        </Layout>
       </IdleProvider>
     </BrowserRouter>
   );

@@ -77,8 +77,8 @@ function IdleProvider({ hasSession, onReset, children }) {
                         <h2 id="idle-title">Still there?</h2>
                         <p>Your order will be cleared in {promptLeft} seconds.</p>
                         <div className="idle-actions">
-                            <button className="idle-continue" onClick={keepGoing}>Continue</button>
-                            <button className="idle-start-over" onClick={reset}>Start over</button>
+                            <button className="btn btn-primary" onClick={keepGoing}>Continue</button>
+                            <button className="btn btn-ghost" onClick={reset}>Start over</button>
                         </div>
                     </div>
                 </div>

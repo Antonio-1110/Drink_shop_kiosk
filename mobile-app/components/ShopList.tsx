@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import ErrorBanner from '@/components/ErrorBanner';
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { fetchShops } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { Shop } from '@/lib/menu';
@@ -24,7 +24,7 @@ export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void
     <FlatList
       data={shops}
       keyExtractor={(shop) => String(shop.id)}
-      contentContainerStyle={{ padding: 12, gap: 10 }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
       ListHeaderComponent={<Text style={styles.heading}>Where will you pick up?</Text>}
       ListEmptyComponent={<Text style={styles.muted}>No shops are open right now.</Text>}
       renderItem={({ item }) => (
@@ -42,11 +42,14 @@ export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 22, fontWeight: 'bold', color: colors.primary, marginBottom: 4 },
-  shop: { backgroundColor: colors.surface, borderRadius: 10, padding: 14, gap: 4, borderWidth: 2, borderColor: 'transparent' },
-  current: { borderColor: colors.primary },
-  name: { fontSize: 17, fontWeight: '600', color: colors.text },
-  muted: { color: colors.muted },
-  tag: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
-  tagText: { color: colors.primary, fontSize: 12 },
+  heading: { fontFamily: fonts.serif, fontSize: 28, color: colors.text, marginTop: 8, marginBottom: 6 },
+  shop: {
+    backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 4,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  current: { borderColor: colors.primary, boxShadow: `inset 0 0 0 1px ${colors.primary}` },
+  name: { fontFamily: fonts.serif, fontSize: 19, color: colors.text },
+  muted: { fontFamily: fonts.sans, color: colors.muted },
+  tag: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
+  tagText: { fontFamily: fonts.sansMedium, color: colors.primary, fontSize: 12 },
 });

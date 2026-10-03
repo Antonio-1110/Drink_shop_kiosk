@@ -102,7 +102,7 @@ function DesignerPage({ addCustomToCart }) {
     useScannedCode((text) => options && loadCode(options, text));
 
     if (loadError) return <p className="error-banner">Could not load the drink designer: {loadError}</p>;
-    if (!options) return <p>Loading…</p>;
+    if (!options) return <p className="empty-note">Loading…</p>;
 
     const lines = recipe(options, design);
     const nutrition = designNutrition(options, design);
@@ -115,14 +115,17 @@ function DesignerPage({ addCustomToCart }) {
     return (
         <div className="designer-page">
             <div className="designer-options">
-                <h1>Design your own drink</h1>
+                <header className="page-header">
+                    <h1>Design your own</h1>
+                    <p>Pick a tea, milk and toppings. The amounts adjust to your mix.</p>
+                </header>
 
                 <form className="code-box" onSubmit={(e) => { e.preventDefault(); loadCode(options, codeText); }}>
-                    <span>Designed a drink in the app? Scan its QR code at the reader, or type the code:</span>
+                    <span>Designed one in the app? Scan its QR code at the reader, or type the code.</span>
                     <input value={codeText} onChange={(e) => setCodeText(e.target.value)} placeholder="DD1:…" />
-                    <button type="submit" disabled={!codeText.trim()}>Load</button>
+                    <button type="submit" className="btn btn-ghost" disabled={!codeText.trim()}>Load</button>
                 </form>
-                {codeMessage && <p className={codeMessage.ok ? 'code-ok' : 'error-banner'}>{codeMessage.text}</p>}
+                {codeMessage && <p className={codeMessage.ok ? 'notice-ok' : 'error-banner'}>{codeMessage.text}</p>}
 
                 <div className="designer-group">
                     <h2>Cup size</h2>
@@ -182,11 +185,11 @@ function DesignerPage({ addCustomToCart }) {
                         {nutrition.sugar.toFixed(1)} g sugar, {nutrition.satFat.toFixed(1)} g sat. fat per 100 mL
                     </span>
                 </div>
-                <div className="designer-total">${designPrice(options, design).toFixed(2)}</div>
-                <button className="action-btn pay-btn" disabled={Boolean(missing)} onClick={add}>
-                    {missing ?? 'Add to cart'}
+                <div className="designer-total price">${designPrice(options, design).toFixed(2)}</div>
+                <button className="btn btn-primary btn-block" disabled={Boolean(missing)} onClick={add}>
+                    {missing ?? 'Add to order'}
                 </button>
-                <button className="link-btn" onClick={() => { setDesign(newDesign(options)); setCodeMessage(null); }}>
+                <button className="btn-text" onClick={() => { setDesign(newDesign(options)); setCodeMessage(null); }}>
                     Start over
                 </button>
             </aside>
