@@ -7,4 +7,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         count = expire_unpaid_orders()
-        self.stdout.write(f"Cancelled {count} unpaid order(s).")
+        # run_jobs runs this every minute with verbosity 0, so only say something when it did something
+        if count or options['verbosity']:
+            self.stdout.write(f"Cancelled {count} unpaid order(s).")

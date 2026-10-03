@@ -172,6 +172,29 @@ PAYMENT_START_GRACE_MINUTES = int(os.environ.get('PAYMENT_START_GRACE_MINUTES', 
 # an order never holds stock longer than this, however many payments it starts
 ORDER_MAX_HOLD_MINUTES = int(os.environ.get('ORDER_MAX_HOLD_MINUTES', '30'))
 
+# Until a drink machine reports its progress (POST /ordering/orders/<id>/progress/), a paid order
+# can't become READY, so it can't be collected. With this on, collecting a paid order "makes" it
+# at once (recorded as made by the simulator). On by default in development only.
+MACHINE_SIMULATOR = os.environ.get('MACHINE_SIMULATOR', '1' if DEBUG else '').lower() in ('1', 'true', 'yes')
+
+# Background jobs (`manage.py run_jobs`): cancel unpaid orders whose time ran out every
+# EXPIRE_ORDERS_EVERY_SECONDS, and check orders, stock and payments add up once a day at
+# CHECK_ORDERS_AT (HH:MM in TIME_ZONE).
+EXPIRE_ORDERS_EVERY_SECONDS = int(os.environ.get('EXPIRE_ORDERS_EVERY_SECONDS', '60'))
+CHECK_ORDERS_AT = os.environ.get('CHECK_ORDERS_AT', '04:00')
+# who is emailed when the daily check finds a problem, comma-separated
+STAFF_ALERT_EMAILS = [e.strip() for e in os.environ.get('STAFF_ALERT_EMAILS', '').split(',') if e.strip()]
+
+# Outgoing email. Development prints emails to the console instead of sending them.
+if DEBUG and not os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '1').lower() in ('1', 'true', 'yes')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'kiosk@localhost')
+
 REST_FRAMEWORK = {
     # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
@@ -197,6 +220,9 @@ SPECTACULAR_SETTINGS = {
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     # separate request and response shapes, so read-only fields like an order's id aren't asked for
     'COMPONENT_SPLIT_REQUEST': True,
-    # sugar and ice share the same 0-4 level choices
-    'ENUM_NAME_OVERRIDES': {'LevelEnum': 'ordering.models.OrderItem.Level'},
+    # sugar and ice share the same 0-4 level choices; order statuses and the steps a machine reports
+    # are both called status
+    'ENUM_NAME_OVERRIDES': {'LevelEnum': 'ordering.models.OrderItem.Level',
+                            'OrderStatusEnum': 'ordering.models.Order.Status',
+                            'MachineStepEnum': ['PREPARING', 'READY', 'FAILED']},
 }
