@@ -81,7 +81,7 @@ function CollectPage() {
                     </div>
                     <h1>{result.title}</h1>
                     <p>{result.text}</p>
-                    <button className="collect-done" onClick={() => setResult(null)}>Done</button>
+                    <button className="btn btn-primary collect-done" onClick={() => setResult(null)}>Done</button>
                 </div>
             </div>
         );

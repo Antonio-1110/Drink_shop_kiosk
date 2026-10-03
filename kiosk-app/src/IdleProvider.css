@@ -5,47 +5,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(43, 35, 32, 0.45);
+  animation: fade-in 0.18s ease-out;
 }
 
 .idle-dialog {
-  background: white;
-  color: #333;
-  border-radius: 16px;
-  padding: 40px 48px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 28px;
+  padding: 48px 56px;
   text-align: center;
-  max-width: 480px;
+  max-width: 520px;
+  box-shadow: 0 24px 64px rgba(43, 35, 32, 0.22);
 }
 
 .idle-dialog h2 {
-  margin-top: 0;
-  font-size: 32px;
+  font-size: 40px;
 }
 
 .idle-dialog p {
-  font-size: 20px;
+  font-size: 19px;
+  color: var(--muted);
 }
 
 .idle-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   justify-content: center;
-  margin-top: 16px;
-}
-
-.idle-continue,
-.idle-start-over {
-  padding: 18px 36px;
-  font-size: 20px;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  background-color: #1e3a8a;
-  color: white;
-  cursor: pointer;
-}
-
-.idle-start-over {
-  background-color: #cbd5e1;
-  color: #333;
+  margin-top: 24px;
 }

@@ -10,12 +10,15 @@ export const LEVELS = [
 
 // matches Drink.Category on the backend, which the API returns as its label
 export const CATEGORIES = [
-    { path: 'milktea', label: 'Milk Tea' },
-    { path: 'fruittea', label: 'Fruit Tea' },
-    { path: 'smoothie', label: 'Smoothie' },
-    { path: 'coffee', label: 'Coffee' },
-    { path: 'others', label: 'Others' },
+    { path: 'milktea', label: 'Milk Tea', subtitle: 'Freshly brewed tea with milk.' },
+    { path: 'fruittea', label: 'Fruit Tea', subtitle: 'Light, bright teas with fruit.' },
+    { path: 'smoothie', label: 'Smoothie', subtitle: 'Blended with fruit and ice.' },
+    { path: 'coffee', label: 'Coffee', subtitle: 'Espresso-based drinks.' },
+    { path: 'others', label: 'Others', subtitle: 'Plain teas and more.' },
 ];
 
 export const itemPrice = (item) => item.custom ? item.custom.price :
     Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
+
+// the name in the corner of the kiosk until the shop has a logo
+export const BRAND_NAME = import.meta.env.VITE_BRAND_NAME ?? 'Tea House';

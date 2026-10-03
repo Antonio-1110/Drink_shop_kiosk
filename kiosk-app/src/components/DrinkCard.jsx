@@ -1,21 +1,22 @@
 import React from 'react';
-import { SIZE } from '../menu';
+import DrinkArt from './DrinkArt';
 import './DrinkCard.css';
 
-function DrinkCard({ drink, onAdd }) {
+// One drink on the menu. Tapping it opens the drink's options (see DrinkSheet).
+function DrinkCard({ drink, onSelect }) {
+    const from = Math.min(Number(drink.s_price), Number(drink.l_price));
     return (
-        <div className="card">
-            <div className="card-image">
-                {drink.image_url ? <img src={drink.image_url} alt={drink.name} /> : <span>PIC</span>}
-            </div>
-            <div className="card-info">
+        <button className="drink-card" onClick={() => onSelect(drink)}>
+            <DrinkArt drink={drink} />
+            <div className="drink-card-info">
                 <h3>{drink.name}</h3>
-                <div className="size-buttons">
-                    <button onClick={() => onAdd(drink, SIZE.SMALL)}>S ${Number(drink.s_price).toFixed(2)}</button>
-                    <button onClick={() => onAdd(drink, SIZE.LARGE)}>L ${Number(drink.l_price).toFixed(2)}</button>
+                {drink.description && <p>{drink.description}</p>}
+                <div className="drink-card-foot">
+                    <span className="price">${from.toFixed(2)}</span>
+                    <span className="drink-card-add" aria-hidden="true">+</span>
                 </div>
             </div>
-        </div>
+        </button>
     );
 }
 
