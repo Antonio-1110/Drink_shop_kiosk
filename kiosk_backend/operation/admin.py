@@ -31,6 +31,20 @@ class InventoryAdmin(admin.ModelAdmin):
     list_editable = ('current_stock',)
     list_filter = ('shop',)
 
+    def save_model(self, request, obj, form, change):
+        # a stock edit here is a stock count: log it as a movement like every other stock change,
+        # measured against the stock right now (orders may have used some since the page opened)
+        if not (change and 'current_stock' in form.changed_data):
+            return super().save_model(request, obj, form, change)
+        counted = obj.current_stock
+        others = [name for name in form.changed_data if name != 'current_stock']
+        if others:
+            obj.save(update_fields=others)
+        obj.refresh_from_db(fields=['current_stock'])
+        if counted != obj.current_stock:
+            obj.adjust_stock(counted - obj.current_stock, StockMovement.Reason.ADJUSTMENT,
+                             note="Counted in the admin.", user=request.user)
+
 @admin.register(Kiosk)
 class KioskAdmin(admin.ModelAdmin):
     list_display = ('machine_id', 'shop', 'operational_status', 'sfa_locked', 'last_heartbeat')
