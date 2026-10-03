@@ -4,8 +4,8 @@ Customer pre-ordering app built with Expo (React Native). It follows the kiosk U
 `kiosk-app`: same menu categories, S/L sizes, sugar and ice levels and
 PayNow checkout, and it calls the same Django endpoints.
 
-Flow: pick the shop you'll collect from → browse the menu → add drinks → set sugar/ice in
-the cart → place the order → pay with the PayNow QR → collect at the machine by scanning a
+Flow: pick the shop you'll collect from → browse the menu → tap a drink to choose size, sugar
+and ice → review the order → place it → pay with the PayNow QR → collect at the machine by scanning a
 pickup QR or keying in a PIN.
 
 The pickup QR and PIN come from the `pickup_qr` and `pickup_pin` fields of the
@@ -44,6 +44,6 @@ npm run typecheck
 
 - `app/` screens (Expo Router): `(tabs)/index.tsx` menu, `(tabs)/cart.tsx` cart,
   `shops.tsx` shop picker, `payment/[orderId].tsx` PayNow
-- `components/` drink card, sugar/ice picker, shop list
+- `components/` drink row and drawn cup, drink options sheet, order bar, shop list
 - `lib/` API calls, cart state, menu constants shared with the kiosk
 - `constants/theme.ts` colour theme (tea green, milk cream, brown-sugar amber)

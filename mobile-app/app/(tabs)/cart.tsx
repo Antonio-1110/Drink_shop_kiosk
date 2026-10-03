@@ -2,17 +2,21 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import DrinkArt from '@/components/DrinkArt';
+import DrinkSheet from '@/components/DrinkSheet';
 import ErrorBanner from '@/components/ErrorBanner';
-import LevelPicker from '@/components/LevelPicker';
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { ApiError, placeOrder } from '@/lib/api';
 import { useCart } from '@/lib/cart';
-import { formatPrice, itemPrice, SIZE } from '@/lib/menu';
+import { formatPrice, itemPrice, LEVELS, SIZE } from '@/lib/menu';
+
+const levelLabel = (value: number) => LEVELS.find((level) => level.value === value)?.label;
 
 export default function CartScreen() {
   const { shop, cartItems, updateCartItem, removeFromCart, setLastOrder } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null); // the line whose options are open
   const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
   const blocked = cartItems.length === 0 || submitting;
 
@@ -41,27 +45,49 @@ export default function CartScreen() {
     }
   };
 
+  if (cartItems.length === 0) {
+    return (
+      <View style={[styles.screen, styles.emptyScreen]}>
+        <Text style={styles.emptyTitle}>Your order is empty</Text>
+        <Text style={styles.muted}>Pick a drink from the menu to get started.</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.navigate('/')} style={styles.payButton}>
+          <Text style={styles.payText}>Browse the menu</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <FlatList
         data={cartItems}
         keyExtractor={(_, index) => String(index)}
-        contentContainerStyle={{ padding: 12, gap: 10 }}
-        ListEmptyComponent={<Text style={styles.empty}>Your cart is empty.</Text>}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={shop ? <Text style={styles.pickup}>Pick up at {shop.name}</Text> : null}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item, index }) => (
           <View style={styles.item}>
-            <View style={styles.itemHeader}>
-              <Text style={styles.itemName}>
-                {item.custom && <Text style={styles.customTag}>Designed </Text>}
-                {item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})
+            <DrinkArt drink={item.drink} size={64} rounded={12} />
+            <View style={styles.itemMain}>
+              <View style={styles.itemHeader}>
+                <Text style={styles.itemName} numberOfLines={2}>{item.drink.name}</Text>
+                <Text style={styles.itemPrice}>{formatPrice(itemPrice(item))}</Text>
+              </View>
+              {item.custom && <Text style={styles.customTag}>DESIGNED</Text>}
+              <Text style={styles.itemDetail}>
+                {item.size === SIZE.LARGE ? 'Large' : 'Regular'} · Sugar {levelLabel(item.sugar)} · Ice {levelLabel(item.ice)}
               </Text>
-              <Text style={styles.itemPrice}>{formatPrice(itemPrice(item))}</Text>
+              <View style={styles.itemActions}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.drink.name}`}
+                  onPress={() => setEditing(index)} hitSlop={8}>
+                  <Text style={styles.link}>Edit</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${item.drink.name}`}
+                  onPress={() => removeFromCart(index)} hitSlop={8}>
+                  <Text style={styles.link}>Remove</Text>
+                </Pressable>
+              </View>
             </View>
-            <LevelPicker label="Sugar" value={item.sugar} onChange={(sugar) => updateCartItem(index, { sugar })} />
-            <LevelPicker label="Ice" value={item.ice} onChange={(ice) => updateCartItem(index, { ice })} />
-            <Pressable accessibilityRole="button" onPress={() => removeFromCart(index)} style={styles.remove}>
-              <Text style={styles.removeText}>Remove</Text>
-            </Pressable>
           </View>
         )}
       />
@@ -70,7 +96,7 @@ export default function CartScreen() {
 
       <View style={styles.footer}>
         <View>
-          <Text style={styles.muted}>Total</Text>
+          <Text style={styles.footerLabel}>{cartItems.length} {cartItems.length === 1 ? 'drink' : 'drinks'}</Text>
           <Text style={styles.total}>{formatPrice(total)}</Text>
         </View>
         <Pressable
@@ -78,34 +104,49 @@ export default function CartScreen() {
           onPress={checkout}
           disabled={blocked}
           style={[styles.payButton, blocked && { opacity: 0.5 }]}>
-          <Text style={styles.payText}>{submitting ? 'Placing order...' : 'Place order →'}</Text>
+          <Text style={styles.payText}>{submitting ? 'Placing order…' : 'Place order'}</Text>
         </Pressable>
       </View>
+
+      <DrinkSheet
+        item={editing === null ? null : cartItems[editing] ?? null}
+        confirmLabel="Save changes"
+        onConfirm={(choice) => { if (editing !== null) updateCartItem(editing, choice); setEditing(null); }}
+        onClose={() => setEditing(null)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  empty: { textAlign: 'center', color: colors.muted, marginTop: 40 },
-  item: { backgroundColor: colors.surface, borderRadius: 10, padding: 12, gap: 8 },
+  emptyScreen: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  emptyTitle: { fontFamily: fonts.serif, fontSize: 26, color: colors.text },
+  list: { paddingVertical: 8 },
+  pickup: { fontFamily: fonts.sans, color: colors.muted, paddingHorizontal: 16, paddingBottom: 8 },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 94 },
+  item: { flexDirection: 'row', gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
+  itemMain: { flex: 1, gap: 3 },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  itemName: { fontSize: 16, fontWeight: '600', color: colors.text, flexShrink: 1 },
-  customTag: { color: colors.primary, fontWeight: 'bold' },
-  itemPrice: { fontSize: 16, fontWeight: '600', color: colors.accent },
-  remove: { alignSelf: 'flex-end', backgroundColor: colors.errorBg, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
-  removeText: { color: colors.errorText },
+  itemName: { fontFamily: fonts.serif, fontSize: 17, color: colors.text, flexShrink: 1 },
+  itemPrice: { fontFamily: fonts.sansBold, fontSize: 15, color: colors.text },
+  customTag: { fontFamily: fonts.sansBold, fontSize: 10, letterSpacing: 1, color: colors.primary },
+  itemDetail: { fontFamily: fonts.sans, fontSize: 13, color: colors.muted },
+  itemActions: { flexDirection: 'row', gap: 20, marginTop: 6 },
+  link: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.primary },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
-    borderTopWidth: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
-  muted: { color: colors.muted },
-  total: { fontSize: 22, fontWeight: 'bold', color: colors.text },
-  payButton: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22 },
-  payText: { color: colors.surface, fontWeight: 'bold', fontSize: 16 },
+  muted: { fontFamily: fonts.sans, color: colors.muted, textAlign: 'center' },
+  footerLabel: { fontFamily: fonts.sans, color: colors.muted },
+  total: { fontFamily: fonts.serif, fontSize: 26, color: colors.text },
+  payButton: { backgroundColor: colors.primary, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 28 },
+  payText: { fontFamily: fonts.sansBold, color: colors.surface, fontSize: 16 },
 });

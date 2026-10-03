@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 
 import ErrorBanner from '@/components/ErrorBanner';
 import PickupCode from '@/components/PickupCode';
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { cancelOrder, fetchOrderStatus, fetchPaynowQr, isPaid, PaynowQr } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { formatPrice } from '@/lib/menu';
@@ -78,7 +78,7 @@ export default function PaymentScreen() {
             {qr && !paid && (
               <>
                 <Image source={{ uri: qr.qr_code }} style={styles.qr} accessibilityLabel="PayNow QR code" />
-                <Text style={styles.amount}>Amount: {formatPrice(qr.amount)}</Text>
+                <Text style={styles.amount}>{formatPrice(qr.amount)}</Text>
                 <Text style={styles.muted}>Reference: {qr.reference}</Text>
                 {qr.expires_at && (
                   <Text style={styles.deadline}>
@@ -115,32 +115,32 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', padding: 16, gap: 6 },
-  orderLabel: { color: colors.muted, marginTop: 6 },
-  orderNumber: { fontSize: 40, fontWeight: 'bold', color: colors.primary },
-  muted: { color: colors.muted, textAlign: 'center' },
+  container: { alignItems: 'center', padding: 16, paddingBottom: 32, gap: 6 },
+  orderLabel: { fontFamily: fonts.sansBold, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.muted, marginTop: 6 },
+  orderNumber: { fontFamily: fonts.serif, fontSize: 52, color: colors.primary },
+  muted: { fontFamily: fonts.sans, color: colors.muted, textAlign: 'center' },
   step: {
     alignSelf: 'stretch',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    padding: 20,
     marginTop: 14,
     gap: 6,
   },
   stepHeader: { alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  stepTitle: { alignSelf: 'flex-start', fontSize: 17, fontWeight: 'bold', color: colors.text },
-  paidBadge: { backgroundColor: colors.primary, color: colors.surface, fontWeight: 'bold', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden' },
+  stepTitle: { alignSelf: 'flex-start', fontFamily: fonts.serif, fontSize: 20, color: colors.text },
+  paidBadge: { backgroundColor: colors.primary, color: colors.surface, fontFamily: fonts.sansBold, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden' },
   qr: { width: 220, height: 220, marginVertical: 8 },
-  amount: { fontSize: 20, fontWeight: 'bold', color: colors.accent },
-  deadline: { color: colors.errorText, fontWeight: '600', textAlign: 'center' },
-  hint: { textAlign: 'center', color: colors.text, backgroundColor: colors.primarySoft, borderRadius: 8, padding: 12, marginTop: 8 },
-  cancelled: { textAlign: 'center', color: colors.errorText, backgroundColor: colors.errorBg, borderRadius: 8, padding: 14, marginTop: 14, alignSelf: 'stretch' },
-  collected: { textAlign: 'center', color: colors.primary, fontWeight: 'bold', fontSize: 18, backgroundColor: colors.primarySoft, borderRadius: 8, padding: 16, marginTop: 14, alignSelf: 'stretch' },
+  amount: { fontFamily: fonts.serif, fontSize: 30, color: colors.text },
+  deadline: { fontFamily: fonts.sansMedium, color: colors.text, textAlign: 'center', backgroundColor: colors.header, borderRadius: 14, paddingVertical: 4, paddingHorizontal: 12, overflow: 'hidden' },
+  hint: { fontFamily: fonts.sans, textAlign: 'center', color: colors.muted, lineHeight: 20, marginTop: 8 },
+  cancelled: { fontFamily: fonts.sans, textAlign: 'center', color: colors.errorText, backgroundColor: colors.errorBg, borderRadius: 16, padding: 16, marginTop: 14, alignSelf: 'stretch' },
+  collected: { textAlign: 'center', color: colors.primary, fontFamily: fonts.serif, fontSize: 20, backgroundColor: colors.primarySoft, borderRadius: 16, padding: 16, marginTop: 14, alignSelf: 'stretch' },
   cancelButton: { marginTop: 14, paddingVertical: 10, paddingHorizontal: 18 },
-  cancelText: { color: colors.errorText, fontWeight: '600', textDecorationLine: 'underline' },
-  newOrder: { backgroundColor: colors.secondary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 22, marginTop: 20 },
-  newOrderText: { color: colors.text, fontWeight: 'bold' },
+  cancelText: { fontFamily: fonts.sansMedium, color: colors.muted, textDecorationLine: 'underline' },
+  newOrder: { borderWidth: 1, borderColor: colors.border, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 28, marginTop: 20 },
+  newOrderText: { fontFamily: fonts.sansBold, color: colors.text },
 });

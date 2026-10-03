@@ -1,7 +1,9 @@
+import { Fraunces_500Medium, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, useFonts } from '@expo-google-fonts/inter';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { CartProvider } from '@/lib/cart';
 
 export {
@@ -21,11 +23,18 @@ const theme = {
 };
 
 export default function RootLayout() {
+  // the system fonts stand in until these load, so nothing waits on them
+  useFonts({ Fraunces_500Medium, Fraunces_600SemiBold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold });
   return (
     <CartProvider>
       <ThemeProvider value={theme}>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerStyle: { backgroundColor: colors.header }, headerTintColor: colors.primary }}>
+        <Stack screenOptions={{
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontFamily: fonts.serif, fontSize: 20, color: colors.text },
+          headerTintColor: colors.primary,
+        }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="designer" options={{ title: 'Design your own' }} />
           <Stack.Screen name="shops" options={{ title: 'Choose a shop', presentation: 'modal' }} />
