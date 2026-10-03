@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { collectOrder } from '../api';
+import { useIdlePause } from '../idleContext';
 import './CollectPage.css';
 
 const PIN_LENGTH = 6;
@@ -28,6 +29,9 @@ function CollectPage() {
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState(null);
     const scanInput = useRef(null);
+
+    // don't reset the kiosk under a customer who is waiting for, or reading, their result
+    useIdlePause(busy || result !== null);
 
     const submit = async (code) => {
         if (!code || busy) return;

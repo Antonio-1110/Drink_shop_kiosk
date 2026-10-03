@@ -21,6 +21,7 @@ request there (see `vite.config.js`), so the browser only ever talks to one orig
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest, with fake timers for the idle timeout) |
 
 ## Settings
 
@@ -30,6 +31,7 @@ Set these in the environment or in a `.env.local` file next to this README.
 | --- | --- | --- |
 | `VITE_SHOP_ID` | `1` | Which shop's menu and stock this kiosk uses |
 | `VITE_API_BASE` | `/api` | Where the backend is. Set a full URL when the backend isn't behind the Vite proxy |
+| `VITE_IDLE_TIMEOUT_SECONDS` | `60` | Seconds with no touches before the "Still there?" screen. It then counts down 30 seconds |
 
 ## How an order flows
 
@@ -50,12 +52,23 @@ Set these in the environment or in a `.env.local` file next to this README.
    screen then shows "Order collected", or says the order isn't paid yet, was already collected,
    or the code isn't recognised, and goes back to the keypad after 8 seconds.
 
+**Idle timeout.** If nobody touches the screen for 60 seconds, a "Still there?" screen asks whether to
+**Continue** or **Start over** and counts down 30 seconds. Continue keeps the order going. Start over,
+or no answer, clears the cart,
+an unpaid order is cancelled through the cancel endpoint so its ingredients go back on sale, and the
+kiosk returns to the menu. It stays quiet on the menu with an empty cart, never fires while the
+collect screen is checking a code or showing its result, and is held off on the payment screen while
+the QR code is up waiting for payment (the customer is on their phone; the payment window releases
+the ingredients if they walked away). Pages hold it off
+with `useIdlePause(true)` and add timeout clean-up with `useIdleCleanup(fn)` (`src/idleContext.js`).
+
 ## Code map
 
 | Path | What's there |
 | --- | --- |
 | `src/App.jsx` | Routes, cart state, and the menu reload when the cart changes |
 | `src/api.js` | Every call to the backend |
+| `src/IdleProvider.jsx`, `src/idleContext.js` | The idle timeout and the hooks pages use to pause it or clean up |
 | `src/menu.js` | Sizes, sugar/ice levels and categories. These mirror the backend's choices, so change both together |
 | `src/pages/` | Menu, cart, payment and collect screens |
 | `src/components/` | Sidebar navigation, drink cards |

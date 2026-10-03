@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { cancelOrder, fetchOrderStatus, fetchPaynowQr } from '../api';
+import { useIdleCleanup, useIdlePause } from '../idleContext';
 import './CartPage.css';
 
 const POLL_MS = 3000;
@@ -40,6 +41,17 @@ function PaymentPage({ clearCart }) {
         const tick = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(tick);
     }, []);
+
+    const pending = orderStatus === 'PENDING';
+    // someone paying looks at their phone, not the kiosk, so don't time out while the QR code is up
+    // waiting for the payment; the payment window releases the ingredients if they walked away
+    useIdlePause(pending && qr !== null);
+    // if the timeout does fire with the order unpaid (e.g. the QR code never loaded), cancel it so
+    // the ingredients go back on sale straight away
+    const cancelIfUnpaid = useCallback(() => {
+        if (pending && orderToken) cancelOrder(orderId, orderToken, 'idle_timeout').catch(() => {});
+    }, [pending, orderId, orderToken]);
+    useIdleCleanup(cancelIfUnpaid);
 
     const cancel = async () => {
         try {
