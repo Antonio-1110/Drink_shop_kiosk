@@ -5,21 +5,25 @@ Only the customer who placed the order sees them (in the reply to placing it). T
 over an order once: it must be paid, and collecting it marks it COLLECTED.
 """
 import secrets
+from datetime import timedelta
 
-from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from payments.paynow import qr_png_data_url
 from .models import Order
+from .status import change_status
 
 # orders whose PIN is still in use; a PIN is only unique among these
-UNCOLLECTED = [Order.Status.PENDING, Order.Status.PAID, Order.Status.TBM]
-READY = [Order.Status.PAID, Order.Status.TBM]
+UNCOLLECTED = [Order.Status.PENDING, Order.Status.PAID]
 
 
 def assign_pickup_codes(order):
     """Gives a new order its PIN and token. Call inside the transaction that creates it."""
-    in_use = set(Order.objects.filter(shop=order.shop, status__in=UNCOLLECTED)
+    # a recently cancelled order can still be paid late and come back, so its PIN stays reserved
+    recent = timezone.now() - timedelta(days=1)
+    in_use = set(Order.objects.filter(shop=order.shop)
+                 .filter(Q(status__in=UNCOLLECTED) | Q(status=Order.Status.CANCELLED, time__gte=recent))
                  .exclude(pk=order.pk).values_list('pickup_pin', flat=True))
     for _ in range(50):
         pin = f"{secrets.randbelow(1_000_000):06d}"
@@ -41,7 +45,7 @@ class PickupError(Exception):
     def __init__(self, message, status, reason):
         super().__init__(message)
         self.status = status
-        self.reason = reason  # for the kiosk screen: not_found, not_paid or already_collected
+        self.reason = reason  # for the kiosk screen: not_found, not_paid, cancelled or already_collected
 
 
 def collect(shop_id, code):
@@ -54,15 +58,17 @@ def collect(shop_id, code):
     matches = Order.objects.filter(shop_id=shop_id, **{field: code})
     order = matches.filter(status__in=UNCOLLECTED).order_by('-time').first()
     if order is None:
-        if matches.filter(status=Order.Status.COLLECTED).exists():
+        latest = matches.order_by('-time').first()
+        if latest and latest.status == Order.Status.COLLECTED:
             raise PickupError("This order has already been collected.", 409, "already_collected")
+        if latest and latest.status == Order.Status.CANCELLED:
+            raise PickupError("This order was cancelled.", 409, "cancelled")
         raise PickupError("No order found for that code at this machine.", 404, "not_found")
     if order.status == Order.Status.PENDING:
         raise PickupError("This order hasn't been paid yet.", 409, "not_paid")
-    with transaction.atomic():
-        # the status check in the update means two scans at once can't both collect it
-        if not Order.objects.filter(pk=order.pk, status__in=READY).update(
-                status=Order.Status.COLLECTED, collected_at=timezone.now()):
-            raise PickupError("This order has already been collected.", 409, "already_collected")
-    order.refresh_from_db()
+    # change_status re-checks the status in the database, so two scans at once can't both collect it
+    how = "PIN" if field == 'pickup_pin' else "QR code"
+    if not change_status(order, Order.Status.COLLECTED, actor='kiosk', reason=f"Collected with {how}.",
+                         collected_at=timezone.now()):
+        raise PickupError("This order has already been collected.", 409, "already_collected")
     return order

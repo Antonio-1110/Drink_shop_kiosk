@@ -31,6 +31,9 @@ INGREDIENTS = [
     ("Ice", "g", 50000, "", O, "", 1, "", 0, 0),
 ]
 
+# recipe lines that follow the customer's sugar and ice choice (the amount is for 100%)
+SCALING = {"Brown sugar syrup": DrinkIngredient.Scaling.SUGAR, "Ice": DrinkIngredient.Scaling.ICE}
+
 DRINKS = [  # name, category, small price, large price, description, recipe
     ("Classic Milk Tea", Drink.Category.MILK_TEA, "3.80", "4.60", "Black tea with fresh milk.",
      {"Black tea": 250, "Fresh milk": 80, "Ice": 150}),
@@ -83,7 +86,8 @@ class Command(BaseCommand):
             for ingredient_name, quantity in recipe.items():
                 DrinkIngredient.objects.update_or_create(
                     drink=drink, ingredient=ingredients[ingredient_name],
-                    defaults={"required_quantity": Decimal(quantity)})
+                    defaults={"required_quantity": Decimal(quantity),
+                              "scaling": SCALING.get(ingredient_name, DrinkIngredient.Scaling.FIXED)})
 
         config = DesignerConfig.load()
         if config.sweetener is None:

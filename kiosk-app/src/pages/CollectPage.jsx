@@ -15,6 +15,9 @@ function describeFailure(err) {
     if (err.data?.reason === 'not_paid') {
         return { tone: 'warn', title: 'Not paid yet', text: 'This order is still waiting for payment. Finish paying in the app, then try again.' };
     }
+    if (err.data?.reason === 'cancelled') {
+        return { tone: 'warn', title: 'Order cancelled', text: 'This order was cancelled because it wasn\'t paid in time. Please order again.' };
+    }
     if (err.data?.reason === 'already_collected') {
         return { tone: 'warn', title: 'Already collected', text: 'This order was collected earlier. Please ask staff if that wasn\'t you.' };
     }

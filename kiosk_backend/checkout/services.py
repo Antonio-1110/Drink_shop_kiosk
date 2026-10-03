@@ -25,14 +25,14 @@ from django.utils import timezone
 from operation.models import Inventory, StockMovement
 from ordering.models import Order
 from ordering.models import OrderItemIngredient
-from ordering.utils import add_needs, aggregate_ingredients, check_needs
+from ordering.status import change_status
+from ordering.utils import add_needs, check_needs, menu_needs
 from .models import PaymentAttempt, StockHold
 from .providers import PROVIDERS, SUCCEEDED, FAILED
 
 logger = logging.getLogger(__name__)
 
-# the Order model will get a proper Paid status; until then TBM ("to be made") means paid
-PAID = getattr(Order.Status, 'PAID', Order.Status.TBM)
+PAID = Order.Status.PAID
 
 TOKEN_SALT = 'checkout.order'
 
@@ -58,9 +58,9 @@ def check_order_token(order, token):
 
 def order_needs(order):
     """{ingredient_id: amount} for everything in the order, menu and designer drinks alike."""
-    cart = [d for d in order.items.values_list('drink_id', flat=True) if d]
+    menu = order.items.filter(drink__isnull=False).values_list('drink_id', 'size', 'sugar', 'ice')
     custom = OrderItemIngredient.objects.filter(order_item__order=order).values_list('ingredient_id', 'amount')
-    return add_needs(aggregate_ingredients(cart), *({i: a} for i, a in custom))
+    return add_needs(menu_needs(menu), *({i: a} for i, a in custom))
 
 
 def hold_stock(order, needed=None):
@@ -70,6 +70,8 @@ def hold_stock(order, needed=None):
     inventories = Inventory.objects.filter(shop=order.shop, ingredient_id__in=needed)
     for inventory in inventories:
         quantity = needed[inventory.ingredient_id]
+        if not quantity:
+            continue  # e.g. no syrup in a 0% sugar drink
         inventory.adjust_stock(-quantity, StockMovement.Reason.ORDER, order=order)
         StockHold.objects.create(order=order, inventory=inventory, quantity=quantity)
 
@@ -121,11 +123,10 @@ def start_payment(order, method):
     return attempt, provider.start(attempt)
 
 
-def cancel_order(order, reason=''):
+def cancel_order(order, reason='', actor='system'):
     """Cancels an unpaid order and puts its stock back. False if it wasn't pending."""
     with transaction.atomic():
-        if not Order.objects.filter(pk=order.pk, status=Order.Status.PENDING).update(
-                status=Order.Status.CANCELLED):
+        if not change_status(order, Order.Status.CANCELLED, actor=actor, reason=reason):
             return False
         for attempt in order.payment_attempts.filter(status=PaymentAttempt.Status.OPEN):
             PROVIDERS[attempt.method].cancel(attempt)
@@ -136,7 +137,7 @@ def cancel_order(order, reason=''):
     return True
 
 
-def confirm_payment(order, method, amount, provider_ref=''):
+def confirm_payment(order, method, amount, provider_ref='', actor=None):
     """Records that money arrived. The one path every payment method uses. Safe to call twice
     for the same provider_ref. Returns the attempt; its status says what happened:
     SUCCEEDED (order is paid) or REFUND_NEEDED / REFUNDED (we couldn't take the payment)."""
@@ -158,10 +159,12 @@ def confirm_payment(order, method, amount, provider_ref=''):
         attempt.provider_ref = provider_ref
 
         problem = None
+        paid = dict(actor=actor or f"payment:{method}", reason=f"Paid {amount} by {method}.",
+                    payment_reference=provider_ref[:100])
         if amount != order.revenue:
             problem = f"Paid {amount}, order total is {order.revenue}."
         elif order.status == Order.Status.PENDING:
-            Order.objects.filter(pk=order.pk).update(status=PAID)
+            change_status(order, PAID, **paid)
             consume_stock(order)
         elif order.status == Order.Status.CANCELLED:
             # paid after the hold ran out: take the order if the stock is still there
@@ -169,7 +172,7 @@ def confirm_payment(order, method, amount, provider_ref=''):
             needed = order_needs(order)
             if not check_needs(order.shop, needed):
                 hold_stock(order, needed)
-                Order.objects.filter(pk=order.pk).update(status=PAID)
+                change_status(order, PAID, **{**paid, 'reason': paid['reason'] + " Arrived after the order was cancelled."})
                 consume_stock(order)
             else:
                 problem = "Paid after the order was cancelled, and the ingredients have sold out."
@@ -229,5 +232,5 @@ def expire_unpaid_orders(shop=None):
                     status=PaymentAttempt.Status.EXPIRED, updated_at=now)
         order.refresh_from_db()
         if order.status == Order.Status.PENDING and hold_expires_at(order) <= now:
-            cancelled += cancel_order(order, reason="Not paid in time.")
+            cancelled += cancel_order(order, reason="Not paid in time.", actor="system")
     return cancelled
