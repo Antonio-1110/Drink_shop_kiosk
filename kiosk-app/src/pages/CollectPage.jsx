@@ -18,6 +18,16 @@ function describeFailure(err) {
     if (err.data?.reason === 'cancelled') {
         return { tone: 'warn', title: 'Order cancelled', text: 'This order was cancelled because it wasn\'t paid in time. Please order again.' };
     }
+    // the machine's own steps (from the backend's drink-making statuses)
+    if (err.data?.reason === 'preparing') {
+        return { tone: 'warn', title: 'Still being made', text: 'Your drink is nearly ready. Please try again in a moment.' };
+    }
+    if (err.data?.reason === 'failed') {
+        return { tone: 'error', title: 'Couldn\'t be made', text: 'Sorry, the machine couldn\'t make this drink. Staff have been told and will sort it out.' };
+    }
+    if (err.data?.reason === 'refunding') {
+        return { tone: 'error', title: 'Couldn\'t be made', text: 'Sorry, this drink couldn\'t be made. Your payment is being refunded.' };
+    }
     if (err.data?.reason === 'already_collected') {
         return { tone: 'warn', title: 'Already collected', text: 'This order was collected earlier. Please ask staff if that wasn\'t you.' };
     }

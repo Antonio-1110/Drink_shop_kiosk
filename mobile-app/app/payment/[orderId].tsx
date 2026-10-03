@@ -5,7 +5,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import ErrorBanner from '@/components/ErrorBanner';
 import PickupCode from '@/components/PickupCode';
 import { colors, fonts } from '@/constants/theme';
-import { cancelOrder, fetchOrderStatus, fetchPaynowQr, isPaid, PaynowQr } from '@/lib/api';
+import { cancelOrder, DRINK_PROGRESS, fetchOrderStatus, fetchPaynowQr, isPaid, PaynowQr } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { formatPrice } from '@/lib/menu';
 
@@ -22,6 +22,7 @@ export default function PaymentScreen() {
   const paid = isPaid(status ?? undefined);
   const cancelled = status === 'CANCELLED';
   const collected = status === 'COLLECTED';
+  const progress = status ? DRINK_PROGRESS[status] : undefined;
 
   // the order is placed, so the cart is done with
   useEffect(() => { clearCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,6 +97,9 @@ export default function PaymentScreen() {
           <View style={styles.step}>
             <Text style={styles.stepTitle}>2. Collect at the machine</Text>
             {!paid && <Text style={styles.muted}>Your code works once the payment comes through.</Text>}
+            {progress && (
+              <Text style={[styles.progress, progress.tone === 'warn' && styles.progressWarn]}>{progress.text}</Text>
+            )}
             <PickupCode order={order} />
           </View>
 
@@ -140,6 +144,8 @@ const styles = StyleSheet.create({
   cancelled: { fontFamily: fonts.sans, textAlign: 'center', color: colors.errorText, backgroundColor: colors.errorBg, borderRadius: 16, padding: 16, marginTop: 14, alignSelf: 'stretch' },
   collected: { textAlign: 'center', color: colors.primary, fontFamily: fonts.serif, fontSize: 20, backgroundColor: colors.primarySoft, borderRadius: 16, padding: 16, marginTop: 14, alignSelf: 'stretch' },
   cancelButton: { marginTop: 14, paddingVertical: 10, paddingHorizontal: 18 },
+  progress: { fontFamily: fonts.sansMedium, color: colors.primary, backgroundColor: colors.primarySoft, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 14, overflow: 'hidden', textAlign: 'center' },
+  progressWarn: { color: colors.errorText, backgroundColor: colors.errorBg },
   cancelText: { fontFamily: fonts.sansMedium, color: colors.muted, textDecorationLine: 'underline' },
   newOrder: { borderWidth: 1, borderColor: colors.border, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 28, marginTop: 20 },
   newOrderText: { fontFamily: fonts.sansBold, color: colors.text },
