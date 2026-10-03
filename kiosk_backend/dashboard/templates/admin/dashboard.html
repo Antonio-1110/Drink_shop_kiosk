@@ -1,0 +1,162 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'dashboard/dashboard.css' %}">{% endblock %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'dashboard/charts.js' %}" defer></script>{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Home</a> &rsaquo; Dashboard</div>
+{% endblock %}
+
+{% block content_subtitle %}<p class="dash-subtitle">{{ n.start|date:"j M" }} to {{ n.end|date:"j M Y" }}{% if shop %}, {{ shop.name }}{% else %}, all shops{% endif %}. Orders are counted on the day they were placed, in their status now.</p>{% endblock %}
+
+{% block content %}
+<div class="dash">
+  <form class="dash-filters" method="get">
+    <input type="hidden" name="days" value="{{ days }}">
+    <label>Shop
+      <select name="shop" data-autosubmit>
+        <option value="">All shops</option>
+        {% for s in shops %}<option value="{{ s.pk }}"{% if s == shop %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <span class="dash-periods" role="group" aria-label="Period">
+      {% for p in periods %}
+      <button type="submit" name="days" value="{{ p }}"{% if p == days %} aria-pressed="true"{% endif %}>Last {{ p }} days</button>
+      {% endfor %}
+    </span>
+    <noscript><button type="submit">Show</button></noscript>
+  </form>
+
+  {% with a=n.attention %}
+  {% if a.refunds or a.pending or a.uncollected or a.kiosks %}
+  <section class="dash-card dash-attention" aria-labelledby="attention-h">
+    <h2 id="attention-h">Needs attention</h2>
+    <ul>
+      {% for r in a.refunds %}
+      <li><span class="dash-status critical">Refund</span> <a href="{% url 'admin:ordering_order_change' r.order.pk %}">Order {{ r.order.pk }}</a> at {{ r.order.shop }} was paid {{ r.amount }} by {{ r.method }} after it was cancelled and needs refunding{% if r.note %} ({{ r.note }}){% endif %}.</li>
+      {% endfor %}
+      {% for k in a.kiosks %}{% if k.locked %}
+      <li><span class="dash-status critical">Locked</span> {{ k.kiosk }}: {{ k.lock_reason|default:"food-safety lock is on" }}.</li>
+      {% else %}
+      <li><span class="dash-status serious">Silent</span> {{ k.kiosk }} last checked in {{ k.last_heartbeat|timesince }} ago.</li>
+      {% endif %}{% endfor %}
+      {% for p in a.pending %}
+      <li><span class="dash-status warning">Unpaid</span> <a href="{% url 'admin:ordering_order_change' p.order.pk %}">Order {{ p.order.pk }}</a> at {{ p.order.shop }} has waited for payment for {{ p.since|timesince }}; its stock is still held.</li>
+      {% endfor %}
+      {% for u in a.uncollected %}
+      <li><span class="dash-status warning">Not collected</span> <a href="{% url 'admin:ordering_order_change' u.order.pk %}">Order {{ u.order.pk }}</a> at {{ u.order.shop }} was paid {{ u.since|timesince }} ago and hasn't been picked up.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% endwith %}
+
+  {% with t=n.tiles %}
+  <section class="dash-tiles" aria-label="Totals">
+    <div class="dash-tile"><span class="label">Revenue</span><span class="value">${{ t.revenue|floatformat:"2g" }}</span><span class="note">from {{ t.sold }} paid order{{ t.sold|pluralize }}</span></div>
+    <div class="dash-tile"><span class="label">Cups sold</span><span class="value">{{ t.cups }}</span><span class="note">{% if t.average %}${{ t.average }} per order{% else %}no paid orders{% endif %}</span></div>
+    <div class="dash-tile"><span class="label">Orders placed</span><span class="value">{{ t.placed }}</span><span class="note">{% if t.cancel_rate is not None %}{{ t.cancel_rate }}% cancelled{% else %}none yet{% endif %}</span></div>
+    <div class="dash-tile"><span class="label">Time to pay</span><span class="value">{% if t.minutes_to_pay is not None %}{{ t.minutes_to_pay }} min{% else %}–{% endif %}</span><span class="note">median, order placed to paid</span></div>
+    <div class="dash-tile"><span class="label">Time to pick up</span><span class="value">{% if t.minutes_to_collect is not None %}{{ t.minutes_to_collect }} min{% else %}–{% endif %}</span><span class="note">median, paid to collected</span></div>
+    <div class="dash-tile"><span class="label">Right now</span><span class="value">{{ t.waiting_pickup }}</span><span class="note">paid and waiting to be picked up, {{ t.waiting_payment }} waiting for payment</span></div>
+  </section>
+  {% endwith %}
+
+  <section class="dash-card" aria-labelledby="orders-h">
+    <h2 id="orders-h">Orders per day</h2>
+    <p class="dash-hint">Each day's orders by where they ended up.</p>
+    <div class="dash-chart" data-chart="daily-status"></div>
+    <details><summary>Table</summary>
+      <table><thead><tr><th>Day</th><th>Collected</th><th>Paid, not collected</th><th>Waiting for payment</th><th>Cancelled</th></tr></thead><tbody>
+      {% for d in n.daily %}<tr><td>{{ d.date|date:"D j M" }}</td><td>{{ d.COLLECTED }}</td><td>{{ d.PAID }}</td><td>{{ d.PENDING }}</td><td>{{ d.CANCELLED }}</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+  </section>
+
+  <section class="dash-card" aria-labelledby="revenue-h">
+    <h2 id="revenue-h">Revenue per day</h2>
+    <p class="dash-hint">Paid and collected orders, in dollars.</p>
+    <div class="dash-chart" data-chart="daily-revenue"></div>
+    <details><summary>Table</summary>
+      <table><thead><tr><th>Day</th><th>Revenue</th></tr></thead><tbody>
+      {% for d in n.daily %}<tr><td>{{ d.date|date:"D j M" }}</td><td>${{ d.revenue|floatformat:2 }}</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+  </section>
+
+  <div class="dash-pair">
+    <section class="dash-card" aria-labelledby="drinks-h">
+      <h2 id="drinks-h">Popular drinks</h2>
+      <p class="dash-hint">Cups in paid orders.</p>
+      <div class="dash-chart" data-chart="drinks"></div>
+      <details><summary>Table</summary>
+        <table><thead><tr><th>Drink</th><th>Cups</th></tr></thead><tbody>
+        {% for d in n.drinks %}<tr><td>{{ d.name }}</td><td>{{ d.cups }}</td></tr>{% empty %}<tr><td colspan="2">No paid orders.</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+    <section class="dash-card" aria-labelledby="hours-h">
+      <h2 id="hours-h">Busiest hours</h2>
+      <p class="dash-hint">Orders placed by hour of day.</p>
+      <div class="dash-chart" data-chart="hourly"></div>
+      <details><summary>Table</summary>
+        <table><thead><tr><th>Hour</th><th>Orders</th></tr></thead><tbody>
+        {% for c in n.hourly %}<tr><td>{{ forloop.counter0|stringformat:"02d" }}:00</td><td>{{ c }}</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+  </div>
+
+  <div class="dash-pair">
+    <section class="dash-card" aria-labelledby="cancel-h">
+      <h2 id="cancel-h">Why orders were cancelled</h2>
+      <p class="dash-hint">Who or what cancelled them.</p>
+      <div class="dash-chart" data-chart="cancellations"></div>
+      <details><summary>Table</summary>
+        <table><thead><tr><th>Cancelled by</th><th>Orders</th></tr></thead><tbody>
+        {% for c in n.cancellations %}<tr><td>{{ c.who }}</td><td>{{ c.orders }}</td></tr>{% empty %}<tr><td colspan="2">No cancelled orders.</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+    <section class="dash-card" aria-labelledby="grade-h">
+      <h2 id="grade-h">Nutri-Grade of cups sold</h2>
+      <p class="dash-hint">Grade printed for each cup when it was ordered.</p>
+      <div class="dash-chart" data-chart="grades"></div>
+      <details><summary>Table</summary>
+        <table><thead><tr><th>Grade</th><th>Cups</th></tr></thead><tbody>
+        {% for g in n.grades %}<tr><td>{{ g.grade }}</td><td>{{ g.cups }}</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+  </div>
+
+  <section class="dash-card" aria-labelledby="stock-h">
+    <h2 id="stock-h">Stock</h2>
+    <p class="dash-hint">The {{ stock_charted }} ingredients that will run out first, at the rate orders used them over the period. All stock is in the table.</p>
+    <div class="dash-chart" data-chart="stock"></div>
+    <details{% if not charts.stock %} open{% endif %}><summary>All stock</summary>
+      <table><thead><tr>{% if not shop %}<th>Shop</th>{% endif %}<th>Ingredient</th><th>In stock</th><th>Reorder at</th><th>Used per day</th><th>Days left</th></tr></thead><tbody>
+      {% for s in n.stock %}<tr>{% if not shop %}<td>{{ s.shop }}</td>{% endif %}<td>{{ s.ingredient }}{% if s.low %} <span class="dash-status warning">Reorder</span>{% endif %}</td><td>{{ s.stock|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.reorder_at|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.per_day|floatformat:"-1" }} {{ s.unit }}</td><td>{{ s.days_left|default_if_none:"–" }}</td></tr>{% empty %}<tr><td colspan="6">No stock recorded.</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+  </section>
+
+  <section class="dash-card" aria-labelledby="temp-h">
+    <h2 id="temp-h">Fridge temperatures</h2>
+    <p class="dash-hint">Hourly average over the last {% if days < 7 %}{{ days }}{% else %}7{% endif %} days. A reading above the safe limit locks the kiosk.</p>
+    <div class="dash-chart" data-chart="temperatures"></div>
+    <details><summary>Table</summary>
+      <table><thead><tr><th>Ingredient</th><th>Last reading</th><th>Safe range</th><th>Hours with a reading out of range</th></tr></thead><tbody>
+      {% for t in n.temperatures %}<tr><td>{{ t.name }}</td><td>{{ t.last_c|default_if_none:"–" }} °C</td><td>{{ t.min_c|default_if_none:"" }}{% if t.min_c is not None or t.max_c is not None %} to {% endif %}{{ t.max_c|default_if_none:"" }} °C</td><td>{{ t.out_of_range }}</td></tr>{% empty %}<tr><td colspan="4">No readings.</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+    {% if n.kiosks %}
+    <table class="dash-kiosks"><thead><tr><th>Kiosk</th><th>Status</th><th>Food-safety lock</th><th>Last check-in</th></tr></thead><tbody>
+    {% for k in n.kiosks %}<tr><td><a href="{% url 'admin:operation_kiosk_change' k.kiosk.pk %}">{{ k.kiosk }}</a></td><td>{{ k.status }}</td><td>{% if k.locked %}<span class="dash-status critical">Locked</span> {{ k.lock_reason }}{% else %}Off{% endif %}</td><td>{% if k.last_heartbeat %}{{ k.last_heartbeat|timesince }} ago{% else %}Never{% endif %}</td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+  </section>
+</div>
+{{ charts|json_script:"dash-data" }}
+{% endblock %}

@@ -54,6 +54,7 @@ SILENCED_SYSTEM_CHECKS = ['security.W005', 'security.W021']
 # Application definition
 
 INSTALLED_APPS = [
+    'dashboard',  # before admin so its admin templates (the Dashboard link) take precedence
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -64,7 +65,7 @@ INSTALLED_APPS = [
     'ordering',
     'checkout',
     'rest_framework',
-    'operation'
+    'operation',
 ]
 
 MIDDLEWARE = [
