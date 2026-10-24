@@ -12,9 +12,15 @@ from django.utils import timezone
 from checkout.models import PaymentAttempt
 from operation.models import Inventory, Kiosk, StockMovement, TemperatureReading
 from ordering.models import Order, OrderEvent, OrderItem
+from ordering.status import PAID_FOR
 
 S = Order.Status
-SOLD = [S.PAID, S.COLLECTED]
+# money was taken and kept (a FAILED order may still be made again; REFUND_NEEDED is given back)
+SOLD = PAID_FOR
+# paid and not handed over yet: waiting for the machine, being made, or ready at the hatch
+AWAITING_PICKUP = [S.PAID, S.PREPARING, S.READY]
+# the machine couldn't make it: try again or refund
+NOT_MADE = [S.FAILED, S.REFUND_NEEDED]
 PERIODS = [7, 30, 90]
 # an order still in this state after this long is worth a look
 STUCK_PENDING = timedelta(minutes=30)
@@ -71,7 +77,7 @@ def _tiles(orders, period):
         'minutes_to_collect': _median_minutes(period, S.PAID, S.COLLECTED),
         # right now, whatever the period
         'waiting_payment': orders.filter(status=S.PENDING).count(),
-        'waiting_pickup': orders.filter(status=S.PAID).count(),
+        'waiting_pickup': orders.filter(status__in=AWAITING_PICKUP).count(),
     }
 
 
@@ -90,7 +96,7 @@ def _median_minutes(period, from_status, to_status):
 
 def _daily(period, first_day, days, tz):
     rows = {first_day + timedelta(days=i): {'date': first_day + timedelta(days=i), 'revenue': Decimal('0'),
-                                            **{s: 0 for s in S.values}}
+                                            **{s: 0 for s in S.values}, 'awaiting_pickup': 0, 'not_made': 0}
             for i in range(days)}
     for row in (period.annotate(day=TruncDate('time', tzinfo=tz)).values('day', 'status')
                 .annotate(n=Count('id'), revenue=Sum('revenue'))):
@@ -98,6 +104,10 @@ def _daily(period, first_day, days, tz):
         if day is None:
             continue
         day[row['status']] += row['n']
+        if row['status'] in AWAITING_PICKUP:
+            day['awaiting_pickup'] += row['n']
+        elif row['status'] in NOT_MADE:
+            day['not_made'] += row['n']
         if row['status'] in SOLD:
             day['revenue'] += row['revenue']
     return list(rows.values())
@@ -147,15 +157,16 @@ def _attention(orders, now):
     refunds = (PaymentAttempt.objects.filter(order__in=orders, status=PaymentAttempt.Status.REFUND_NEEDED)
                .select_related('order__shop').order_by('updated_at'))
     pending = orders.filter(status=S.PENDING, time__lt=now - STUCK_PENDING).select_related('shop').order_by('time')
-    paid_at = dict(OrderEvent.objects.filter(order__in=orders.filter(status=S.PAID), to_status=S.PAID)
-                   .values_list('order_id', 'at'))
-    uncollected = [o for o in orders.filter(status=S.PAID).select_related('shop').order_by('time')
+    waiting = orders.filter(status__in=AWAITING_PICKUP)
+    paid_at = dict(OrderEvent.objects.filter(order__in=waiting, to_status=S.PAID).values_list('order_id', 'at'))
+    uncollected = [o for o in waiting.select_related('shop').order_by('time')
                    if now - paid_at.get(o.pk, o.time) > STUCK_UNCOLLECTED]
     return {
         'refunds': [{'attempt': a, 'order': a.order, 'amount': a.amount, 'method': a.method, 'since': a.updated_at,
                      'note': a.note} for a in refunds],
         'pending': [{'order': o, 'since': o.time} for o in pending],
         'uncollected': [{'order': o, 'since': paid_at.get(o.pk, o.time)} for o in uncollected],
+        'failed': list(orders.filter(status=S.FAILED).select_related('shop').order_by('time')),
     }
 
 

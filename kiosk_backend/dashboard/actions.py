@@ -91,11 +91,31 @@ def _order(request, what):
             messages.success(request, f"Order {order.pk} cancelled and its stock returned.")
         else:
             messages.error(request, f"Order {order.pk} isn't waiting for payment, so it can't be cancelled.")
-    elif change_status(order, Order.Status.COLLECTED, actor=actor, reason="Handed over by staff.",
-                       collected_at=timezone.now()):
+    elif _hand_over(order, actor):
         messages.success(request, f"Order {order.pk} marked as collected.")
     else:
         messages.error(request, f"Order {order.pk} isn't paid and waiting, so it can't be marked collected.")
+
+
+# the steps a paid order still has to go through before it's collected, by where it is now
+HAND_OVER_STEPS = {
+    Order.Status.PAID: [Order.Status.PREPARING, Order.Status.READY],
+    Order.Status.PREPARING: [Order.Status.READY],
+    Order.Status.READY: [],
+}
+
+
+def _hand_over(order, actor):
+    """Staff made or handed over the drink themselves: each step left is recorded as theirs, so the
+    order still follows the allowed moves and its history shows who did it."""
+    steps = HAND_OVER_STEPS.get(order.status)
+    if steps is None:
+        return False
+    for step in steps:
+        if not change_status(order, step, actor=actor, reason="Made by staff."):
+            return False
+    return change_status(order, Order.Status.COLLECTED, actor=actor, reason="Handed over by staff.",
+                         collected_at=timezone.now())
 
 
 def _refunded(request):

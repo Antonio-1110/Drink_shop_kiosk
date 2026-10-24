@@ -25,7 +25,8 @@ def dashboard(request):
     numbers = data.build(shop=shop, days=days)
     charts = {
         'daily': [{'date': row['date'].isoformat(), 'revenue': float(row['revenue']),
-                   **{status: row[status] for status in data.S.values}} for row in numbers['daily']],
+                   **{key: row[key] for key in (*data.S.values, 'awaiting_pickup', 'not_made')}}
+                  for row in numbers['daily']],
         'hourly': numbers['hourly'],
         'drinks': [{'name': d['name'], 'cups': d['cups']} for d in numbers['drinks']],
         'grades': numbers['grades'],

@@ -27,16 +27,18 @@ class DashboardNumbersTests(OrderingTestBase):
     def test_counts_orders_by_where_they_ended_up(self):
         collected = self.place(self.milk_tea)
         confirm_payment(collected, 'paynow', collected.revenue, provider_ref='a')
-        change_status(collected, Order.Status.COLLECTED, actor='kiosk')
+        for step in (Order.Status.PREPARING, Order.Status.READY, Order.Status.COLLECTED):
+            change_status(collected, step, actor='kiosk')
         paid = self.place()
         confirm_payment(paid, 'paynow', paid.revenue, provider_ref='b')
+        change_status(paid, Order.Status.PREPARING, actor='machine')  # still paid, not collected
         cancel_order(self.place(), reason="Cancelled by the customer.", actor='customer')
         cancel_order(self.place(), reason="Cancelled by the kiosk idle timeout.", actor='timeout')
         self.place()  # still waiting
 
         n = data.build(days=7)
         today = n['daily'][-1]
-        self.assertEqual((today['COLLECTED'], today['PAID'], today['CANCELLED'], today['PENDING']), (1, 1, 2, 1))
+        self.assertEqual((today['COLLECTED'], today['awaiting_pickup'], today['CANCELLED'], today['PENDING']), (1, 1, 2, 1))
         self.assertEqual(today['revenue'], Decimal('6.00'))  # 3.50 + 2.50
         self.assertEqual(len(n['daily']), 7)
         tiles = n['tiles']
@@ -76,6 +78,12 @@ class DashboardNumbersTests(OrderingTestBase):
         self.assertEqual(attention['uncollected'], [])  # just paid
         Order.objects.filter(pk=uncollected.pk).update(time=timezone.now() - timedelta(hours=3))
         self.assertEqual([u['order'] for u in data.build(days=7)['attention']['uncollected']], [uncollected])
+        ready = Order.objects.create(shop=self.shop, revenue=Decimal('2.50'), status=Order.Status.READY)
+        Order.objects.filter(pk=ready.pk).update(time=timezone.now() - timedelta(hours=3))
+        failed = Order.objects.create(shop=self.shop, revenue=Decimal('2.50'), status=Order.Status.FAILED)
+        attention = data.build(days=7)['attention']
+        self.assertEqual([u['order'] for u in attention['uncollected']], [uncollected, ready])
+        self.assertEqual(attention['failed'], [failed])
 
     def test_locked_and_silent_kiosks_need_attention(self):
         Kiosk.objects.create(shop=self.shop, machine_id='K1', sfa_locked=True, sfa_lock_reason='Milk at 6 C')
@@ -186,7 +194,8 @@ class DashboardChangeTests(OrderingTestBase):
         self.assertEqual(order.status, Order.Status.COLLECTED)
         self.assertIsNotNone(order.collected_at)
         self.assertEqual(list(OrderEvent.objects.filter(order=order).values_list('to_status', 'actor')),
-                         [('PENDING', 'customer'), ('PAID', 'staff:boss'), ('COLLECTED', 'staff:boss')])
+                         [('PENDING', 'customer'), ('PAID', 'staff:boss'), ('PREPARING', 'staff:boss'),
+                          ('READY', 'staff:boss'), ('COLLECTED', 'staff:boss')])
         other = self.place()
         self.act(what='cancel', order=other.pk)
         other.refresh_from_db()

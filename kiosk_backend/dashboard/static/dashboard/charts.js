@@ -230,7 +230,8 @@
       emptyText: "No orders in this period.",
       series: [
         { key: "COLLECTED", name: "Collected", color: slot(1) },
-        { key: "PAID", name: "Paid, not collected", color: slot(2) },
+        { key: "awaiting_pickup", name: "Paid, not collected", color: slot(2) },
+        { key: "not_made", name: "Not made", color: slot(4) },
         { key: "PENDING", name: "Waiting for payment", color: slot(3) },
         { key: "CANCELLED", name: "Cancelled", color: css("--neutral") },
       ],

@@ -41,12 +41,12 @@
   </nav>
 
   {% with a=n.attention %}
-  {% if a.refunds or a.pending or a.uncollected or a.kiosks %}
+  {% if a.refunds or a.pending or a.uncollected or a.failed or a.kiosks %}
   <section class="dash-card dash-attention" aria-labelledby="attention-h">
     <h2 id="attention-h">Needs attention</h2>
     <ul>
       {% for r in a.refunds %}
-      <li><span class="dash-status critical">Refund</span> <a href="{% url 'admin:ordering_order_change' r.order.pk %}">Order {{ r.order.pk }}</a> at {{ r.order.shop }} was paid {{ r.amount }} by {{ r.method }} after it was cancelled and needs refunding{% if r.note %} ({{ r.note }}){% endif %}.
+      <li><span class="dash-status critical">Refund</span> <a href="{% url 'admin:ordering_order_change' r.order.pk %}">Order {{ r.order.pk }}</a> at {{ r.order.shop }} was paid {{ r.amount }} by {{ r.method }} {% if r.order.status == 'REFUND_NEEDED' %}but couldn't be made{% else %}after it was cancelled{% endif %} and needs refunding{% if r.note %} ({{ r.note }}){% endif %}.
         {% if can.refunds %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="attempt" value="{{ r.attempt.pk }}"><button name="what" value="refunded" data-confirm="Only do this after you've sent the money back. Mark the payment for order {{ r.order.pk }} as refunded?">I've refunded it</button></form>{% endif %}</li>
       {% endfor %}
       {% for k in a.kiosks %}{% if k.locked %}
@@ -58,8 +58,11 @@
       <li><span class="dash-status warning">Unpaid</span> <a href="{% url 'admin:ordering_order_change' p.order.pk %}">Order {{ p.order.pk }}</a> at {{ p.order.shop }} has waited for payment for {{ p.since|timesince }}; its stock is still held.
         {% if can.orders %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="order" value="{{ p.order.pk }}"><button name="what" value="mark_paid" data-confirm="Mark order {{ p.order.pk }} as paid? Only if you've checked the money arrived.">Mark paid</button><button name="what" value="cancel" data-confirm="Cancel order {{ p.order.pk }} and return its stock?">Cancel and return stock</button></form>{% endif %}</li>
       {% endfor %}
+      {% for o in a.failed %}
+      <li><span class="dash-status serious">Not made</span> <a href="{% url 'admin:ordering_order_change' o.pk %}">Order {{ o.pk }}</a> at {{ o.shop }} was paid but the machine couldn't make it. Try again or refund it from the order page.</li>
+      {% endfor %}
       {% for u in a.uncollected %}
-      <li><span class="dash-status warning">Not collected</span> <a href="{% url 'admin:ordering_order_change' u.order.pk %}">Order {{ u.order.pk }}</a> at {{ u.order.shop }} was paid {{ u.since|timesince }} ago and hasn't been picked up.
+      <li><span class="dash-status warning">Not collected</span> <a href="{% url 'admin:ordering_order_change' u.order.pk %}">Order {{ u.order.pk }}</a> at {{ u.order.shop }} was paid {{ u.since|timesince }} ago and hasn't been picked up ({{ u.order.get_status_display|lower }}).
         {% if can.orders %}<form class="dash-act" method="post" action="{% url 'admin-dashboard-act' %}">{% csrf_token %}<input type="hidden" name="return" value="{{ return_query }}"><input type="hidden" name="order" value="{{ u.order.pk }}"><button name="what" value="collect" data-confirm="Mark order {{ u.order.pk }} as handed over to the customer?">Mark collected</button></form>{% endif %}</li>
       {% endfor %}
     </ul>
@@ -83,8 +86,8 @@
     <p class="dash-hint">Each day's orders by where they ended up.</p>
     <div class="dash-chart" data-chart="daily-status"></div>
     <details><summary>Table</summary>
-      <table><thead><tr><th>Day</th><th>Collected</th><th>Paid, not collected</th><th>Waiting for payment</th><th>Cancelled</th></tr></thead><tbody>
-      {% for d in n.daily %}<tr><td>{{ d.date|date:"D j M" }}</td><td>{{ d.COLLECTED }}</td><td>{{ d.PAID }}</td><td>{{ d.PENDING }}</td><td>{{ d.CANCELLED }}</td></tr>{% endfor %}
+      <table><thead><tr><th>Day</th><th>Collected</th><th>Paid, not collected</th><th>Not made</th><th>Waiting for payment</th><th>Cancelled</th></tr></thead><tbody>
+      {% for d in n.daily %}<tr><td>{{ d.date|date:"D j M" }}</td><td>{{ d.COLLECTED }}</td><td>{{ d.awaiting_pickup }}</td><td>{{ d.not_made }}</td><td>{{ d.PENDING }}</td><td>{{ d.CANCELLED }}</td></tr>{% endfor %}
       </tbody></table>
     </details>
   </section>
