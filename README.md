@@ -21,9 +21,14 @@ export DJANGO_DEBUG=1              # local development settings
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py seed_demo          # demo shops, drinks, recipes and stock
+python manage.py seed_demo_history  # optional: a month of made-up orders and fridge readings
 python manage.py createsuperuser    # for /admin
 python manage.py runserver
 ```
+
+Staff sign in at http://localhost:8000/admin/. The **Dashboard** link at the top of every admin
+page (http://localhost:8000/admin/dashboard/) shows charts of orders and their statuses, sales,
+popular drinks, stock running out, fridge temperatures, and orders that need attention.
 
 Settings come from environment variables:
 

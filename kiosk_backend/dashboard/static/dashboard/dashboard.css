@@ -1,0 +1,155 @@
+/* Staff dashboard. Colours are roles, swapped in one place for the admin's dark theme. */
+.dash {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --ring: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --neutral: #c3c2b7;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  max-width: 1200px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .dash {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --neutral: #52514e;
+  }
+}
+:root[data-theme="dark"] .dash {
+  color-scheme: dark;
+  --surface: #1a1a19;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --ring: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --neutral: #52514e;
+}
+
+.dash-subtitle { color: var(--body-quiet-color, #666); margin: -8px 0 16px; }
+
+.dash-filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 16px; }
+.dash-filters label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.dash-periods { display: inline-flex; border: 1px solid var(--ring); border-radius: 6px; overflow: hidden; }
+.dash-periods button {
+  border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 12px; cursor: pointer; font: inherit;
+}
+.dash-periods button + button { border-left: 1px solid var(--ring); }
+.dash-periods button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+
+.dash-card {
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 8px;
+  padding: 16px 20px; margin-bottom: 16px; min-width: 0;
+}
+.dash-card h2 {
+  margin: 0 0 2px; padding: 0; background: none; color: var(--ink);
+  font-size: 1rem; font-weight: 600; text-transform: none; letter-spacing: 0;
+}
+.dash-hint { margin: 0 0 12px; color: var(--ink-2); font-size: 0.8125rem; }
+.dash-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 16px; }
+
+.dash-attention ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.dash-attention li { padding: 6px 0; border-top: 1px solid var(--grid); }
+.dash-attention li:first-child { border-top: 0; }
+
+.dash-status {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600;
+  color: var(--ink); white-space: nowrap; margin-right: 4px;
+}
+.dash-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.dash-status.critical::before { background: var(--critical); }
+.dash-status.serious::before { background: var(--serious); }
+.dash-status.warning::before { background: var(--warning); }
+
+.dash-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.dash-tile {
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.dash-tile .label { color: var(--ink-2); font-size: 0.8125rem; }
+.dash-tile .value { font-size: 1.75rem; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+.dash-tile .note { color: var(--muted); font-size: 0.75rem; }
+
+.dash-chart { position: relative; min-height: 40px; }
+.dash-chart svg { display: block; width: 100%; overflow: visible; }
+.dash-chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.dash-chart text.value { fill: var(--ink-2); }
+.dash-chart .grid { stroke: var(--grid); stroke-width: 1; }
+.dash-chart .baseline { stroke: var(--axis); stroke-width: 1; }
+.dash-chart .limit { stroke: var(--critical); stroke-width: 1; }
+.dash-chart .hit { fill: transparent; }
+.dash-chart .hit:hover + .mark, .dash-chart .mark.on { opacity: 0.8; }
+.dash-chart .crosshair { stroke: var(--axis); stroke-width: 1; }
+.dash-empty { color: var(--muted); margin: 8px 0; }
+
+.dash-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--ink-2); }
+.dash-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.dash-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.dash-tip {
+  position: absolute; pointer-events: none; z-index: 5; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--ring); border-radius: 6px; padding: 6px 10px; font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.dash-tip b { display: block; margin-bottom: 2px; }
+.dash-tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+
+.dash details { margin-top: 8px; font-size: 0.8125rem; }
+.dash details summary { cursor: pointer; color: var(--ink-2); }
+.dash details table, .dash-kiosks { width: 100%; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.dash-kiosks { margin-top: 16px; }
+
+.dash-manage { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-bottom: 16px; }
+.dash-manage-label { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
+.dash-manage a {
+  border: 1px solid var(--ring); border-radius: 6px; padding: 4px 10px; background: var(--surface);
+  color: var(--link-fg, var(--series-1)); text-decoration: none;
+}
+.dash-manage a:hover { border-color: var(--axis); }
+.dash-act { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 0; }
+.dash-attention .dash-act { display: flex; }
+.dash-act button { cursor: pointer; }
+.dash-act input[type="number"] { width: 7em; }
+
+@media (max-width: 600px) {
+  .dash-card { padding: 12px; }
+  .dash-tile .value { font-size: 1.375rem; }
+}
