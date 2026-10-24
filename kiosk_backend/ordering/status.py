@@ -10,9 +10,18 @@ S = Order.Status
 TRANSITIONS = {
     S.PENDING: {S.PAID, S.CANCELLED},
     S.CANCELLED: {S.PAID},  # paid after the hold ran out, while the ingredients were still there
-    S.PAID: {S.COLLECTED},
+    S.PAID: {S.PREPARING},
+    S.PREPARING: {S.READY, S.FAILED},
+    S.READY: {S.COLLECTED},
+    S.FAILED: {S.PREPARING, S.REFUND_NEEDED},  # try again, or give the money back
+    S.REFUND_NEEDED: set(),
     S.COLLECTED: set(),
 }
+
+# not yet handed over, cancelled or refunded, so the order's pickup PIN is still in use
+OPEN = [S.PENDING, S.PAID, S.PREPARING, S.READY, S.FAILED]
+# money was taken for these, so each needs a succeeded payment
+PAID_FOR = [S.PAID, S.PREPARING, S.READY, S.FAILED, S.COLLECTED]
 
 
 def record_placed(order, actor='customer'):

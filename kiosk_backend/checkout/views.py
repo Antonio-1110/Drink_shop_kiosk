@@ -26,7 +26,9 @@ PaymentStarted = inline_serializer('PaymentStarted', {
 })
 
 OrderStatus = inline_serializer('OrderPaymentStatus', {
-    'status': serializers.CharField(help_text="PENDING until paid; then the paid status, or CANCELLED."),
+    'status': serializers.CharField(help_text="PENDING until paid, then PAID, PREPARING (being made), READY (collect "
+                                         "it now) and COLLECTED. CANCELLED if never paid; FAILED or "
+                                         "REFUND_NEEDED if the drink couldn't be made."),
     'hold_expires_at': serializers.DateTimeField(allow_null=True, help_text="While PENDING: when the order is cancelled if still unpaid."),
     'payments': inline_serializer('PaymentAttemptSummary', {
         'method': serializers.CharField(), 'status': serializers.CharField(),

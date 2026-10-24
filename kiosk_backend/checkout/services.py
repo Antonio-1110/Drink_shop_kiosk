@@ -191,6 +191,23 @@ def confirm_payment(order, method, amount, provider_ref='', actor=None):
     return attempt
 
 
+def refund_failed_order(order, reason='', actor='system'):
+    """Gives the money back for a drink the machine couldn't make (FAILED -> REFUND_NEEDED).
+    False if the order wasn't FAILED. The ingredients aren't put back: some may have been used,
+    and staff count what's left."""
+    with transaction.atomic():
+        if not change_status(order, Order.Status.REFUND_NEEDED, actor=actor, reason=reason):
+            return False
+        attempts = list(order.payment_attempts.select_for_update().filter(status=PaymentAttempt.Status.SUCCEEDED))
+        for attempt in attempts:
+            attempt.status = PaymentAttempt.Status.REFUND_NEEDED
+            attempt.note = (f"Drink couldn't be made. {reason}".strip())[:200]
+            attempt.save(update_fields=['status', 'note', 'updated_at'])
+    for attempt in attempts:
+        refund(attempt)
+    return True
+
+
 def refund(attempt):
     try:
         refunded = PROVIDERS[attempt.method].refund(attempt)

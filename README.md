@@ -42,6 +42,11 @@ Settings come from environment variables:
 | `PAYNOW_HOLD_MINUTES`, `PAYMENT_HOLD_MINUTES` | How long a PayNow payment (or any other method) stays open, default 10. The order's ingredients are held that long. |
 | `PAYMENT_START_GRACE_MINUTES` | Time to start paying after ordering, or to try another method after one fails (default 2). |
 | `ORDER_MAX_HOLD_MINUTES` | The longest any order can hold stock (default 30). |
+| `MACHINE_SIMULATOR` | `1` to hand over paid orders without a drink machine reporting them made (on by default with `DJANGO_DEBUG`). Leave off once machines are connected. |
+| `EXPIRE_ORDERS_EVERY_SECONDS` | How often the background jobs cancel unpaid orders that ran out of time (default 60). |
+| `CHECK_ORDERS_AT` | When the daily order check runs, `HH:MM` in the server's time zone (default `04:00`; the backend's `TIME_ZONE` is UTC for now). |
+| `STAFF_ALERT_EMAILS` | Comma-separated addresses emailed when the daily check finds a problem. |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | The mail server those emails go through (port 587 with TLS by default). With `DJANGO_DEBUG` and no `EMAIL_HOST`, emails are printed to the console instead. |
 
 How stock and payment fit together (`kiosk_backend/checkout/`):
 
@@ -50,7 +55,7 @@ How stock and payment fit together (`kiosk_backend/checkout/`):
 - When a payment runs out, the payment method is asked whether it was paid after all before the order is cancelled.
 - Every payment method confirms payment through one function, `checkout.services.confirm_payment`. A payment that arrives after its order was cancelled gets the ingredients back if they are still there. If they have sold out, it is refunded, or flagged for staff under **Payment attempts** when the method can't refund automatically.
 - Adding GrabPay, cards or a PayNow gateway means writing one `Provider` class in `checkout/providers.py`. Payment notifications arrive at `/checkout/webhooks/<method>/`.
-- `python manage.py expire_orders` runs the same clean-up from a cron job. It also runs whenever the kiosk loads the menu or takes an order.
+- Unpaid orders whose time has run out are cancelled every minute by the background jobs (below), so a quiet night doesn't leave them "waiting for payment". The same clean-up also runs whenever the kiosk loads the menu or takes an order, and by hand with `python manage.py expire_orders`.
 - Until a payment gateway is connected, staff confirm PayNow payments with **Mark as paid** under **Orders** in `/admin`.
 
 Only the kiosk's ordering endpoints are public. Everything else, including `PATCH /operation/inventory/...`, needs a staff login.
@@ -69,7 +74,37 @@ PayNow QR codes are built by `kiosk_backend/payments/paynow.py`, a standalone mo
 
 Drink designer: `GET /ordering/designer/options/?shop_id=` lists the sizes, prices and ingredients customers can build a drink from, and an order item can carry `custom: [ingredient codes]` instead of `drink`. Amounts and price come from **Drink designer settings** in `/admin`, and the ingredients are held like any menu drink.
 
-Pickup: every order gets a 6-digit PIN and a QR code, returned only in the reply to placing it. At the machine the customer types the PIN or scans the code, and the kiosk calls `POST /ordering/pickup/`. That hands over a paid order once and marks it collected. Attempts are limited per machine (`PICKUP_ATTEMPTS_PER_MINUTE`, default 10), so PINs can't be guessed.
+Pickup: every order gets a 6-digit PIN and a QR code, returned only in the reply to placing it. At the machine the customer types the PIN or scans the code, and the kiosk calls `POST /ordering/pickup/`. That hands over a ready order once and marks it collected. A customer who scans before the drink is made is told it's still being made. Attempts are limited per machine (`PICKUP_ATTEMPTS_PER_MINUTE`, default 10), so PINs can't be guessed.
+
+## Order statuses
+
+An order goes **Waiting for payment → Paid → Being made → Ready to collect → Collected**. An unpaid order can be **Cancelled** (by the customer, the idle timeout, or running out of time), and a payment that arrives late can still make it Paid. A drink the machine couldn't make is **Couldn't be made**: the machine can try again (back to Being made), or staff refund it with **Refund selected orders the machine couldn't make** under **Orders** in `/admin`, which makes it **Not made, refund needed**. Failed orders show the machine's reason in the order list.
+
+Every change is checked against these moves (`kiosk_backend/ordering/status.py`) and kept in the order's history with who made it and why.
+
+The machine's edge service reports each step with `POST /ordering/orders/<id>/progress/` and `{"status": "PREPARING" | "READY" | "FAILED", "reason": "..."}`. It must send its kiosk's key as `Authorization: Kiosk <key>`; make one with `python manage.py kiosk_key <machine ID>` (shown once; running it again replaces the key). A kiosk can only report orders at its own shop. Until a machine is connected, `MACHINE_SIMULATOR` stands in for it in development.
+
+## Background jobs
+
+`python manage.py run_jobs` runs, until stopped:
+
+- every minute: cancel unpaid orders whose time has run out and put their ingredients back (`expire_orders`);
+- once a day at `CHECK_ORDERS_AT`: check that orders, stock and payments add up, and email `STAFF_ALERT_EMAILS` if not (`check_orders --email`).
+
+`./dev.sh` starts it next to the backend. In production run one copy next to the web server, kept running by whatever runs the server (a systemd service, a Docker container with the same image, or a supervisor). Or, from cron:
+
+```
+* * * * *  cd /path/to/kiosk_backend && python manage.py expire_orders --verbosity 0
+0 4 * * *  cd /path/to/kiosk_backend && python manage.py check_orders --email
+```
+
+`python manage.py check_orders` can be run any time; it changes nothing and lists each broken rule with the order IDs:
+
+- held stock only belongs to orders waiting for payment;
+- every paid order (paid, being made, ready, couldn't be made, collected) has a succeeded payment, and every order needing a refund has a payment marked for refunding;
+- the status history ends in the order's current status;
+- each order's stock movements add up to its holds;
+- no two open orders at a shop share a pickup PIN.
 
 ## Testing the mobile app on a phone
 

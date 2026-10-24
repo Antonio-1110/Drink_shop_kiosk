@@ -135,6 +135,9 @@ if [ "$RUN_BACKEND" = 1 ]; then
   log "Backend:  http://localhost:8000  (admin at /admin)"
   (cd "$BACKEND" && exec "$PY" manage.py runserver "$BIND:8000") &
   PIDS+=($!)
+  # background jobs, as in production: cancel unpaid orders on time, daily order check
+  (cd "$BACKEND" && exec "$PY" manage.py run_jobs) &
+  PIDS+=($!)
 fi
 
 if [ "$RUN_FRONTEND" = 1 ]; then

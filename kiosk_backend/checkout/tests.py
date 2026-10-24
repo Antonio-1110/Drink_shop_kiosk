@@ -2,10 +2,12 @@ from datetime import timedelta
 from decimal import Decimal
 from unittest import mock
 
+from django.core.cache import cache
 from django.test import override_settings
 from django.utils import timezone
 
 from ordering.models import Order, OrderItem
+from ordering.status import change_status
 from ordering.tests import OrderingTestBase
 from . import services
 from .models import PaymentAttempt, StockHold
@@ -44,6 +46,7 @@ class FakeProvider(Provider):
 class CheckoutTestBase(OrderingTestBase):
     def setUp(self):
         super().setUp()
+        cache.clear()  # the pickup rate limit counts attempts in the cache
         self.fake = FakeProvider()
         patcher = mock.patch.dict(PROVIDERS, {'fake': self.fake})
         patcher.start()
@@ -282,10 +285,13 @@ class OrderLifecycleTests(CheckoutTestBase):
         if order.status == Order.Status.CANCELLED:
             self.assertEqual(self.stock(), start)
 
+    @override_settings(MACHINE_SIMULATOR=False)
     def test_paid_and_collected(self):
         start = self.stock()
         order, _ = self.place(self.milk_tea)
         services.confirm_payment(order, 'fake', order.revenue, provider_ref='tx-1')
+        change_status(order, Order.Status.PREPARING, actor='machine:K-1')
+        change_status(order, Order.Status.READY, actor='machine:K-1')
         res = self.client.post("/ordering/pickup/", {'shop': self.shop.pk, 'code': order.pickup_pin}, format='json')
         self.assertEqual(res.status_code, 200, res.data)
         order.refresh_from_db()
@@ -293,7 +299,8 @@ class OrderLifecycleTests(CheckoutTestBase):
         self.assertEqual(order.payment_reference, 'tx-1')
         self.assertIsNotNone(order.collected_at)
         self.assertEqual(self.history(order), [
-            ('', 'PENDING', 'customer'), ('PENDING', 'PAID', 'payment:fake'), ('PAID', 'COLLECTED', 'kiosk')])
+            ('', 'PENDING', 'customer'), ('PENDING', 'PAID', 'payment:fake'), ('PAID', 'PREPARING', 'machine:K-1'),
+            ('PREPARING', 'READY', 'machine:K-1'), ('READY', 'COLLECTED', 'kiosk')])
         self.assertEqual(order.events.last().reason, "Collected with PIN.")
         self.assertFalse(order.stock_holds.filter(status=StockHold.Status.HELD).exists())
         self.assertEqual(self.stock(), (start[0] - 100, start[1] - 200))
@@ -338,7 +345,6 @@ class OrderLifecycleTests(CheckoutTestBase):
         self.assert_stock_balanced(order, start)
 
     def test_moves_that_are_not_allowed_change_nothing(self):
-        from ordering.status import change_status
         order, _ = self.place(self.milk_tea)
         services.confirm_payment(order, 'fake', order.revenue, provider_ref='tx-2')
         order.refresh_from_db()
