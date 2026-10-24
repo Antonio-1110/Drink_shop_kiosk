@@ -1,0 +1,34 @@
+/* the drawn cup or photo; sizes are set by where it is shown */
+.drink-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 5 / 4;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.drink-art svg {
+  height: 78%;
+}
+
+.drink-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.drink-art-sm {
+  width: 88px;
+  aspect-ratio: 1;
+}
+
+.drink-art-lg {
+  aspect-ratio: auto;
+  min-height: 100%;
+}
+
+.drink-art-lg svg {
+  height: 320px;
+  max-height: 70%;
+}

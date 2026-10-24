@@ -1,24 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { placeOrder } from '../api';
+import DrinkArt from '../components/DrinkArt';
+import DrinkSheet from '../components/DrinkSheet';
+import Steps from '../components/Steps';
 import { LEVELS, SIZE, itemPrice } from '../menu';
 import './CartPage.css';
 
-function LevelSelect({ label, value, onChange }) {
-    return (
-        <label className="level-select">
-            {label}
-            <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
-                {LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
-            </select>
-        </label>
-    );
-}
+const levelLabel = (value) => LEVELS.find((level) => level.value === value)?.label;
 
 function CartPage({ cartItems, updateCartItem, removeFromCart }) {
     const navigate = useNavigate();
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [editing, setEditing] = useState(null); // index of the line whose options are open
     const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0).toFixed(2);
 
     const checkout = async () => {
@@ -42,50 +37,74 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
             setSubmitting(false);
         }
     };
-    
+
+    if (cartItems.length === 0) {
+        return (
+            <div className="cart-empty">
+                <h1>Your order is empty</h1>
+                <p>Pick a drink from the menu to get started.</p>
+                <Link to="/" className="btn btn-primary">Browse the menu</Link>
+            </div>
+        );
+    }
+
     return (
-        <div className="cart-page-container">
-            <h1>Your Cart</h1>
+        <div className="cart-page">
+            <Steps current={0} />
+            <header className="page-header">
+                <h1>Review your order</h1>
+            </header>
 
-            <div className="cart-list">
-                {cartItems.length === 0 ? (
-                    <p>Your cart is empty.</p>
-                ) : (
-                    <ul>
-                        {cartItems.map((item, index) => (
-                            <li key={index} className="cart-item">
-                                <span>{item.custom && <span className="custom-tag">Designed</span>}{item.drink.name} ({item.size === SIZE.LARGE ? 'L' : 'S'})</span>
-                                <LevelSelect label="Sugar" value={item.sugar}
-                                    onChange={(sugar) => updateCartItem(index, { sugar })} />
-                                <LevelSelect label="Ice" value={item.ice}
-                                    onChange={(ice) => updateCartItem(index, { ice })} />
-                                <span>${itemPrice(item).toFixed(2)}</span>
-                                <button className="remove-btn" onClick={() => removeFromCart(index)}>Remove</button>
-                            </li>
-                            ))}
-                    </ul>
-                )}
+            <div className="cart-columns">
+                <ul className="cart-list">
+                    {cartItems.map((item, index) => (
+                        <li key={index} className="cart-line">
+                            <DrinkArt drink={item.drink} size="sm" />
+                            <div className="cart-line-main">
+                                <div className="cart-line-name">
+                                    {item.drink.name}
+                                    {item.custom && <span className="custom-tag">Designed</span>}
+                                </div>
+                                <div className="cart-line-detail">
+                                    {item.size === SIZE.LARGE ? 'Large' : 'Regular'}
+                                    {' · '}Sugar {levelLabel(item.sugar)}
+                                    {' · '}Ice {levelLabel(item.ice)}
+                                </div>
+                                <div className="cart-line-actions">
+                                    <button className="btn-text" onClick={() => setEditing(index)}>Edit</button>
+                                    <button className="btn-text" onClick={() => removeFromCart(index)}>Remove</button>
+                                </div>
+                            </div>
+                            <div className="cart-line-price price">${itemPrice(item).toFixed(2)}</div>
+                        </li>
+                    ))}
+                </ul>
+
+                <aside className="cart-summary">
+                    <div className="summary-row">
+                        <span>{cartItems.length} {cartItems.length === 1 ? 'drink' : 'drinks'}</span>
+                        <span className="price">${total}</span>
+                    </div>
+                    <div className="summary-row summary-total">
+                        <span>Total</span>
+                        <span className="price">${total}</span>
+                    </div>
+                    {error && <p className="error-banner">{error}</p>}
+                    <button className="btn btn-primary btn-block" onClick={checkout} disabled={submitting}>
+                        {submitting ? 'Placing order…' : 'Continue to payment'}
+                    </button>
+                    <Link to="/" className="btn btn-ghost btn-block">Add another drink</Link>
+                </aside>
             </div>
 
-            {error && <p className="error-banner">{error}</p>}
-
-            <div className="cart-summary">
-                <h3>Total: ${total}</h3>
-            </div>
-
-            {/* Footer actions */}
-            <div className="cart-actions">
-                {/* Left Button */}
-                <Link to="/" className="action-btn back-btn">
-                    &larr;Continue Shopping
-                </Link>
-
-                {/* Right Button */}
-                <button className="action-btn pay-btn" onClick={checkout}
-                    disabled={cartItems.length === 0 || submitting}>
-                    {submitting ? 'Placing order...' : 'Proceed to Payment →'}
-                </button>
-            </div>
+            {editing !== null && (
+                <DrinkSheet
+                    item={cartItems[editing]}
+                    confirmLabel="Save changes"
+                    onConfirm={(choice) => { updateCartItem(editing, choice); setEditing(null); }}
+                    onClose={() => setEditing(null)}
+                />
+            )}
         </div>
     );
 }

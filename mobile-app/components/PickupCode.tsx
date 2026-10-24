@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import type { PlacedOrder } from '@/lib/api';
 
 type Mode = 'qr' | 'pin';
@@ -59,10 +59,10 @@ const styles = StyleSheet.create({
   toggle: { flexDirection: 'row', backgroundColor: colors.primarySoft, borderRadius: 20, padding: 3 },
   toggleButton: { paddingVertical: 8, paddingHorizontal: 22, borderRadius: 18 },
   toggleSelected: { backgroundColor: colors.primary },
-  toggleText: { color: colors.primary, fontWeight: '600' },
+  toggleText: { fontFamily: fonts.sansBold, color: colors.primary },
   toggleTextSelected: { color: colors.surface },
   qr: { width: 220, height: 220, marginVertical: 8 },
-  pin: { fontSize: 44, fontWeight: 'bold', letterSpacing: 10, color: colors.text, marginVertical: 24, fontVariant: ['tabular-nums'] },
-  hint: { color: colors.muted, textAlign: 'center' },
+  pin: { fontFamily: fonts.serif, fontSize: 48, letterSpacing: 10, color: colors.text, marginVertical: 24, fontVariant: ['tabular-nums'] },
+  hint: { fontFamily: fonts.sans, color: colors.muted, textAlign: 'center' },
   fallback: { color: colors.text, textAlign: 'center' },
 });

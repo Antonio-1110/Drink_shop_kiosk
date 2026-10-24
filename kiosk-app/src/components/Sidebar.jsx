@@ -1,30 +1,41 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { CATEGORIES } from '../menu';
+import { NavLink } from 'react-router-dom';
+import { BRAND_NAME, CATEGORIES } from '../menu';
 
-function Sidebar({ cartCount}) {
+// the brand mark until the shop has a logo: a single tea leaf
+function LeafMark() {
     return (
-        <div className="sidebar">
-            <div className="logo-area">LOGO</div>
+        <svg viewBox="0 0 32 32" className="brand-mark" aria-hidden="true">
+            <path d="M6 26C6 13 14 6 27 5c0 13-7 21-20 21z" fill="currentColor" />
+            <path d="M7 25C12 19 17 14 23 10" stroke="var(--milk)" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        </svg>
+    );
+}
 
-            <div className="nav-links">
-                {/* We use Link to navigate without reloading the page */}
-                <Link to="/designer" className="nav-btn designer-link">Design your own</Link>
-                <Link to="/" className="nav-btn">All Drinks</Link>
-                {CATEGORIES.map(({ path, label }) => (
-                    <Link key={path} to={`/${path}`} className="nav-btn">{label}</Link>
-                ))}
+function Sidebar() {
+    const link = ({ isActive }) => `nav-link ${isActive ? 'active' : ''}`;
+    return (
+        <nav className="sidebar">
+            <NavLink to="/" className="brand">
+                <LeafMark />
+                <span>{BRAND_NAME}</span>
+            </NavLink>
+
+            <div className="eyebrow nav-heading">Menu</div>
+            <NavLink to="/" end className={link}>All drinks</NavLink>
+            {CATEGORIES.map(({ path, label }) => (
+                <NavLink key={path} to={`/${path}`} className={link}>{label}</NavLink>
+            ))}
+
+            <div className="nav-extras">
+                <NavLink to="/designer" className={({ isActive }) => `nav-feature ${isActive ? 'active' : ''}`}>
+                    <strong>Design your own</strong>
+                    <span>Choose your tea, milk and toppings</span>
+                </NavLink>
+                {/* for customers who ordered ahead in the app */}
+                <NavLink to="/collect" className={link}>Collect an app order</NavLink>
             </div>
-
-            {/* for customers who ordered ahead in the app */}
-            <Link to="/collect" className="nav-btn">Collect my order</Link>
-
-            {/* create new segment for cart link */}
-            <Link to="/cart" className="cart-link">
-                <div>View Cart</div>    
-                <div>{cartCount} items</div>
-            </Link>
-        </div>
+        </nav>
     );
 }
 

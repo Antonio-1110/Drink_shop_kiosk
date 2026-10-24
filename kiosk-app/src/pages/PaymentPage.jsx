@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { cancelOrder, fetchOrderStatus, fetchPaynowQr } from '../api';
+import Steps from '../components/Steps';
 import { useIdleCleanup, useIdlePause } from '../idleContext';
 import './CartPage.css';
 
@@ -64,24 +65,27 @@ function PaymentPage({ clearCart }) {
 
     if (orderStatus === 'CANCELLED') {
         return (
-            <div className="cart-page-container payment-page">
+            <div className="payment-page">
+                <div className="result-mark muted" aria-hidden="true">×</div>
                 <h1>Order cancelled</h1>
                 <p>The payment time ran out, so nothing was charged.</p>
-                <div className="cart-actions">
-                    <Link to="/" className="action-btn back-btn">Start a new order</Link>
-                </div>
+                <Link to="/" className="btn btn-primary">Start a new order</Link>
             </div>
         );
     }
 
     if (orderStatus !== 'PENDING') {
         return (
-            <div className="cart-page-container payment-page">
-                <h1>Payment received</h1>
-                <p>Thank you! Your drink is being made. Order number {orderId}.</p>
-                <div className="cart-actions">
-                    <Link to="/" className="action-btn back-btn">Start a new order</Link>
+            <div className="payment-page">
+                <Steps current={2} />
+                <div className="result-mark" aria-hidden="true">✓</div>
+                <h1>Thank you</h1>
+                <p>Payment received. Your drink is being made now.</p>
+                <div className="order-number">
+                    <span className="eyebrow">Order number</span>
+                    <strong>{orderId}</strong>
                 </div>
+                <Link to="/" className="btn btn-ghost">Start a new order</Link>
             </div>
         );
     }
@@ -89,22 +93,28 @@ function PaymentPage({ clearCart }) {
     const remaining = qr ? new Date(qr.expires_at).getTime() - now : null;
 
     return (
-        <div className="cart-page-container payment-page">
-            <h1>Scan to pay with PayNow</h1>
+        <div className="payment-page">
+            <Steps current={1} />
+            <h1>Scan to pay</h1>
+            <p>Open your banking app and scan with PayNow.</p>
             {error && <p className="error-banner">{error}</p>}
-            {qr && (
-                <>
-                    <img className="paynow-qr" src={qr.qr_code} alt="PayNow QR code" />
-                    <h3>Amount: ${qr.amount}</h3>
-                    <p>Reference: {qr.reference}</p>
-                    <p>Time left to pay: {formatRemaining(remaining)}</p>
-                </>
-            )}
-            <div className="cart-actions">
-                {orderToken
-                    ? <button className="action-btn back-btn" onClick={cancel}>Cancel order</button>
-                    : <Link to="/" className="action-btn back-btn">Start a new order</Link>}
+            <div className="payment-card">
+                {qr
+                    ? <img className="paynow-qr" src={qr.qr_code} alt="PayNow QR code" />
+                    : <div className="paynow-qr qr-placeholder">{error ? 'QR code unavailable' : 'Preparing QR code…'}</div>}
+                {qr && (
+                    <>
+                        <div className="payment-amount price">${qr.amount}</div>
+                        <div className="payment-meta">
+                            <span>Ref {qr.reference}</span>
+                            <span className="countdown">{formatRemaining(remaining)} left</span>
+                        </div>
+                    </>
+                )}
             </div>
+            {orderToken
+                ? <button className="btn-text" onClick={cancel}>Cancel order</button>
+                : <Link to="/" className="btn-text">Start a new order</Link>}
         </div>
     );
 }

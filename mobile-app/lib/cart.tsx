@@ -7,9 +7,9 @@ type CartState = {
   shop: Shop | null;
   cartItems: CartItem[];
   chooseShop: (shop: Shop) => void;
-  addToCart: (drink: Drink, size: Size) => void;
+  addToCart: (drink: Drink, choice: { size: Size; sugar: number; ice: number }) => void;
   addCustomToCart: (item: CustomCartItem) => void;
-  updateCartItem: (index: number, changes: Partial<Pick<CartItem, 'sugar' | 'ice'>>) => void;
+  updateCartItem: (index: number, changes: Partial<Pick<CartItem, 'size' | 'sugar' | 'ice'>>) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
   // the order just placed, with its pickup code
@@ -32,7 +32,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (next.id !== shop?.id) setCartItems([]);
       setShop(next);
     },
-    addToCart: (drink, size) => setCartItems((items) => [...items, { drink, size, sugar: 4, ice: 4 }]),
+    addToCart: (drink, { size, sugar, ice }) => setCartItems((items) => [...items, { drink, size, sugar, ice }]),
     addCustomToCart: (item) => setCartItems((items) => [...items, item]),
     updateCartItem: (index, changes) =>
       setCartItems((items) => items.map((item, i) => (i === index ? { ...item, ...changes } : item))),

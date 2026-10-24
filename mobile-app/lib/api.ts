@@ -88,7 +88,17 @@ export function fetchDesignerOptions(shopId: number) {
 export type OrderStatus = { status: string; hold_expires_at?: string | null };
 
 // a collected order was paid for too
-export const isPaid = (status?: string) => status === 'PAID' || status === 'COLLECTED';
+// every status after payment, including the machine's steps (being made, ready, couldn't be made)
+const PAID_STATUSES = ['PAID', 'PREPARING', 'READY', 'FAILED', 'REFUND_NEEDED', 'COLLECTED'];
+export const isPaid = (status?: string) => PAID_STATUSES.includes(status ?? '');
+
+// what the machine is doing with a paid order, for the order screen; other statuses show nothing
+export const DRINK_PROGRESS: Record<string, { text: string; tone: 'ok' | 'warn' }> = {
+  PREPARING: { text: 'Your drink is being made.', tone: 'ok' },
+  READY: { text: 'Ready to collect at the machine.', tone: 'ok' },
+  FAILED: { text: "Sorry, the machine couldn't make your drink. Staff have been told.", tone: 'warn' },
+  REFUND_NEEDED: { text: "Sorry, your drink couldn't be made. Your payment is being refunded.", tone: 'warn' },
+};
 
 export function fetchOrderStatus(orderId: string | number) {
   return request<OrderStatus>(`/ordering/orders/${orderId}/status/`);

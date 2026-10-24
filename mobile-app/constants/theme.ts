@@ -15,3 +15,13 @@ export const colors = {
   errorBg: '#fde4e1',
   errorText: '#9b2c1f',
 };
+
+// Fraunces (serif) for names and headings, Inter for everything else, matching the kiosk.
+// Loaded in app/_layout.tsx; until they load, the system fonts are used.
+export const fonts = {
+  serif: 'Fraunces_500Medium',
+  serifBold: 'Fraunces_600SemiBold',
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansBold: 'Inter_600SemiBold',
+};

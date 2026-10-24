@@ -5,7 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import ErrorBanner from '@/components/ErrorBanner';
 import LevelPicker from '@/components/LevelPicker';
 import QrCode from '@/components/QrCode';
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { fetchDesignerOptions } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import {
@@ -145,7 +145,7 @@ export default function DesignerScreen() {
           </Pressable>
           <Pressable accessibilityRole="button" onPress={add} disabled={Boolean(missing)}
             style={[styles.addButton, missing && { opacity: 0.5 }]}>
-            <Text style={styles.addText}>{missing ?? 'Add to cart'}</Text>
+            <Text style={styles.addText}>{missing ?? 'Add to order'}</Text>
           </Pressable>
         </View>
       </View>
@@ -171,10 +171,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 14, paddingBottom: 24 },
   loading: { textAlign: 'center', color: colors.muted, marginTop: 40 },
-  preview: { flexDirection: 'row', gap: 16, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
+  preview: { flexDirection: 'row', gap: 16, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border },
   previewText: { flex: 1, gap: 4 },
-  name: { fontSize: 17, fontWeight: 'bold', color: colors.text, marginBottom: 2 },
-  recipeLine: { fontSize: 12, color: colors.muted },
+  name: { fontFamily: fonts.serif, fontSize: 20, color: colors.text, marginBottom: 2 },
+  recipeLine: { fontFamily: fonts.sans, fontSize: 12, color: colors.muted },
   gradeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
   gradeBadge: {
     width: 44, height: 44, lineHeight: 44, borderRadius: 8, overflow: 'hidden',
@@ -192,29 +192,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap-reverse', justifyContent: 'center', gap: 2,
   },
   toppingDot: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: 'rgba(0,0,0,0.25)' },
-  groupTitle: { fontSize: 17, fontWeight: 'bold', color: colors.primary, marginTop: 18, marginBottom: 8 },
+  groupTitle: { fontFamily: fonts.sansBold, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.muted, marginTop: 22, marginBottom: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center' },
-  chipSelected: { backgroundColor: colors.primary },
+  chip: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center' },
+  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipDisabled: { opacity: 0.45 },
-  chipText: { color: colors.primary, fontWeight: '600' },
-  chipSub: { color: colors.accent, fontSize: 12 },
+  chipText: { fontFamily: fonts.sansMedium, color: colors.text },
+  chipSub: { fontFamily: fonts.sans, color: colors.muted, fontSize: 12 },
   chipTextSelected: { color: colors.surface },
   levels: { gap: 8 },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14,
-    borderTopWidth: 2, borderTopColor: colors.border, backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.surface,
   },
   footerButtons: { flexDirection: 'row', gap: 8, flexShrink: 1 },
-  muted: { color: colors.muted },
-  total: { fontSize: 22, fontWeight: 'bold', color: colors.accent },
-  codeButton: { backgroundColor: colors.secondary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 14 },
-  codeText: { color: colors.text, fontWeight: 'bold', fontSize: 16 },
-  addButton: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 18, flexShrink: 1 },
-  addText: { color: colors.surface, fontWeight: 'bold', fontSize: 16, textAlign: 'center' },
+  muted: { fontFamily: fonts.sans, color: colors.muted },
+  total: { fontFamily: fonts.serif, fontSize: 26, color: colors.text },
+  codeButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 16 },
+  codeText: { fontFamily: fonts.sansBold, color: colors.text, fontSize: 15 },
+  addButton: { backgroundColor: colors.primary, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 22, flexShrink: 1 },
+  addText: { fontFamily: fonts.sansBold, color: colors.surface, fontSize: 15, textAlign: 'center' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
-  modal: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, gap: 12, alignItems: 'center' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
+  modal: { backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 12, alignItems: 'center' },
+  modalTitle: { fontFamily: fonts.serif, fontSize: 24, color: colors.text },
   modalText: { color: colors.muted, textAlign: 'center' },
   codeValue: { fontFamily: 'monospace', color: colors.text },
 });

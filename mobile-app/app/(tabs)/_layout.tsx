@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { useCart } from '@/lib/cart';
 
 export default function TabLayout() {
@@ -11,14 +11,20 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarStyle: { backgroundColor: colors.header, borderTopColor: colors.border },
-        headerStyle: { backgroundColor: colors.header },
+        tabBarInactiveTintColor: colors.muted,
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontFamily: fonts.sansMedium },
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTitleStyle: { fontFamily: fonts.serif, fontSize: 22, color: colors.text },
         headerTintColor: colors.primary,
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Menu',
+          // the menu draws its own slim header with the pickup shop
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'cup.and.saucer', android: 'local_cafe', web: 'local_cafe' }} tintColor={color} size={26} />
           ),
@@ -27,7 +33,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Cart',
+          title: 'Your order',
+          tabBarLabel: 'Order',
+          tabBarBadgeStyle: { backgroundColor: colors.accent },
           tabBarBadge: cartItems.length || undefined,
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'cart', android: 'shopping_cart', web: 'shopping_cart' }} tintColor={color} size={26} />
