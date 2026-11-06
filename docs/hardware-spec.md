@@ -18,6 +18,28 @@ The shop runs as five parts:
 
 Prices, models and regulator details are from memory and approximate. Check each one with the supplier or agency before ordering.
 
+## Subsystems to build and prototype
+
+The shop splits into 13 subsystems, each buildable and testable on its own bench before joining. The Claude Doc has a diagram of how they connect: the cup goes S6 cup drop → S7 ice → S8 toppings → S3 liquids → S9 sealer → S10 pickup; S4 cold storage and S5 tea brewer feed S3; S1 edge controller drives everything; S2 ordering station, S13 payments and the backend sit above it; S11 stock sensors and S12 cleaning run alongside.
+
+| Order | Subsystem | What the prototype proves | Bench build | Done when |
+| --- | --- | --- | --- | --- |
+| 1 | S1 Edge controller + simulator | Software can drive a machine and report statuses | Pi or laptop running the edge service against fake modules | A test order goes PAID → PREPARING → READY with no hardware |
+| 2 | S3 Liquid dosing, one channel | Accurate dose, smooth release, empty pipe | Chamber or pump in a cooler, air pump + regulator, check valve, 1–2 m tubing, scale | 20 doses of 30–300 mL within ±3%, no spurt, no drip, line empty |
+| 3 | S4 Cold storage + dairy lock | Probes read reliably, lock works | Small fridge, 2–3 probes, microcontroller → S1 | Milk passing 4 °C locks dairy drinks within one reading |
+| 4 | S3 Liquid dosing, 4–8 channels | Several liquids, no cross-contamination | Manifold or nozzle cluster | A backend recipe (tea + milk + syrup) dispensed correctly |
+| 5 | S6 Cup drop and transfer | One cup at a time, always in place | Cup stack, release, rail or turntable, cup sensor | 100 cups per size with no jams |
+| 6 | S7 Ice | Ice by weight at five levels | Insulated hopper, auger, load cell | 0–150 g within ±10 g |
+| 7 | S8 Toppings | Pearls portioned without clumping | Hopper with rotary valve or auger | 50 portions within ±10% |
+| 8 | S9 Sealer | Leak-free seal at line speed | Off-the-shelf sealer triggered by S1 | Shake test passes; film-out and jam reported |
+| 9 | S10 Pickup | Only the right customer gets the cup | Motorised flap, cup sensor, scanner, Collect screen | Valid code opens the right slot, wrong code doesn't, cup-taken sensed |
+| 10 | S5 Tea brewer | Consistent, chilled, time-limited tea | Boiler, brew vessel, chiller coil or ice bath | Same strength over 5 batches; old batches discarded |
+| 11 | S11 Stock sensors | Measured levels match backend count | Load cells under 2–3 containers | Drift over a day stays within margin |
+| 12 | S12 Cleaning, water, waste | Automatic line rinse | Pump through dosing lines, waste tank + level sensor | Rinse after dairy runs and is logged |
+| 13 | S2 Ordering + S13 Payments | Customer-facing hardware | Touchscreen, kiosk PC, scanner; terminal later | Full order from screen with scanned pickup |
+
+Steps 1 to 3 can run in parallel. Joining S3, S4 and S6–S10 on one frame is the first full-drink milestone.
+
 ## Open decisions
 
 | # | Decision | Options | Suggestion |
