@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from operation.availability import closed_reason, locked_ingredient_ids
 from operation.models import DesignerConfig, Ingredient, Inventory, Shop
 from . import schema
 from .models import OrderItem
@@ -41,6 +42,10 @@ def designer_options(request):
         offered_in_designer=True, kind__in=[Ingredient.Kind.LIQUID, Ingredient.Kind.TOPPING],
     ).exclude(code=None).order_by('designer_category', 'name'))
     stock = dict(Inventory.objects.filter(shop_id=shop_id).values_list('ingredient_id', 'current_stock'))
+    # nothing is available while the machine is offline; chilled ingredients not while dairy-locked
+    shop = Shop.objects.get(pk=shop_id)
+    for ingredient_id in (stock if closed_reason(shop) else locked_ingredient_ids(shop)):
+        stock[ingredient_id] = 0
 
     def most_a_large_cup_uses(ingredient):
         # a liquid on its own fills the whole cup; a topping on its own gets all the topping weight

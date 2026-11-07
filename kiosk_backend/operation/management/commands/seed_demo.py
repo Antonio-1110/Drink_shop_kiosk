@@ -34,6 +34,8 @@ INGREDIENTS = [
 # recipe lines that follow the customer's sugar and ice choice (the amount is for 100%)
 SCALING = {"Brown sugar syrup": DrinkIngredient.Scaling.SUGAR, "Ice": DrinkIngredient.Scaling.ICE}
 
+CHILLED = {"Fresh milk"}
+
 DRINKS = [  # name, category, small price, large price, description, recipe
     ("Classic Milk Tea", Drink.Category.MILK_TEA, "3.80", "4.60", "Black tea with fresh milk.",
      {"Black tea": 250, "Fresh milk": 80, "Ice": 150}),
@@ -75,9 +77,11 @@ class Command(BaseCommand):
                 ingredient.sugar_per_100, ingredient.saturated_fat_per_100 = Decimal(str(sugar)), Decimal(str(sat_fat))
                 ingredient.save()
             ingredients[name] = ingredient
+            # fresh milk must stay at 4 C or below: out of range turns on the dairy lock
+            chilled = {"min_safe_temp_c": Decimal("0"), "max_safe_temp_c": Decimal("4")} if name in CHILLED else {}
             for shop in shops:
                 Inventory.objects.update_or_create(
-                    shop=shop, ingredient=ingredient, defaults={"current_stock": Decimal(stock)})
+                    shop=shop, ingredient=ingredient, defaults={"current_stock": Decimal(stock), **chilled})
 
         for name, category, s_price, l_price, description, recipe in DRINKS:
             drink, _ = Drink.objects.get_or_create(name=name, defaults={

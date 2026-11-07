@@ -7,6 +7,7 @@ from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import RequestFactory, override_settings
+from django.utils import timezone
 
 from operation.kiosk_auth import new_key
 from operation.models import Kiosk, Shop
@@ -24,7 +25,9 @@ S = Order.Status
 class MakingTestBase(CheckoutTestBase):
     def setUp(self):
         super().setUp()
-        self.kiosk = Kiosk.objects.create(shop=self.shop, machine_id='K-1')
+        # a machine that has checked in just now, so the shop is open
+        self.kiosk = Kiosk.objects.create(shop=self.shop, machine_id='K-1', operational_status=Kiosk.Status.ONLINE,
+                                          last_heartbeat=timezone.now())
         self.key = new_key(self.kiosk)
 
     def paid_order(self):

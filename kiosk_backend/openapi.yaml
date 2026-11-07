@@ -78,6 +78,94 @@ paths:
               schema:
                 $ref: '#/components/schemas/Inventory'
           description: ''
+  /operation/machine/heartbeat/:
+    post:
+      operationId: operation_machine_heartbeat_create
+      description: 'Send about once a minute. ONLINE (the default) or MAINTENANCE,
+        plus the state of each module, e.g. {"sealer": "ok", "ice": "low"}. A machine
+        that misses check-ins for MACHINE_HEARTBEAT_TIMEOUT_SECONDS closes its shop
+        until it''s back. The reply lists the chilled ingredients to send temperature
+        readings for.'
+      summary: Machine check-in (kiosk edge service only)
+      tags:
+      - operation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequestRequest'
+      security:
+      - kioskKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeartbeatReply'
+          description: ''
+        '400':
+          description: No response body
+  /operation/machine/next-order/:
+    post:
+      operationId: operation_machine_next_order_create
+      description: Gives the oldest paid order at the machine's shop and moves it
+        to PREPARING, so no other machine takes it. The reply has each drink's ingredients
+        and amounts. 204 when there's nothing to make. A paid order that needs an
+        ingredient under the dairy lock is failed (for a refund) instead of handed
+        out. Report READY or FAILED on /ordering/orders/{id}/progress/.
+      summary: Take the next order to make (kiosk edge service only)
+      tags:
+      - operation
+      security:
+      - kioskKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineJob'
+          description: ''
+        '204':
+          description: Nothing to make.
+  /operation/machine/temperatures/:
+    post:
+      operationId: operation_machine_temperatures_create
+      description: One reading per chilled ingredient (see the check-in reply). A
+        reading outside the ingredient's safe range locks the shop's chilled ingredients
+        until staff clear the lock. If a probe stops answering, the machine should
+        send its last reading as out of range itself.
+      summary: Send temperature readings (kiosk edge service only)
+      tags:
+      - operation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemperatureRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TemperatureRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TemperatureRequestRequest'
+        required: true
+      security:
+      - kioskKey: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureReply'
+          description: ''
+        '400':
+          description: No response body
   /ordering/check-order/:
     get:
       operationId: ordering_check_order_retrieve
@@ -127,6 +215,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
           description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopClosed'
+          description: ''
   /ordering/designer/options/:
     get:
       operationId: ordering_designer_options_retrieve
@@ -168,7 +262,8 @@ paths:
     get:
       operationId: ordering_drinks_list
       description: Drinks with enough stock for one more cup after everything already
-        in the cart.
+        in the cart. Empty while the shop's machine is offline; drinks with chilled
+        ingredients are left out while the dairy lock is on.
       summary: Drinks the shop can still make
       parameters:
       - in: query
@@ -248,6 +343,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderUnavailable'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopClosed'
           description: ''
   /ordering/orders/{order_id}/cancel/:
     post:
@@ -596,6 +697,32 @@ components:
           type: string
       required:
       - error
+    ChilledIngredient:
+      type: object
+      properties:
+        ingredient:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        min_safe_temp_c:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+        max_safe_temp_c:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+      required:
+      - code
+      - ingredient
+      - max_safe_temp_c
+      - min_safe_temp_c
+      - name
     DesignerCupPrice:
       type: object
       properties:
@@ -790,6 +917,46 @@ components:
           type: string
       required:
       - error
+    HeartbeatReply:
+      type: object
+      properties:
+        shop_open:
+          type: boolean
+        closed_reason:
+          type: string
+          nullable: true
+          description: machine_offline or maintenance
+        sfa_locked:
+          type: boolean
+          description: 'Dairy lock: chilled ingredients are off sale.'
+        sfa_lock_reason:
+          type: string
+        chilled:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChilledIngredient'
+      required:
+      - chilled
+      - closed_reason
+      - sfa_lock_reason
+      - sfa_locked
+      - shop_open
+    HeartbeatRequestRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/HeartbeatRequestStatusEnum'
+        modules:
+          type: object
+          additionalProperties: {}
+    HeartbeatRequestStatusEnum:
+      enum:
+      - ONLINE
+      - MAINTENANCE
+      type: string
+      description: |-
+        * `ONLINE` - ONLINE
+        * `MAINTENANCE` - MAINTENANCE
     Inventory:
       type: object
       properties:
@@ -821,6 +988,70 @@ components:
         * `2` - 50%
         * `1` - 25%
         * `0` - 0%
+    MachineJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MachineJobItem'
+      required:
+      - id
+      - items
+      - status
+    MachineJobItem:
+      type: object
+      properties:
+        item:
+          type: integer
+        name:
+          type: string
+        size:
+          type: string
+        sugar:
+          type: string
+        ice:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/MachineJobLine'
+      required:
+      - ice
+      - item
+      - lines
+      - name
+      - size
+      - sugar
+    MachineJobLine:
+      type: object
+      properties:
+        ingredient:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        kind:
+          type: string
+        unit:
+          type: string
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - amount
+      - code
+      - ingredient
+      - kind
+      - name
+      - unit
     MachineStepEnum:
       enum:
       - PREPARING
@@ -1224,6 +1455,30 @@ components:
       - id
       - name
       - shop_type
+    ShopClosed:
+      type: object
+      properties:
+        error:
+          type: string
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ShopClosedReasonEnum'
+          description: |-
+            The machine stopped checking in, or is in maintenance.
+
+            * `machine_offline` - machine_offline
+            * `maintenance` - maintenance
+      required:
+      - error
+      - reason
+    ShopClosedReasonEnum:
+      enum:
+      - machine_offline
+      - maintenance
+      type: string
+      description: |-
+        * `machine_offline` - machine_offline
+        * `maintenance` - maintenance
     ShopTypeEnum:
       type: string
       enum:
@@ -1246,6 +1501,52 @@ components:
           minLength: 1
       required:
       - method
+    TemperatureReadingInRequest:
+      type: object
+      properties:
+        ingredient:
+          type: integer
+        temp_c:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - ingredient
+      - temp_c
+    TemperatureReply:
+      type: object
+      properties:
+        shop_open:
+          type: boolean
+        closed_reason:
+          type: string
+          nullable: true
+          description: machine_offline or maintenance
+        sfa_locked:
+          type: boolean
+          description: 'Dairy lock: chilled ingredients are off sale.'
+        sfa_lock_reason:
+          type: string
+        recorded:
+          type: integer
+      required:
+      - closed_reason
+      - recorded
+      - sfa_lock_reason
+      - sfa_locked
+      - shop_open
+    TemperatureRequestRequest:
+      type: object
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemperatureReadingInRequest'
+      required:
+      - readings
   securitySchemes:
     basicAuth:
       type: http

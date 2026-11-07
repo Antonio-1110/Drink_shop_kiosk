@@ -178,6 +178,11 @@ ORDER_MAX_HOLD_MINUTES = int(os.environ.get('ORDER_MAX_HOLD_MINUTES', '30'))
 # at once (recorded as made by the simulator). On by default in development only.
 MACHINE_SIMULATOR = os.environ.get('MACHINE_SIMULATOR', '1' if DEBUG else '').lower() in ('1', 'true', 'yes')
 
+# A machine that has a kiosk key must check in (POST /operation/machine/heartbeat/) at least this
+# often, or its shop stops taking orders until it's back. Shops with no machine key yet (development,
+# demos) are never closed this way.
+MACHINE_HEARTBEAT_TIMEOUT_SECONDS = int(os.environ.get('MACHINE_HEARTBEAT_TIMEOUT_SECONDS', '180'))
+
 # Background jobs (`manage.py run_jobs`): cancel unpaid orders whose time ran out every
 # EXPIRE_ORDERS_EVERY_SECONDS, and check orders, stock and payments add up once a day at
 # CHECK_ORDERS_AT (HH:MM in TIME_ZONE).

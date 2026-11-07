@@ -48,6 +48,7 @@ Settings come from environment variables:
 | `PAYMENT_START_GRACE_MINUTES` | Time to start paying after ordering, or to try another method after one fails (default 2). |
 | `ORDER_MAX_HOLD_MINUTES` | The longest any order can hold stock (default 30). |
 | `MACHINE_SIMULATOR` | `1` to hand over paid orders without a drink machine reporting them made (on by default with `DJANGO_DEBUG`). Leave off once machines are connected. |
+| `MACHINE_HEARTBEAT_TIMEOUT_SECONDS` | A shop whose machine has a kiosk key stops taking orders if the machine hasn't checked in for this long (default 180). |
 | `EXPIRE_ORDERS_EVERY_SECONDS` | How often the background jobs cancel unpaid orders that ran out of time (default 60). |
 | `CHECK_ORDERS_AT` | When the daily order check runs, `HH:MM` in the server's time zone (default `04:00`; the backend's `TIME_ZONE` is UTC for now). |
 | `STAFF_ALERT_EMAILS` | Comma-separated addresses emailed when the daily check finds a problem. |
@@ -89,11 +90,29 @@ Every change is checked against these moves (`kiosk_backend/ordering/status.py`)
 
 The machine's edge service reports each step with `POST /ordering/orders/<id>/progress/` and `{"status": "PREPARING" | "READY" | "FAILED", "reason": "..."}`. It must send its kiosk's key as `Authorization: Kiosk <key>`; make one with `python manage.py kiosk_key <machine ID>` (shown once; running it again replaces the key). A kiosk can only report orders at its own shop. Until a machine is connected, `MACHINE_SIMULATOR` stands in for it in development.
 
+## The drink machine (running without staff)
+
+The machine's edge service uses these, all with its kiosk key (details at `/api/docs/`):
+
+- `POST /operation/machine/heartbeat/`: check in about once a minute with `{"status": "ONLINE" | "MAINTENANCE", "modules": {...}}`. Once a machine has a key, its shop only takes orders while check-ins keep coming (`MACHINE_HEARTBEAT_TIMEOUT_SECONDS`); the menu is empty and new orders get a 503 otherwise. The reply lists the chilled ingredients to send temperatures for.
+- `POST /operation/machine/temperatures/`: `{"readings": [{"ingredient": <id>, "temp_c": 3.2}]}`. A reading outside the ingredient's safe range turns on the dairy lock: every chilled ingredient goes off sale (other drinks keep selling) until staff untick **SFA locked** on the kiosk in `/admin`.
+- `POST /operation/machine/next-order/`: takes the oldest paid order (moving it to Being made) and returns each drink's ingredients and amounts; 204 when there's nothing to make. A paid order that needs a locked ingredient is failed for a refund instead. Then report READY or FAILED on the progress endpoint above.
+
+To run the shop end to end without hardware, add a kiosk for the shop in `/admin`, make its key, and start the simulated machine next to the backend:
+
+```
+python manage.py kiosk_key <machine ID>
+python manage.py simulate_machine --key <key>                      # makes every paid order
+python manage.py simulate_machine --key <key> --fault warm-fridge  # also: out-of-cups, offline, --fail-rate 0.3
+```
+
+Set `MACHINE_SIMULATOR=0` while it runs, so pickup doesn't make orders by itself.
+
 ## Background jobs
 
 `python manage.py run_jobs` runs, until stopped:
 
-- every minute: cancel unpaid orders whose time has run out and put their ingredients back (`expire_orders`);
+- every minute: cancel unpaid orders whose time has run out and put their ingredients back (`expire_orders`), and mark machines that stopped checking in as offline (`check_machines`);
 - once a day at `CHECK_ORDERS_AT`: check that orders, stock and payments add up, and email `STAFF_ALERT_EMAILS` if not (`check_orders --email`).
 
 `./dev.sh` starts it next to the backend. In production run one copy next to the web server, kept running by whatever runs the server (a systemd service, a Docker container with the same image, or a supervisor). Or, from cron:

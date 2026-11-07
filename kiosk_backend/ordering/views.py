@@ -9,7 +9,7 @@ from . import schema
 from .serializer import OrderSerializer
 from operation.serializer import ShopSerializer, DrinkSerializer
 from django.db import transaction
-from .utils import (inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
+from .utils import (aggregate_ingredients, inventory_check, verify_drink_ids, check_cart_fulfillment, check_needs, add_needs,
                     custom_needs, menu_needs)
 from .models import Order, OrderItem
 from .status import change_status, record_placed
@@ -18,6 +18,7 @@ from checkout.services import expire_unpaid_orders, hold_stock, order_token
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import throttle_classes
 from . import pickup
+from operation.availability import closed_reason, locked_ingredient_ids
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,9 @@ def shops(request): # need to use request for membership programs
     return Response(serializer.data)
 
 @extend_schema(summary="Drinks the shop can still make",
-               description="Drinks with enough stock for one more cup after everything already in the cart.",
+               description="Drinks with enough stock for one more cup after everything already in the cart. "
+                           "Empty while the shop's machine is offline; drinks with chilled ingredients are left "
+                           "out while the dairy lock is on.",
                parameters=[schema.SHOP_ID, schema.CART],
                responses={200: DrinkSerializer(many=True), 400: schema.Error, 404: schema.Error})
 @api_view(['GET'])
@@ -56,7 +59,11 @@ def available_drinks(request):
     try: 
         shop = Shop.objects.get(id=shop_id)
         expire_unpaid_orders(shop)
-        drink_serializer = DrinkSerializer(Drink.objects.filter(is_active=True).exclude(id__in=inventory_check(shop, valid_cart)),many=True)
+        if closed_reason(shop):
+            return Response([])  # the machine is offline: nothing can be made
+        drinks = (Drink.objects.filter(is_active=True).exclude(id__in=inventory_check(shop, valid_cart))
+                  .exclude(required__ingredient_id__in=locked_ingredient_ids(shop)).distinct())
+        drink_serializer = DrinkSerializer(drinks, many=True)
         return Response(drink_serializer.data)
     except Shop.DoesNotExist:
         return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -68,7 +75,8 @@ def available_drinks(request):
 
 
 @extend_schema(summary="Check the cart can be made", parameters=[schema.SHOP_ID, schema.CART],
-               responses={200: schema.OrderOk, 400: schema.Error, 404: schema.Error, 409: schema.Unavailable})
+               responses={200: schema.OrderOk, 400: schema.Error, 404: schema.Error, 409: schema.Unavailable,
+                          503: schema.Closed})
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -85,7 +93,16 @@ def check_order_availability(request): #add data verification later
     try: 
         shop = Shop.objects.get(id=shop_id)
         expire_unpaid_orders(shop)
+        closed = closed_reason(shop)
+        if closed:
+            return Response({'error': closed[0], 'reason': closed[1]}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         tf, drinks, ingredients = check_cart_fulfillment(shop, valid_cart)
+        locked = locked_ingredient_ids(shop) & set(aggregate_ingredients(valid_cart))
+        if locked:
+            tf = False
+            ingredients = sorted(set(ingredients) | locked)
+            drinks = sorted(set(drinks) | set(DrinkIngredient.objects.filter(
+                drink_id__in=valid_cart, ingredient_id__in=locked).values_list('drink_id', flat=True)))
         if tf:
             return Response({'status':'order is good'}, status=status.HTTP_200_OK)
         else:
@@ -105,7 +122,7 @@ def check_order_availability(request): #add data verification later
                            "POST /ordering/orders/{id}/payments/; the hold lasts as long as that payment. "
                            "Keep order_token: cancelling needs it.",
                request=OrderSerializer, responses={201: schema.OrderCreated, 400: OpenApiResponse(description="Invalid order: errors keyed by field."),
-                          409: schema.Unavailable})
+                          409: schema.Unavailable, 503: schema.Closed})
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -122,12 +139,16 @@ def key_in_order(request): # handling orders with more than one drink
                                    item.get('sugar', normal), item.get('ice', normal))
                                   for item in items if item.get('drink')),
                        *(custom_needs(item['designer_lines']) for item in items if 'designer_lines' in item))
+    closed = closed_reason(shop)
+    if closed:
+        return Response({'error': closed[0], 'reason': closed[1]}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     # free up stock held by abandoned orders before checking this one
     expire_unpaid_orders(shop)
     with transaction.atomic():
         # lock this shop's stock so two kiosks can't sell the last cup at once
         list(Inventory.objects.select_for_update().filter(shop=shop))
-        short = check_needs(shop, needed)
+        # ingredients under the dairy lock count as out of stock
+        short = sorted(set(check_needs(shop, needed)) | (locked_ingredient_ids(shop) & set(needed)))
         if short:
             drinks = list(DrinkIngredient.objects.filter(drink_id__in=cart, ingredient_id__in=short)
                           .values_list('drink', flat=True).distinct())

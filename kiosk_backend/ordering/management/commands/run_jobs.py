@@ -1,6 +1,7 @@
 """Runs the backend's background jobs, for as long as it's left running:
 
-- every EXPIRE_ORDERS_EVERY_SECONDS (60): cancel unpaid orders whose time ran out (expire_orders)
+- every EXPIRE_ORDERS_EVERY_SECONDS (60): cancel unpaid orders whose time ran out (expire_orders),
+  and mark machines that stopped checking in as offline (check_machines)
 - once a day at CHECK_ORDERS_AT: check orders, stock and payments add up, emailing staff if not
   (check_orders --email)
 
@@ -40,6 +41,7 @@ class Jobs:
         ran = []
         if now >= self.next_expire:
             self.run('expire_orders', verbosity=0)
+            self.run('check_machines', verbosity=0)
             self.next_expire = now + timedelta(seconds=settings.EXPIRE_ORDERS_EVERY_SECONDS)
             ran.append('expire_orders')
         if now >= self.next_check:

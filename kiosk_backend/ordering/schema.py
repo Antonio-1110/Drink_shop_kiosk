@@ -19,6 +19,12 @@ Unavailable = inline_serializer('OrderUnavailable', {
     'options': serializers.ListField(child=serializers.CharField(), help_text="Designer ingredient codes that ran short."),
 })
 
+Closed = inline_serializer('ShopClosed', {
+    'error': serializers.CharField(),
+    'reason': serializers.ChoiceField(choices=['machine_offline', 'maintenance'],
+                                      help_text="The machine stopped checking in, or is in maintenance."),
+})
+
 OrderOk = inline_serializer('OrderAvailable', {'status': serializers.CharField()})
 
 
