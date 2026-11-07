@@ -40,6 +40,71 @@ The shop splits into 13 subsystems, each buildable and testable on its own bench
 
 Steps 1 to 3 can run in parallel. Joining S3, S4 and S6–S10 on one frame is the first full-drink milestone.
 
+## Running without staff
+
+With nobody on site, the machine makes drinks, notices its own faults, recovers from what it can, and protects food safety without waiting for a person. Staff restock, clean surfaces and fix what the machine can't.
+
+### Three control layers
+
+| Layer | Runs on | Decides | If the layer above is unreachable |
+| --- | --- | --- | --- |
+| Backend (Django) | Cloud | Menu, prices, orders, payments, stock, dairy lock, refunds, alerts, daily checks | n/a |
+| Edge service (Python) | Edge PC | Next order, recipe in mL, retries, local food-safety lock, local log | Finishes paid orders, stops new ones, keeps logging, syncs later |
+| Machine controller (PLC/MCU) | In the machine | Motor timing, valves, pumps, interlocks | Finishes or aborts the current step safely and waits |
+
+Safety rules live in the lowest layer that can enforce them.
+
+### One drink from order to pickup
+
+PAID → edge claims order (checks stock and modules) → PREPARING → make the drink → drink OK? yes → READY (cup in slot) → customer scans QR/PIN → COLLECTED. If READY sits too long, the cup goes to waste (#60). If the drink isn't OK: retry once with a new cup; if it fails again → FAILED → refund and alert staff. (Diagram in the Claude Doc.)
+
+### Faults and self-recovery
+
+Retry once if safe; hide the affected drinks if one ingredient or module is the problem; stop the whole shop only for food safety or physical danger.
+
+| Fault | Machine does on its own | Order outcome | Alert staff? |
+| --- | --- | --- | --- |
+| Ingredient runs out mid-drink | Discards cup, hides drinks using it | FAILED, refund | Yes |
+| Ingredient low | Hides drinks it can't finish | None | Yes, before it runs out |
+| Cup jam / double cup | Retries once | Retry, then FAILED | If retry fails |
+| Dose off by more than 5% | Discards, re-primes, retries once | Retry, then FAILED | If twice in an hour |
+| Seal failure | Discards, retries once | Retry, then FAILED | If film out or jams again |
+| Chiller above 4 °C or probe silent 5 min | Stops dairy drinks only | Dairy orders FAILED | Yes, urgent |
+| Tea batch past holding time | Discards, re-brews, hides tea drinks meanwhile | None | No |
+| Pickup not collected | Cup to waste (#60) | Marked uncollected | No |
+| Network down | Finishes paid orders, shows "temporarily closed" | None | After 5 min |
+| Edge PC crash | Watchdog reboot, controller holds safe | Current order FAILED | If twice in an hour |
+| Door, e-stop, tamper | Motors cut, closed until staff reset | Current order FAILED | Yes, urgent |
+| Waste full / water out | Stops making drinks | None | Yes |
+
+### Daily routine (times relative, opening hours not decided)
+
+1. Start-up self-test about 45 min before opening; failing modules hide their drinks and alert staff.
+2. Brew first tea batches and fill ice 30 min before opening.
+3. Open when the backend sees a healthy heartbeat.
+4. During the day: re-brew on time limit or low level, rinse dosing lines after dairy when idle, send temperatures, compare stock to the backend count.
+5. Close: stop new orders, waste uncollected cups after the limit.
+6. Shutdown: discard and log leftover tea and opened perishables, full clean-in-place.
+7. Night: chiller keeps logging; backend daily check emails tomorrow's restock list.
+
+Staff visit once a day after the night report.
+
+### Backend work needed for autonomy
+
+| # | Piece | What it does | Today |
+| --- | --- | --- | --- |
+| 1 | Machine work queue | Edge gets next paid order + recipe in mL; one claim per order | Missing (#40 edge side) |
+| 2 | Heartbeat and health | Per-module state every minute; shop closes when heartbeats stop | `last_heartbeat` field only |
+| 3 | Temperature readings API | Stores readings, triggers existing dairy lock | Lock built; API missing (#30, #42) |
+| 4 | Live availability | Hide drinks when the machine says a module/ingredient is out | Stock count only |
+| 5 | Alerts | Email + push/chat, urgent vs routine, de-duplicated | Daily email only |
+| 6 | Automatic refunds | Refund FAILED orders through the provider without staff | Staff click refund |
+| 7 | Waste and cleaning log | Discards and CIP runs for SFA records | Fields exist; no API |
+| 8 | Machine simulator | Fake machine on the real APIs with fault injection | Simple pickup simulator |
+| 9 | Remote operations | Close shop, hide drink, start rinse, reboot from the dashboard | Missing |
+
+Build 1, 2, 3 and 8 first.
+
 ## Open decisions
 
 | # | Decision | Options | Suggestion |
