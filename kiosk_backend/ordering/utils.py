@@ -25,19 +25,15 @@ def aggregate_ingredients(drinks):
     return a_d
 
 def inventory_check(shop, cart : list | None = None):
-    a_d = aggregate_ingredients(cart or [])
-    inventories_with_reserved = Inventory.objects.filter(shop=shop).annotate(
-    effective_stock=Case(
-        *[When(ingredient_id=k, then=F('current_stock') - a_d[k]) for k in a_d.keys()],
-        default=F('current_stock'), # here when it minus the aggregate amount it might already go negative
-        output_field=DecimalField(max_digits=10, decimal_places=2)))
-    failing_ingredient_ids = inventories_with_reserved.filter(
-        effective_stock__lt=F('ingredient__drinkingredient__required_quantity')
-    ).values_list('ingredient__id', flat=True).distinct()
-    unfulfillable_drink_ids = DrinkIngredient.objects.filter(
-        ingredient__id__in=failing_ingredient_ids
-    ).values_list('drink__id', flat=True).distinct()
-    return unfulfillable_drink_ids
+    """Ids of drinks the shop can't make one more of (a small cup at 100%) after what's in the cart.
+    Each drink is checked against its own recipe: a drink that needs a lot of an ingredient running
+    low doesn't take other drinks that need less of it off the menu. An ingredient the shop doesn't
+    stock counts as none left."""
+    reserved = aggregate_ingredients(cart or [])
+    stock = dict(Inventory.objects.filter(shop=shop).values_list('ingredient_id', 'current_stock'))
+    return {drink_id for drink_id, ingredient_id, quantity in
+            DrinkIngredient.objects.values_list('drink_id', 'ingredient_id', 'required_quantity')
+            if stock.get(ingredient_id, 0) - reserved.get(ingredient_id, 0) < quantity}
     
 def check_cart_fulfillment(shop, cart : list | None = None):
     a_d = aggregate_ingredients(cart or [])

@@ -24,7 +24,7 @@ from rest_framework.response import Response
 from ordering.models import Order
 from ordering.status import change_status
 from ordering.utils import menu_needs
-from .availability import closed_reason, heartbeat_fresh, locked_ingredient_ids
+from .availability import closed_reason, heartbeat_fresh, locked_ingredient_ids, modules_down
 from .kiosk_auth import IsKiosk, KioskKeyAuthentication
 from .models import Ingredient, Inventory, Kiosk
 
@@ -57,7 +57,8 @@ def _state(kiosk):
 
 _State = {
     'shop_open': serializers.BooleanField(),
-    'closed_reason': serializers.CharField(allow_null=True, help_text="machine_offline or maintenance"),
+    'closed_reason': serializers.CharField(allow_null=True,
+                                           help_text="machine_offline, maintenance or machine_not_ready"),
     'sfa_locked': serializers.BooleanField(help_text="Dairy lock: chilled ingredients are off sale."),
     'sfa_lock_reason': serializers.CharField(),
 }
@@ -170,12 +171,16 @@ _Job = inline_serializer('MachineJob', {
     description="Gives the oldest paid order at the machine's shop and moves it to PREPARING, so no other "
                 "machine takes it. The reply has each drink's ingredients and amounts. 204 when there's nothing "
                 "to make. A paid order that needs an ingredient under the dairy lock is failed (for a refund) "
-                "instead of handed out. Report READY or FAILED on /ordering/orders/{id}/progress/.",
+                "instead of handed out. Also 204 while the last check-in reported an essential part (cups, sealer, "
+                "pickup, liquids) empty or faulty: paid orders wait until it's fixed. Report READY or FAILED "
+                "on /ordering/orders/{id}/progress/.",
     request=None, responses={200: _Job, 204: OpenApiResponse(description="Nothing to make.")})
 @machine_view('POST')
 def next_order(request):
     kiosk = request.auth
     actor = f"machine:{kiosk.machine_id}"
+    if modules_down(kiosk):
+        return Response(status=status.HTTP_204_NO_CONTENT)  # e.g. out of cups: the orders wait for a refill
     locked = locked_ingredient_ids(kiosk.shop)
     for order in Order.objects.filter(shop_id=kiosk.shop_id, status=S.PAID).order_by('time', 'pk')[:20]:
         # change_status checks the order is still PAID, so only one machine can take it

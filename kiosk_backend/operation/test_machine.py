@@ -217,14 +217,21 @@ class SimulatedMachineTests(MachineTestBase):
             self.assertEqual(order.status, S.READY)
         self.assertEqual(self.milk_stock.temperature_readings.count(), 2)
 
-    def test_out_of_cups_fails_after_one_retry(self):
+    def test_out_of_cups_closes_the_shop_and_orders_wait(self):
         self.check_in()
         order = self.paid_order(self.green_tea)
         made = self.machine(fault='out-of-cups').tick()
+        self.assertEqual(made, [])  # it said cups are empty, so it isn't given the order to fail
+        self.assertEqual(self.status(order), S.PAID)
+        self.assertEqual(self.menu(), set())
+        self.assertEqual(self.machine().tick(), [(order.pk, 'READY')])  # refilled
+
+    def test_a_failed_drink_is_retried_once(self):
+        self.check_in()
+        order = self.paid_order(self.green_tea)
+        made = self.machine(fail_rate=1).tick()
         self.assertEqual(made, [(order.pk, 'FAILED')])
         self.assertTrue(any('retrying once' in line for line in self.lines))
-        order.refresh_from_db()
-        self.assertEqual(order.events.last().reason, 'Out of cups')
 
     def test_random_failures_are_retried(self):
         self.check_in()

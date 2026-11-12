@@ -22,6 +22,7 @@ from django.db import transaction
 from django.db.models import Max, Q
 from django.utils import timezone
 
+from operation.availability import locked_ingredient_ids
 from operation.models import Inventory, StockMovement
 from ordering.models import Order
 from ordering.models import OrderItemIngredient
@@ -183,12 +184,13 @@ def confirm_payment(order, method, amount, provider_ref='', actor=None):
             # paid after the hold ran out: take the order if the stock is still there
             list(Inventory.objects.select_for_update().filter(shop=order.shop))
             needed = order_needs(order)
-            if not check_needs(order.shop, needed):
+            # ingredients under the dairy lock are off sale, so they count as sold out too
+            if not check_needs(order.shop, needed) and not locked_ingredient_ids(order.shop) & set(needed):
                 hold_stock(order, needed)
                 change_status(order, PAID, **{**paid, 'reason': paid['reason'] + " Arrived after the order was cancelled."})
                 consume_stock(order)
             else:
-                problem = "Paid after the order was cancelled, and the ingredients have sold out."
+                problem = "Paid after the order was cancelled, and the ingredients have sold out or are off sale."
         else:
             problem = f"Order was already {order.get_status_display().lower()}."
 

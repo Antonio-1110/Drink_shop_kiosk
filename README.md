@@ -128,6 +128,25 @@ Set `MACHINE_SIMULATOR=0` while it runs, so pickup doesn't make orders by itself
 
 The real kiosk-side program is the edge service in [`edge/`](edge/README.md): it does the same over the same API behind a hardware interface (simulated for now), keeps the local dairy lock, queues reports while offline, and serves the kiosk screen. `./dev.sh --backend --edge` runs it with a dev kiosk key.
 
+### Simulating whole days
+
+`python manage.py simulate_day` runs a full day (08:00 to 22:00, Singapore time) at a pretend shop in a few
+seconds, on a simulated clock, through the real API: kiosk and phone customers order, pay, cancel, walk away,
+time out, pay late, pay twice or the wrong amount, and collect with their PIN or QR code; the pretend machine
+checks in, sends fridge temperatures, makes drinks and has a warm fridge, runs out of cups and goes offline on a
+timetable; the background jobs run every minute. It then checks every order's status against what its customer
+and the machine did, every status change, every payment against the order total, and stock against what the
+orders used, and lists anything wrong (exiting with an error, so it can run in CI). Nothing is saved unless you
+pass `--keep`.
+
+```
+python manage.py simulate_day                          # yesterday, with the default faults
+python manage.py simulate_day --days 3 --seed 7        # same seed, same days
+python manage.py simulate_day --orders-per-hour 40 --stock-factor 1 --no-faults
+python manage.py simulate_day --fault offline,12:30,10 --fault warm-fridge,15:00,20
+python manage.py simulate_day --keep                   # keep it, e.g. to look at in the dashboard
+```
+
 ## Background jobs
 
 `python manage.py run_jobs` runs, until stopped:

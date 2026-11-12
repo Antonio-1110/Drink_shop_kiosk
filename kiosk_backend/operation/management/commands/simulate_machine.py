@@ -9,7 +9,7 @@ READY or FAILED. Use it to run the shop end to end with no hardware, and to try 
 
 Faults:
     warm-fridge   probes read 7.0 C: the dairy lock comes on and milk drinks go off sale
-    out-of-cups   every drink fails (after one retry), so orders go to FAILED for a refund
+    out-of-cups   check-ins report the cups empty: the shop stops selling and paid orders wait for a refill
     offline       stops checking in: after MACHINE_HEARTBEAT_TIMEOUT_SECONDS the shop closes
 --fail-rate makes each attempt fail at random; a failed drink is retried once before it's reported.
 """
@@ -51,14 +51,15 @@ class Machine:
         self.make_seconds, self.rng, self.sleep, self.log = make_seconds, rng or random.Random(), sleep, log
         self.chilled = []
 
-    def check_in(self):
+    def check_in(self, status='ONLINE'):
+        """status is ONLINE, or MAINTENANCE while it's being cleaned or is shut for the night."""
         if self.fault == 'offline':
             self.log("offline: not checking in")
             return None
         modules = {m: 'ok' for m in MODULES}
         if self.fault == 'out-of-cups':
             modules['cups'] = 'empty'
-        code, data = self.send('POST', '/operation/machine/heartbeat/', {'status': 'ONLINE', 'modules': modules})
+        code, data = self.send('POST', '/operation/machine/heartbeat/', {'status': status, 'modules': modules})
         if code != 200:
             self.log(f"check-in refused: {code} {data}")
             return None
@@ -84,8 +85,8 @@ class Machine:
             return self.rng.choice(["Dose off by more than 5%", "Cup jammed", "Seal failed"])
         return None
 
-    def make_next(self):
-        """Takes and makes one order. Returns (order id, final status), or None if there was nothing."""
+    def take_next(self):
+        """Asks for the next order to make. Returns the job (the order is now PREPARING), or None."""
         if self.fault == 'offline':
             return None
         code, job = self.send('POST', '/operation/machine/next-order/')
@@ -93,13 +94,30 @@ class Machine:
             return None
         names = ', '.join(i['name'] for i in job['items'])
         self.log(f"making order {job['id']}: {names}")
+        return job
+
+    def report(self, job, problem=None):
+        """Tells the backend the order is READY, or FAILED with what went wrong. Returns the status
+        sent and the backend's reply code."""
+        to = 'FAILED' if problem else 'READY'
+        code, _ = self.send('POST', f"/ordering/orders/{job['id']}/progress/", {'status': to, 'reason': problem or ''})
+        self.log(f"order {job['id']}: {to}{' (' + problem + ')' if problem else ''}")
+        return to, code
+
+    def make(self, job):
+        """Makes the drinks, retrying a failed one once. Returns None if it worked, else the problem."""
         problem = self.attempt()
         if problem:
             self.log(f"order {job['id']}: {problem}, retrying once with a new cup")
             problem = self.attempt()
-        to = 'FAILED' if problem else 'READY'
-        self.send('POST', f"/ordering/orders/{job['id']}/progress/", {'status': to, 'reason': problem or ''})
-        self.log(f"order {job['id']}: {to}{' (' + problem + ')' if problem else ''}")
+        return problem
+
+    def make_next(self):
+        """Takes and makes one order. Returns (order id, final status), or None if there was nothing."""
+        job = self.take_next()
+        if job is None:
+            return None
+        to, _ = self.report(job, self.make(job))
         return job['id'], to
 
     def tick(self):

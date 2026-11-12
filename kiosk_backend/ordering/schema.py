@@ -21,8 +21,9 @@ Unavailable = inline_serializer('OrderUnavailable', {
 
 Closed = inline_serializer('ShopClosed', {
     'error': serializers.CharField(),
-    'reason': serializers.ChoiceField(choices=['machine_offline', 'maintenance'],
-                                      help_text="The machine stopped checking in, or is in maintenance."),
+    'reason': serializers.ChoiceField(choices=['machine_offline', 'maintenance', 'machine_not_ready'],
+                                      help_text="The machine stopped checking in, is in maintenance, or reported "
+                                                "an essential part (e.g. cups) empty or faulty."),
 })
 
 OrderOk = inline_serializer('OrderAvailable', {'status': serializers.CharField()})

@@ -115,11 +115,13 @@ paths:
   /operation/machine/next-order/:
     post:
       operationId: operation_machine_next_order_create
-      description: Gives the oldest paid order at the machine's shop and moves it
-        to PREPARING, so no other machine takes it. The reply has each drink's ingredients
-        and amounts. 204 when there's nothing to make. A paid order that needs an
+      description: 'Gives the oldest paid order at the machine''s shop and moves it
+        to PREPARING, so no other machine takes it. The reply has each drink''s ingredients
+        and amounts. 204 when there''s nothing to make. A paid order that needs an
         ingredient under the dairy lock is failed (for a refund) instead of handed
-        out. Report READY or FAILED on /ordering/orders/{id}/progress/.
+        out. Also 204 while the last check-in reported an essential part (cups, sealer,
+        pickup, liquids) empty or faulty: paid orders wait until it''s fixed. Report
+        READY or FAILED on /ordering/orders/{id}/progress/.'
       summary: Take the next order to make (kiosk edge service only)
       tags:
       - operation
@@ -947,7 +949,7 @@ components:
         closed_reason:
           type: string
           nullable: true
-          description: machine_offline or maintenance
+          description: machine_offline, maintenance or machine_not_ready
         sfa_locked:
           type: boolean
           description: 'Dairy lock: chilled ingredients are off sale.'
@@ -1521,10 +1523,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/ShopClosedReasonEnum'
           description: |-
-            The machine stopped checking in, or is in maintenance.
+            The machine stopped checking in, is in maintenance, or reported an essential part (e.g. cups) empty or faulty.
 
             * `machine_offline` - machine_offline
             * `maintenance` - maintenance
+            * `machine_not_ready` - machine_not_ready
       required:
       - error
       - reason
@@ -1532,10 +1535,12 @@ components:
       enum:
       - machine_offline
       - maintenance
+      - machine_not_ready
       type: string
       description: |-
         * `machine_offline` - machine_offline
         * `maintenance` - maintenance
+        * `machine_not_ready` - machine_not_ready
     ShopTypeEnum:
       type: string
       enum:
@@ -1581,7 +1586,7 @@ components:
         closed_reason:
           type: string
           nullable: true
-          description: machine_offline or maintenance
+          description: machine_offline, maintenance or machine_not_ready
         sfa_locked:
           type: boolean
           description: 'Dairy lock: chilled ingredients are off sale.'
