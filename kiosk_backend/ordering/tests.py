@@ -280,6 +280,7 @@ class DesignerTests(OrderingTestBase):
         self.assertTrue(by_code["BT"]["available"])
         self.assertEqual(res.data["pricing"]["overrides"], {"FM": "0.80"})
         self.assertEqual(res.data["sweetener"]["code"], "BS")
+        self.assertIs(res.data["sweetener"]["contains_sweetener"], False)
         self.assertEqual(self.client.get("/ordering/designer/options/", {"shop_id": 999}).status_code, 404)
 
     def test_order_custom_drink_prices_and_holds_stock(self):

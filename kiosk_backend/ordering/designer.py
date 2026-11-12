@@ -65,6 +65,8 @@ def designer_options(request):
             'code': sweetener.code, 'name': sweetener.name, 'color': sweetener.display_color,
             'sugar': float(sweetener.sugar_per_100), 'sat_fat': float(sweetener.saturated_fat_per_100),
             'ml': {'0': _ml(config, 'sweetener_ml', 0), '1': _ml(config, 'sweetener_ml', 1)},
+            # a non-sugar sweetener rules out grade A
+            'contains_sweetener': sweetener.contains_sweetener,
         },
         'ingredients': [{
             'code': i.code, 'name': i.name, 'kind': i.kind.lower(), 'category': i.designer_category,
