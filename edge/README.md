@@ -68,6 +68,6 @@ These use the simulator and a pretend backend. `kiosk_backend/operation/test_edg
 
 - Pickup: opening the right slot when a customer scans, and the cup-taken sensor (the backend marks COLLECTED; the machine confirm isn't built).
 - Stock sensor levels, clean-in-place and waste reports (no backend API yet).
-- Hiding single drinks when one module or ingredient is out (the backend gets module states but doesn't use them for the menu yet).
+- Hiding single drinks when one ingredient or optional module (ice, toppings) is out. While cups, sealer, pickup or liquids are empty or faulty the edge takes no orders and the backend closes the shop, so paid orders wait for the refill.
 - Start-up self-test and the daily routine from the hardware spec.
 - Running it as a service on the kiosk (systemd unit with a hardware watchdog).

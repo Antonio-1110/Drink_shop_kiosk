@@ -85,11 +85,34 @@ class ServiceTest(unittest.TestCase):
 
     def test_failed_drink_reported_failed_with_reason(self):
         backend = FakeBackend([job(1)])
-        svc, _, _ = service(backend, faults=['out-of-cups'])
+        svc, hw, _ = service(backend)
+        hw.sim.fail_rate = 1.0
         svc.tick()
         self.assertEqual(backend.progress[0][:2], (1, 'FAILED'))
-        self.assertIn('no cups left', backend.progress[0][2])
-        self.assertEqual(backend.heartbeats[0][1]['cups'], 'empty')
+        self.assertIn('random fault', backend.progress[0][2])
+
+    def test_out_of_cups_takes_no_orders_and_tells_the_backend_at_once(self):
+        backend = FakeBackend()
+        svc, hw, clock = service(backend, heartbeat_every=60)
+        svc.tick()
+        backend.jobs = [job(1)]
+        hw.sim.faults.add('out-of-cups')
+        clock.now += 1  # well before the next regular check-in
+        self.assertEqual(svc.tick(), [])
+        self.assertEqual(backend.heartbeats[-1][1]['cups'], 'empty')
+        self.assertEqual(len(backend.jobs), 1)  # the paid order waits
+        self.assertEqual(svc.status()['modules_down'], ['cups'])
+        hw.sim.faults.discard('out-of-cups')  # refilled
+        clock.now += 1
+        self.assertEqual(svc.tick(), [(1, 'READY')])
+        self.assertEqual(backend.heartbeats[-1][1]['cups'], 'ok')
+
+    def test_full_pickup_rack_in_the_simulator_assumes_the_oldest_cup_was_taken(self):
+        backend = FakeBackend([job(n, milk=False) for n in range(1, 9)])
+        svc, hw, _ = service(backend)
+        made = svc.tick()
+        self.assertEqual([status for _, status in made], ['READY'] * 8)
+        self.assertIn('pickup: slot 1 taken (assumed)', hw.sim.actions)
 
     def test_warm_fridge_locks_dairy_locally_but_still_makes_other_drinks(self):
         backend = FakeBackend()

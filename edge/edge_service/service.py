@@ -21,6 +21,11 @@ from .safety import DairyLock
 
 logger = logging.getLogger('edge.service')
 
+# parts without which no drink can be made (same list as the backend's availability.py): while one is
+# down the edge takes no orders, so paid orders wait for the refill instead of failing
+ESSENTIAL_MODULES = ('cups', 'sealer', 'pickup', 'liquids')
+DOWN_STATES = ('empty', 'fault')
+
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat()
@@ -38,6 +43,7 @@ class EdgeService:
         self.chilled = []
         self.maintenance = False
         self.offline_retry = 5.0
+        self.sent_states = None  # module states in the last check-in the backend got
         self.making = None
         self.made = []  # (order id, status) of every order finished since start
         self.recover_interrupted_order()
@@ -64,8 +70,9 @@ class EdgeService:
 
     def check_in(self):
         status = 'MAINTENANCE' if self.maintenance else 'ONLINE'
+        states = self.hw.module_states()
         try:
-            reply = self.client.heartbeat(status, self.hw.module_states())
+            reply = self.client.heartbeat(status, states)
         except BackendUnavailable as e:
             if self.online:
                 logger.warning("Backend unreachable (%s); finishing work in hand and queuing reports", e)
@@ -78,6 +85,7 @@ class EdgeService:
         if not self.online:
             logger.info("Backend reachable; shop %s", "open" if reply['shop_open'] else f"closed ({reply['closed_reason']})")
         self.online = True
+        self.sent_states = states
         self.shop_open, self.closed_reason = reply['shop_open'], reply['closed_reason']
         self.chilled = reply.get('chilled', [])
         self.lock.sync(reply['sfa_locked'], nothing_unsent=len(self.outbox) == 0)
@@ -140,6 +148,9 @@ class EdgeService:
         now = self.clock()
         if self.online:
             self.flush()
+        # a part that ran out or broke (or was fixed) is told to the backend at once, not in a minute
+        if self.online and self.hw.module_states() != self.sent_states:
+            self.next_heartbeat = now
         if now >= self.next_heartbeat:
             self.next_heartbeat = now + self.heartbeat_every
             if self.check_in():
@@ -153,18 +164,29 @@ class EdgeService:
         made = []
         if self.online and not self.maintenance:
             for _ in range(self.max_orders_per_tick):
+                down = self.modules_down()
+                if down:
+                    if self.hw.module_states() != self.sent_states:
+                        self.check_in()
+                    logger.debug("Not taking orders: %s down", ', '.join(down))
+                    break
                 result = self.make_next()
                 if result is None:
                     break
                 made.append(result)
         return made
 
+    def modules_down(self):
+        states = self.hw.module_states()
+        return [m for m in ESSENTIAL_MODULES if states.get(m) in DOWN_STATES]
+
     def status(self):
         """For the kiosk screen and staff: what the edge knows right now."""
         return {'online': self.online, 'shop_open': self.online and self.shop_open,
                 'closed_reason': self.closed_reason if self.online else 'edge_offline',
                 'dairy_lock': self.lock.tripped, 'dairy_lock_reason': self.lock.reason,
-                'making': self.making, 'unsent_reports': len(self.outbox), 'modules': self.hw.module_states()}
+                'making': self.making, 'unsent_reports': len(self.outbox), 'modules': self.hw.module_states(),
+                'modules_down': self.modules_down()}
 
     def run(self, stop, poll_every=3.0):
         """Ticks until stop (a threading.Event) is set."""

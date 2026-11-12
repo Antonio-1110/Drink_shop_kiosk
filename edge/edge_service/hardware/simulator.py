@@ -100,7 +100,10 @@ class SimPickup(PickupSlots):
     def hold(self, order_id):
         free = next((s for s in range(1, self.slots + 1) if s not in self.held), None)
         if free is None:
-            raise HardwareFault(self.name, "every pickup slot is full", retryable=False)
+            # no cup-taken sensor here, so pretend the oldest cup was collected
+            free = next(iter(self.held))
+            self.sim.actions.append(f"pickup: slot {free} taken (assumed)")
+            del self.held[free]
         self.held[free] = order_id
         self.sim.step(self.name, f"order {order_id} cup in slot {free}")
         return free
@@ -112,7 +115,7 @@ class SimPickup(PickupSlots):
 
     def collected(self, order_id):
         """The simulator has no cup-taken sensor, so this stands in for a customer taking the cups."""
-        self.held = {s: o for s, o in self.held.items() if o != order_id}
+        self.held = {s: o for s, o in self.held.items() if o != order_id}  # dict keeps oldest first
 
 
 class SimTemperatures(TemperatureSensor):
