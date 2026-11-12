@@ -13,8 +13,17 @@ import { CartItem, formatPrice, itemPrice, LEVELS, MAX_ORDER_DRINKS, SIZE } from
 const levelLabel = (value: number) => LEVELS.find((level) => level.value === value)?.label;
 const TOO_MANY_DRINKS = `One order can have up to ${MAX_ORDER_DRINKS} drinks. Please remove some, or place a second order after this one.`;
 
+// why the shop can't take orders (the backend's 503 `reason`); nothing is placed or charged
+const SHOP_CLOSED: Record<string, string> = {
+  machine_offline: 'This shop is closed right now. Please try again later, or pick another shop.',
+  maintenance: 'This shop is closed for maintenance right now. Please try again later, or pick another shop.',
+  // cups, sealer, pickup or liquids are empty or faulty
+  machine_not_ready: "This shop's machine needs a quick refill or check before it can make drinks. Please try again in a little while, or pick another shop.",
+};
+
 // what the customer should see when the backend turns the order down
 function orderErrorMessage(err: ApiError, cartItems: CartItem[]) {
+  if (err.status === 503 && SHOP_CLOSED[err.data?.reason]) return SHOP_CLOSED[err.data.reason];
   if (err.status === 429) return 'Lots of orders are coming in from your connection. Please wait a minute, then try again.';
   // more drinks than the backend allows (its limit may differ from ours)
   if (err.status === 400 && err.data?.items) return TOO_MANY_DRINKS;
