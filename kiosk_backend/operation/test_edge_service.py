@@ -17,12 +17,12 @@ S = Order.Status
 
 
 class EdgeServiceEndToEndTests(MachineTestBase):
-    def edge(self, faults=()):
+    def edge(self, faults=(), **options):
         def transport(method, url, headers, body, timeout):
             res = self.client.generic(method, url[len('http://backend'):], data=body or b'',
                                       content_type='application/json', HTTP_AUTHORIZATION=headers['Authorization'])
             return res.status_code, res.content
-        hardware = load_driver('simulator', faults=faults, sleep=lambda s: None)
+        hardware = load_driver('simulator', faults=faults, sleep=lambda s: None, **options)
         return EdgeService(BackendClient('http://backend', self.key, transport=transport), hardware, Outbox())
 
     def test_paid_orders_are_made_and_collected(self):
@@ -43,13 +43,26 @@ class EdgeServiceEndToEndTests(MachineTestBase):
         self.assertEqual(res.data['status'], 'COLLECTED')
 
     def test_failed_drink_goes_to_failed_with_the_reason(self):
-        edge = self.edge(faults=['out-of-cups'])
+        edge = self.edge(fail_rate=1.0)
         edge.tick()
         order = self.paid_order(self.green_tea)
         self.assertEqual(edge.tick(), [(order.pk, 'FAILED')])
         order.refresh_from_db()
         self.assertEqual(order.status, S.FAILED)
-        self.assertIn('no cups left', order.events.last().reason)
+        self.assertIn('random fault', order.events.last().reason)
+
+    def test_out_of_cups_closes_the_shop_and_paid_orders_wait(self):
+        edge = self.edge()
+        edge.tick()
+        order = self.paid_order(self.green_tea)
+        edge.hw.sim.faults.add('out-of-cups')
+        edge.next_heartbeat = 0
+        self.assertEqual(edge.tick(), [])  # its check-in said cups are empty, so it isn't given the order
+        self.assertEqual(self.status(order), S.PAID)
+        self.assertEqual(self.order((self.green_tea, 0)).data['reason'], 'machine_not_ready')
+        edge.hw.sim.faults.discard('out-of-cups')  # refilled
+        edge.next_heartbeat = 0
+        self.assertEqual(edge.tick(), [(order.pk, 'READY')])
 
     def test_warm_fridge_locks_dairy_and_milk_orders_are_not_made(self):
         edge = self.edge()
