@@ -133,7 +133,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Singapore time: the dashboard's days and busiest hours, and CHECK_ORDERS_AT, use it.
+# The database still stores times in UTC (USE_TZ).
+TIME_ZONE = os.environ.get('DJANGO_TIME_ZONE', 'Asia/Singapore')
 
 USE_I18N = True
 

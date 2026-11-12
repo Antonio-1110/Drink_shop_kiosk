@@ -50,7 +50,8 @@ Settings come from environment variables:
 | `MACHINE_SIMULATOR` | `1` to hand over paid orders without a drink machine reporting them made (on by default with `DJANGO_DEBUG`). Leave off once machines are connected. |
 | `MACHINE_HEARTBEAT_TIMEOUT_SECONDS` | A shop whose machine has a kiosk key stops taking orders if the machine hasn't checked in for this long (default 180). |
 | `EXPIRE_ORDERS_EVERY_SECONDS` | How often the background jobs cancel unpaid orders that ran out of time (default 60). |
-| `CHECK_ORDERS_AT` | When the daily order check runs, `HH:MM` in the server's time zone (default `04:00`; the backend's `TIME_ZONE` is UTC for now). |
+| `CHECK_ORDERS_AT` | When the daily order check runs, `HH:MM` in the backend's time zone (default `04:00`). |
+| `DJANGO_TIME_ZONE` | Time zone for the dashboard's days and hours and for `CHECK_ORDERS_AT` (default `Asia/Singapore`). Times are stored in UTC either way. |
 | `STAFF_ALERT_EMAILS` | Comma-separated addresses emailed when the daily check finds a problem. |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | The mail server those emails go through (port 587 with TLS by default). With `DJANGO_DEBUG` and no `EMAIL_HOST`, emails are printed to the console instead. |
 
