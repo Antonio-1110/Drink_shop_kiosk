@@ -83,6 +83,8 @@ Drink designer: `GET /ordering/designer/options/?shop_id=` lists the sizes, pric
 
 Pickup: every order gets a 6-digit PIN and a QR code, returned only in the reply to placing it. At the machine the customer types the PIN or scans the code, and the kiosk calls `POST /ordering/pickup/`. That hands over a ready order once and marks it collected. A customer who scans before the drink is made is told it's still being made. Attempts are limited per machine (`PICKUP_ATTEMPTS_PER_MINUTE`, default 10), so PINs can't be guessed.
 
+Limits on the public ordering endpoints: an order (or a cart check) can have at most `ORDER_MAX_ITEMS` drinks (default 20), and each device (by IP) can place at most `ORDERS_PER_MINUTE` orders a minute (default 20), so nobody can tie up a shop's stock with fake orders.
+
 ## Order statuses
 
 An order goes **Waiting for payment → Paid → Being made → Ready to collect → Collected**. An unpaid order can be **Cancelled** (by the customer, the idle timeout, or running out of time), and a payment that arrives late can still make it Paid. A drink the machine couldn't make is **Couldn't be made**: the machine can try again (back to Being made), or staff refund it with **Refund selected orders the machine couldn't make** under **Orders** in `/admin`, which makes it **Not made, refund needed**. Failed orders show the machine's reason in the order list.

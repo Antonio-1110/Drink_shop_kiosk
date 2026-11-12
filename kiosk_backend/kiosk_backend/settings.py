@@ -97,6 +97,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'kiosk_backend.wsgi.application'
 
+# lifts the order rate limit while the test suite runs (see test_runner.py)
+TEST_RUNNER = 'kiosk_backend.test_runner.Runner'
+
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -164,6 +167,8 @@ PAYNOW_MERCHANT_CATEGORY_CODE = os.environ.get('PAYNOW_MERCHANT_CATEGORY_CODE', 
 
 # Payment methods customers can choose (see checkout/providers.py), comma-separated
 PAYMENT_METHODS = [m.strip() for m in os.environ.get('PAYMENT_METHODS', 'paynow').split(',') if m.strip()]
+# the most drinks one order (or one cart check) may have
+ORDER_MAX_ITEMS = int(os.environ.get('ORDER_MAX_ITEMS', '20'))
 # An unpaid order's ingredients stay held while its payment is open. Each method sets how long
 # that is; a payment gateway's own session expiry should match its entry here.
 PAYMENT_HOLD_MINUTES = {
@@ -208,7 +213,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     # pickup PIN attempts per machine (by IP), so 6-digit PINs can't be guessed
-    'DEFAULT_THROTTLE_RATES': {'pickup': os.environ.get('PICKUP_ATTEMPTS_PER_MINUTE', '10') + '/min'},
+    'DEFAULT_THROTTLE_RATES': {'pickup': os.environ.get('PICKUP_ATTEMPTS_PER_MINUTE', '10') + '/min',
+                               # orders placed per device (by IP), so nobody can hold all the stock with fake orders
+                               'orders': os.environ.get('ORDERS_PER_MINUTE', '20') + '/min'},
 }
 
 # API contract: served at /api/schema/ (browse it at /api/docs/) and committed as openapi.yaml

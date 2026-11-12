@@ -1181,6 +1181,7 @@ components:
             type: string
             maxLength: 4
           description: Ingredient codes for a designer drink, instead of `drink`.
+          maxItems: 20
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'
@@ -1209,6 +1210,7 @@ components:
             minLength: 1
             maxLength: 4
           description: Ingredient codes for a designer drink, instead of `drink`.
+          maxItems: 20
         size:
           allOf:
           - $ref: '#/components/schemas/SizeEnum'

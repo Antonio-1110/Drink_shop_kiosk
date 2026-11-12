@@ -1,7 +1,12 @@
+from django.conf import settings
 from rest_framework import serializers
 from operation.models import DesignerConfig, Ingredient
 from .models import Order, Drink, OrderItem, OrderItemIngredient
 from django.db import transaction
+
+# a designer drink can't have more ingredients than this (liquids and toppings together)
+MAX_CUSTOM_INGREDIENTS = 20
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
     # This field is used for input validation, ensuring the provided ID exists in the Drink table.
@@ -10,6 +15,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
                                                required=False, allow_null=True)
     # a drink the customer designed: ingredient codes from GET /ordering/designer/options/
     custom = serializers.ListField(child=serializers.CharField(max_length=4), required=False, allow_empty=False,
+                                   max_length=MAX_CUSTOM_INGREDIENTS,
                                    help_text="Ingredient codes for a designer drink, instead of `drink`.")
 
     class Meta:
@@ -47,7 +53,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return data
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, allow_empty=False)
+    items = OrderItemSerializer(many=True, allow_empty=False, max_length=settings.ORDER_MAX_ITEMS)
 
     class Meta:
         model = Order

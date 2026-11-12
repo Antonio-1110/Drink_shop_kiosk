@@ -126,6 +126,7 @@ def check_order_availability(request): #add data verification later
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny])
+@throttle_classes([ScopedRateThrottle])
 def key_in_order(request): # handling orders with more than one drink
     serializer = OrderSerializer(data=request.data)
     if not serializer.is_valid():
@@ -191,6 +192,7 @@ def collect_order(request):
 
 # ScopedRateThrottle reads the scope from the view; see DEFAULT_THROTTLE_RATES in settings
 collect_order.cls.throttle_scope = 'pickup'
+key_in_order.cls.throttle_scope = 'orders'
 
 
 # what the machine may report; refunds and the rest are decided by staff

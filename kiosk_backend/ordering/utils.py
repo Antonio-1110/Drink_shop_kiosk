@@ -1,3 +1,4 @@
+from django.conf import settings
 from operation.models import Drink, DrinkIngredient, Inventory
 from django.db.models import F, Case, When, DecimalField
 from decimal import Decimal, ROUND_HALF_UP
@@ -5,6 +6,8 @@ from operation.health_metrics import LEVEL_STEPS
 
 
 def verify_drink_ids(incoming_drink_ids):
+    if len(incoming_drink_ids) > settings.ORDER_MAX_ITEMS:
+        return False, [], f"At most {settings.ORDER_MAX_ITEMS} drinks per order."
     valid_ids_list = [int(i) for i in incoming_drink_ids if str(i).isdigit()]
     unique_count = len(set(valid_ids_list))
     existing_drink_count = Drink.objects.filter(id__in=valid_ids_list, is_active=True).count()
