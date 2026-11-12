@@ -8,9 +8,26 @@ import ErrorBanner from '@/components/ErrorBanner';
 import { colors, fonts } from '@/constants/theme';
 import { ApiError, placeOrder } from '@/lib/api';
 import { useCart } from '@/lib/cart';
-import { formatPrice, itemPrice, LEVELS, SIZE } from '@/lib/menu';
+import { CartItem, formatPrice, itemPrice, LEVELS, MAX_ORDER_DRINKS, SIZE } from '@/lib/menu';
 
 const levelLabel = (value: number) => LEVELS.find((level) => level.value === value)?.label;
+const TOO_MANY_DRINKS = `One order can have up to ${MAX_ORDER_DRINKS} drinks. Please remove some, or place a second order after this one.`;
+
+// what the customer should see when the backend turns the order down
+function orderErrorMessage(err: ApiError, cartItems: CartItem[]) {
+  if (err.status === 429) return 'Lots of orders are coming in from your connection. Please wait a minute, then try again.';
+  // more drinks than the backend allows (its limit may differ from ours)
+  if (err.status === 400 && err.data?.items) return TOO_MANY_DRINKS;
+  // the backend lists the drinks and designer ingredients it no longer has stock for
+  const soldOutIds: number[] = err.data?.drinks ?? [];
+  const soldOutCodes: string[] = err.data?.options ?? [];
+  const soldOut = cartItems
+    .filter((item) => (item.custom
+      ? item.custom.picks.some((code) => soldOutCodes.includes(code))
+      : soldOutIds.includes(item.drink.id)))
+    .map((item) => item.drink.name);
+  return soldOut.length ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}` : err.message;
+}
 
 export default function CartScreen() {
   const { shop, cartItems, updateCartItem, removeFromCart, setLastOrder } = useCart();
@@ -18,7 +35,8 @@ export default function CartScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<number | null>(null); // the line whose options are open
   const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
-  const blocked = cartItems.length === 0 || submitting;
+  const tooMany = cartItems.length > MAX_ORDER_DRINKS;
+  const blocked = cartItems.length === 0 || submitting || tooMany;
 
   const checkout = async () => {
     if (!shop) return;
@@ -29,17 +47,7 @@ export default function CartScreen() {
       setLastOrder(order);
       router.push({ pathname: '/payment/[orderId]', params: { orderId: order.id } });
     } catch (err) {
-      // the backend lists the drinks and designer ingredients it no longer has stock for
-      const soldOutIds: number[] = (err as ApiError).data?.drinks ?? [];
-      const soldOutCodes: string[] = (err as ApiError).data?.options ?? [];
-      const soldOut = cartItems
-        .filter((item) => (item.custom
-          ? item.custom.picks.some((code) => soldOutCodes.includes(code))
-          : soldOutIds.includes(item.drink.id)))
-        .map((item) => item.drink.name);
-      setError(soldOut.length
-        ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
-        : (err as Error).message);
+      setError(orderErrorMessage(err as ApiError, cartItems));
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +100,7 @@ export default function CartScreen() {
         )}
       />
 
-      <ErrorBanner message={error} />
+      <ErrorBanner message={error ?? (tooMany ? TOO_MANY_DRINKS : null)} />
 
       <View style={styles.footer}>
         <View>

@@ -4,10 +4,25 @@ import { placeOrder } from '../api';
 import DrinkArt from '../components/DrinkArt';
 import DrinkSheet from '../components/DrinkSheet';
 import Steps from '../components/Steps';
-import { LEVELS, SIZE, itemPrice } from '../menu';
+import { LEVELS, MAX_ORDER_DRINKS, SIZE, itemPrice } from '../menu';
 import './CartPage.css';
 
 const levelLabel = (value) => LEVELS.find((level) => level.value === value)?.label;
+const TOO_MANY_DRINKS = `One order can have up to ${MAX_ORDER_DRINKS} drinks. Please remove some, or place a second order after this one.`;
+
+// what the customer should see when the backend turns the order down
+function orderErrorMessage(err, cartItems) {
+    if (err.status === 429) return 'Lots of orders are coming in right now. Please wait a minute, then try again.';
+    // more drinks than the backend allows (its limit may differ from ours)
+    if (err.status === 400 && err.data?.items) return TOO_MANY_DRINKS;
+    // the backend lists the drinks and designer ingredients it no longer has stock for
+    const soldOut = cartItems
+        .filter((item) => (item.custom
+            ? item.custom.picks.some((code) => err.data?.options?.includes(code))
+            : err.data?.drinks?.includes(item.drink.id)))
+        .map((item) => item.drink.name);
+    return soldOut.length ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}` : err.message;
+}
 
 function CartPage({ cartItems, updateCartItem, removeFromCart }) {
     const navigate = useNavigate();
@@ -15,6 +30,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
     const [submitting, setSubmitting] = useState(false);
     const [editing, setEditing] = useState(null); // index of the line whose options are open
     const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0).toFixed(2);
+    const tooMany = cartItems.length > MAX_ORDER_DRINKS;
 
     const checkout = async () => {
         setSubmitting(true);
@@ -24,15 +40,7 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
             // the token proves this kiosk placed the order, so the payment screen can cancel it
             navigate(`/payment/${order.id}`, { state: { orderToken: order.order_token } });
         } catch (err) {
-            // the backend lists the drinks and designer ingredients it no longer has stock for
-            const soldOut = cartItems
-                .filter((item) => (item.custom
-                    ? item.custom.picks.some((code) => err.data?.options?.includes(code))
-                    : err.data?.drinks?.includes(item.drink.id)))
-                .map((item) => item.drink.name);
-            setError(soldOut.length
-                ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}`
-                : err.message);
+            setError(orderErrorMessage(err, cartItems));
         } finally {
             setSubmitting(false);
         }
@@ -89,8 +97,9 @@ function CartPage({ cartItems, updateCartItem, removeFromCart }) {
                         <span>Total</span>
                         <span className="price">${total}</span>
                     </div>
+                    {tooMany && !error && <p className="error-banner">{TOO_MANY_DRINKS}</p>}
                     {error && <p className="error-banner">{error}</p>}
-                    <button className="btn btn-primary btn-block" onClick={checkout} disabled={submitting}>
+                    <button className="btn btn-primary btn-block" onClick={checkout} disabled={submitting || tooMany}>
                         {submitting ? 'Placing order…' : 'Continue to payment'}
                     </button>
                     <Link to="/" className="btn btn-ghost btn-block">Add another drink</Link>

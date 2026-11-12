@@ -1,5 +1,6 @@
 import React from 'react';
 import DrinkArt from './DrinkArt';
+import NutriGradeMark from './NutriGradeMark';
 import './DrinkCard.css';
 
 // One drink on the menu. Tapping it opens the drink's options (see DrinkSheet).
@@ -11,6 +12,7 @@ function DrinkCard({ drink, onSelect }) {
             <div className="drink-card-info">
                 <h3>{drink.name}</h3>
                 {drink.description && <p>{drink.description}</p>}
+                <NutriGradeMark grade={drink.nutri_grade} />
                 <div className="drink-card-foot">
                     <span className="price">${from.toFixed(2)}</span>
                     <span className="drink-card-add" aria-hidden="true">+</span>

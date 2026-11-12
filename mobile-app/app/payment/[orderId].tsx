@@ -74,6 +74,8 @@ export default function PaymentScreen() {
               <Text style={styles.stepTitle}>1. Pay with PayNow</Text>
               {paid && <Text style={styles.paidBadge}>Paid</Text>}
             </View>
+            {/* sandbox or a gateway's test keys: say so, so nobody thinks this is a real charge */}
+            {qr?.test_mode && <Text style={styles.testMode}>Test mode: no real money will be charged</Text>}
             <ErrorBanner message={error} />
             {!qr && !error && <ActivityIndicator style={{ marginVertical: 30 }} color={colors.primary} />}
             {qr && !paid && (
@@ -146,6 +148,10 @@ const styles = StyleSheet.create({
   cancelButton: { marginTop: 14, paddingVertical: 10, paddingHorizontal: 18 },
   progress: { fontFamily: fonts.sansMedium, color: colors.primary, backgroundColor: colors.primarySoft, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 14, overflow: 'hidden', textAlign: 'center' },
   progressWarn: { color: colors.errorText, backgroundColor: colors.errorBg },
+  testMode: {
+    fontFamily: fonts.sansBold, color: colors.accent, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.accent,
+    borderRadius: 14, paddingVertical: 4, paddingHorizontal: 12, overflow: 'hidden', textAlign: 'center',
+  },
   cancelText: { fontFamily: fonts.sansMedium, color: colors.muted, textDecorationLine: 'underline' },
   newOrder: { borderWidth: 1, borderColor: colors.border, borderRadius: 26, minHeight: 52, justifyContent: 'center', paddingHorizontal: 28, marginTop: 20 },
   newOrderText: { fontFamily: fonts.sansBold, color: colors.text },

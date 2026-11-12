@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DrinkArt from '@/components/DrinkArt';
+import NutriGradeMark from '@/components/NutriGradeMark';
 import { colors, fonts } from '@/constants/theme';
 import { CartItem, formatPrice, itemPrice, LEVELS, SIZE, Size } from '@/lib/menu';
 
@@ -65,6 +66,7 @@ function SheetBody({ item, confirmLabel, onConfirm, onClose }: {
   const price = itemPrice({ ...item, ...choice } as CartItem);
   const drink = item.drink;
   const description = 'description' in drink ? drink.description : '';
+  const grade = 'nutri_grade' in drink ? drink.nutri_grade : null;
 
   return (
     <View style={styles.backdrop}>
@@ -77,6 +79,8 @@ function SheetBody({ item, confirmLabel, onConfirm, onClose }: {
             <View style={styles.headerText}>
               <Text style={styles.name}>{drink.name}</Text>
               {description ? <Text style={styles.description}>{description}</Text> : null}
+              {/* graded at 100% sugar, as the menu shows it */}
+              <NutriGradeMark grade={grade} large />
             </View>
           </View>
 

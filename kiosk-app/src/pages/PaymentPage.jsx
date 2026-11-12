@@ -98,6 +98,8 @@ function PaymentPage({ clearCart }) {
             <h1>Scan to pay</h1>
             <p>Open your banking app and scan with PayNow.</p>
             {error && <p className="error-banner">{error}</p>}
+            {/* sandbox or a gateway's test keys: say so, so nobody thinks this is a real charge */}
+            {qr?.test_mode && <p className="test-mode">Test mode: no real money will be charged</p>}
             <div className="payment-card">
                 {qr
                     ? <img className="paynow-qr" src={qr.qr_code} alt="PayNow QR code" />

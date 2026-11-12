@@ -16,6 +16,11 @@ export const LEVELS = [
 // Drink.Category, which the API returns as its label
 export const CATEGORIES = ['Milk Tea', 'Fruit Tea', 'Smoothie', 'Coffee', 'Others'];
 
+import type { Grade } from './nutrigrade';
+
+// HPB Nutri-Grade at the drink's default preparation (100% sugar), from GET /ordering/drinks/
+export type NutriGradeLabel = { grade: Grade; sugar_percent: number; label_required: boolean };
+
 export type Drink = {
   id: number;
   name: string;
@@ -24,6 +29,8 @@ export type Drink = {
   s_price: string;
   l_price: string;
   description: string;
+  // null for a drink with no recipe yet; missing on backends from before the grade was added
+  nutri_grade?: NutriGradeLabel | null;
 };
 
 export type Shop = {
@@ -38,6 +45,9 @@ export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar
 export type CustomDrink = { picks: string[]; price: number };
 export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number };
 export type CartItem = MenuCartItem | CustomCartItem;
+
+// the most drinks one order may have; matches the backend's ORDER_MAX_ITEMS (default 20)
+export const MAX_ORDER_DRINKS = 20;
 
 export const itemPrice = (item: CartItem) => item.custom ? item.custom.price :
   Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);

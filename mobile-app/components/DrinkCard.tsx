@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import DrinkArt from '@/components/DrinkArt';
+import NutriGradeMark from '@/components/NutriGradeMark';
 import { colors, fonts } from '@/constants/theme';
 import { Drink, formatPrice } from '@/lib/menu';
 
@@ -18,6 +19,7 @@ export default function DrinkCard({ drink, onSelect }: { drink: Drink; onSelect:
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={2}>{drink.name}</Text>
         {drink.description ? <Text style={styles.description} numberOfLines={2}>{drink.description}</Text> : null}
+        <NutriGradeMark grade={drink.nutri_grade} />
         <View style={styles.foot}>
           <Text style={styles.price}>{formatPrice(from)}</Text>
           <View style={styles.add}><Text style={styles.addText}>+</Text></View>
@@ -29,7 +31,7 @@ export default function DrinkCard({ drink, onSelect }: { drink: Drink; onSelect:
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
-  info: { flex: 1, gap: 3 },
+  info: { flex: 1, gap: 4 },
   name: { fontFamily: fonts.serif, fontSize: 18, color: colors.text },
   description: { fontFamily: fonts.sans, fontSize: 13, lineHeight: 18, color: colors.muted },
   foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 4 },

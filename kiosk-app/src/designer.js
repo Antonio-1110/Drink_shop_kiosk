@@ -35,7 +35,12 @@ export function recipe(options, design) {
     for (const i of liquids) {
         lines.push({ ...i, amount: (size.liquid_ml * (i.share ?? 1)) / shares, unit: 'mL' });
     }
-    if (syrupMl > 0) lines.push({ ...options.sweetener, kind: 'liquid', amount: syrupMl, unit: 'mL' });
+    // the syrup counts as a sweetener for the grade only if the backend says it is one (a non-sugar
+    // sweetener rules out grade A); ingredients carry that as `sweetener`, the syrup as `contains_sweetener`
+    if (syrupMl > 0) {
+        lines.push({ ...options.sweetener, sweetener: Boolean(options.sweetener.contains_sweetener ?? options.sweetener.sweetener),
+            kind: 'liquid', amount: syrupMl, unit: 'mL' });
+    }
     const toppings = picked(options, design, 'topping');
     for (const i of toppings) lines.push({ ...i, amount: size.topping_g / toppings.length, unit: 'g' });
     return lines;

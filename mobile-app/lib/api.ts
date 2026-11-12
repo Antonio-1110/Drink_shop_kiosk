@@ -73,7 +73,8 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
 }
 
 // expires_at: unpaid orders are cancelled after this time
-export type PaynowQr = { qr_code: string; reference: string; amount: string; expires_at?: string };
+// test_mode: no real money moves (the sandbox, or a gateway's test keys); older backends don't send it
+export type PaynowQr = { qr_code: string; reference: string; amount: string; expires_at?: string; test_mode?: boolean };
 
 // starts the PayNow payment (or returns the open one); ingredients are held until expires_at
 export function fetchPaynowQr(orderId: string | number) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LEVELS, SIZE, itemPrice } from '../menu';
 import DrinkArt from './DrinkArt';
+import NutriGradeMark from './NutriGradeMark';
 import './DrinkSheet.css';
 
 function ChoiceRow({ label, children }) {
@@ -31,6 +32,8 @@ function DrinkSheet({ item, confirmLabel, onConfirm, onClose }) {
                 <div className="sheet-body">
                     <h2 id="sheet-title">{drink.name}</h2>
                     {drink.description && <p className="sheet-description">{drink.description}</p>}
+                    {/* graded at 100% sugar, as the menu shows it */}
+                    <NutriGradeMark grade={drink.nutri_grade} size="lg" />
 
                     {!custom && (
                         <ChoiceRow label="Size">

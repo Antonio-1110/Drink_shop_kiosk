@@ -17,6 +17,9 @@ export const CATEGORIES = [
     { path: 'others', label: 'Others', subtitle: 'Plain teas and more.' },
 ];
 
+// the most drinks one order may have; matches the backend's ORDER_MAX_ITEMS (default 20)
+export const MAX_ORDER_DRINKS = 20;
+
 export const itemPrice = (item) => item.custom ? item.custom.price :
     Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
 

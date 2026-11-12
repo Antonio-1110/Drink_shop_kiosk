@@ -162,6 +162,15 @@
   font-size: 16px;
 }
 
+.payment-page .test-mode {
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px dashed var(--amber);
+  color: var(--amber);
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .countdown {
   padding: 4px 14px;
   border-radius: 999px;

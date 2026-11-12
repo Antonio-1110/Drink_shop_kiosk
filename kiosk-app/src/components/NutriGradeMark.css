@@ -1,0 +1,49 @@
+.nutri-mark {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  font-family: var(--sans);
+  line-height: 1.1;
+}
+
+.nutri-mark-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.nutri-mark-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.nutri-mark-text strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.nutri-mark-lg .nutri-mark-letter {
+  min-width: 40px;
+  font-size: 24px;
+}
+
+.nutri-mark-lg .nutri-mark-text {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.nutri-mark-lg .nutri-mark-text strong {
+  font-size: 15px;
+}

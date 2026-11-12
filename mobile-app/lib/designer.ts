@@ -24,7 +24,11 @@ export type DesignerOptions = {
   sizes: { value: Size; label: string; liquid_ml: number; topping_g: number }[];
   pricing: { cup: Record<number, string>; liquid: string; topping: string; overrides?: Record<string, string> };
   // null when the shop hasn't set which ingredient the sugar level adds
-  sweetener: null | { code: string; name: string; color: string; sugar: number; sat_fat: number; ml: Record<number, number> };
+  sweetener: null | {
+    code: string; name: string; color: string; sugar: number; sat_fat: number; ml: Record<number, number>;
+    // a non-sugar sweetener rules out grade A; older backends don't send it
+    contains_sweetener?: boolean;
+  };
   ingredients: Ingredient[];
 };
 
@@ -65,7 +69,12 @@ export function recipe(options: DesignerOptions, design: Design): RecipeLine[] {
   for (const i of liquids) {
     lines.push({ ...i, amount: (size.liquid_ml * (i.share ?? 1)) / shares, unit: 'mL' });
   }
-  if (options.sweetener && syrupMl > 0) lines.push({ ...options.sweetener, kind: 'liquid', amount: syrupMl, unit: 'mL' });
+  // the syrup counts as a sweetener for the grade only if the backend says it is one; ingredients carry
+  // that as `sweetener`, the syrup as `contains_sweetener`
+  if (options.sweetener && syrupMl > 0) {
+    lines.push({ ...options.sweetener, sweetener: Boolean(options.sweetener.contains_sweetener),
+      kind: 'liquid', amount: syrupMl, unit: 'mL' });
+  }
   const toppings = picked(options, design, 'topping');
   for (const i of toppings) lines.push({ ...i, amount: size.topping_g / toppings.length, unit: 'g' });
   return lines;
