@@ -130,6 +130,8 @@ if [ "$RUN_BACKEND" = 1 ]; then
     BIND=0.0.0.0
     # a non-empty ALLOWED_HOSTS replaces Django's localhost default, so keep localhost in it
     export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS:+$DJANGO_ALLOWED_HOSTS,}localhost,127.0.0.1,$LAN_IP"
+    # test payment QR codes open the fake bank on your phone, so they must use this address
+    export PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-http://$LAN_IP:8000}"
     log "Backend on your network: http://$LAN_IP:8000  (phones on the same Wi-Fi use this)"
   fi
   log "Backend:  http://localhost:8000  (admin at /admin)"

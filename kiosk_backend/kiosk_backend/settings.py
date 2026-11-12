@@ -165,8 +165,26 @@ PAYNOW_MERCHANT_NAME = os.environ.get('PAYNOW_MERCHANT_NAME', 'Drink Shop Kiosk'
 PAYNOW_MERCHANT_CITY = os.environ.get('PAYNOW_MERCHANT_CITY', 'Singapore')
 PAYNOW_MERCHANT_CATEGORY_CODE = os.environ.get('PAYNOW_MERCHANT_CATEGORY_CODE', '0000')
 
-# Payment methods customers can choose (see checkout/providers.py), comma-separated
-PAYMENT_METHODS = [m.strip() for m in os.environ.get('PAYMENT_METHODS', 'paynow').split(',') if m.strip()]
+# Sandbox payments: a fake bank for testing the whole order flow with no money (checkout/sandbox.py).
+# On by default in development only; never turn it on for a shop that takes real orders.
+PAYMENTS_SANDBOX = os.environ.get('PAYMENTS_SANDBOX', '1' if DEBUG else '').lower() in ('1', 'true', 'yes')
+
+# Payment methods customers can choose (see checkout/providers.py and docs/payments.md), comma-separated:
+# paynow, sandbox, stripe_paynow, stripe_grabpay
+PAYMENT_METHODS = [m.strip() for m in os.environ.get(
+    'PAYMENT_METHODS', 'sandbox,paynow' if PAYMENTS_SANDBOX else 'paynow').split(',') if m.strip()]
+# which method the kiosk's and app's "scan to pay with PayNow" screen uses, if it's enabled
+# (otherwise the company PayNow QR, paynow)
+PAYNOW_METHOD = os.environ.get('PAYNOW_METHOD', 'sandbox' if PAYMENTS_SANDBOX else 'paynow')
+# this backend's address as customers' phones reach it, e.g. https://api.example.sg; used in QR codes
+# that open a page (sandbox bank, GrabPay). Empty means the address the kiosk called.
+PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '')
+
+# Stripe (stripe_paynow, stripe_grabpay). Test keys (sk_test_...) move no money; a live key only
+# works with STRIPE_LIVE=1. The webhook secret (whsec_...) is from the Stripe dashboard or `stripe listen`.
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_LIVE = os.environ.get('STRIPE_LIVE', '').lower() in ('1', 'true', 'yes')
 # the most drinks one order (or one cart check) may have
 ORDER_MAX_ITEMS = int(os.environ.get('ORDER_MAX_ITEMS', '20'))
 # An unpaid order's ingredients stay held while its payment is open. Each method sets how long

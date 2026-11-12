@@ -19,7 +19,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.utils import timezone
 
 from operation.models import Inventory, StockMovement
@@ -33,6 +33,10 @@ from .providers import PROVIDERS, SUCCEEDED, FAILED
 logger = logging.getLogger(__name__)
 
 PAID = Order.Status.PAID
+# attempts money has already been accounted for on (a repeat notification changes nothing)
+SETTLED = [PaymentAttempt.Status.SUCCEEDED, PaymentAttempt.Status.REFUND_NEEDED, PaymentAttempt.Status.REFUNDED]
+UNSETTLED = [PaymentAttempt.Status.OPEN, PaymentAttempt.Status.EXPIRED, PaymentAttempt.Status.CANCELLED,
+             PaymentAttempt.Status.FAILED]
 
 TOKEN_SALT = 'checkout.order'
 
@@ -103,8 +107,10 @@ def hold_expires_at(order):
 
 # --- payments ---
 
-def start_payment(order, method):
-    """Opens (or reuses) a payment attempt; returns (attempt, what the customer needs to pay)."""
+def start_payment(order, method, base_url=''):
+    """Opens (or reuses) a payment attempt; returns (attempt, what the customer needs to pay).
+    base_url: this backend's address as the customer's phone sees it, for methods that send the
+    customer to a page. May raise CheckoutError, or PaymentUnavailable from the method."""
     provider = PROVIDERS[method]
     now = timezone.now()
     with transaction.atomic():
@@ -120,7 +126,7 @@ def start_payment(order, method):
                 raise CheckoutError("This order has run out of time to be paid.")
             attempt = PaymentAttempt.objects.create(
                 order=order, method=method, amount=order.revenue, expires_at=expires_at)
-    return attempt, provider.start(attempt)
+    return attempt, provider.start(attempt, base_url)
 
 
 def cancel_order(order, reason='', actor='system'):
@@ -144,15 +150,22 @@ def confirm_payment(order, method, amount, provider_ref='', actor=None):
     PROVIDERS[method]  # an unknown method fails here, before anything is written
     amount = Decimal(str(amount))
     with transaction.atomic():
-        if provider_ref:
-            seen = PaymentAttempt.objects.filter(method=method, provider_ref=provider_ref).first()
-            if seen and seen.status != PaymentAttempt.Status.OPEN:
-                return seen  # a repeated notification
         order = Order.objects.select_for_update().get(pk=order.pk)
-        attempt = (order.payment_attempts.select_for_update()
-                   .filter(method=method, status__in=[PaymentAttempt.Status.OPEN, PaymentAttempt.Status.EXPIRED,
-                                                      PaymentAttempt.Status.CANCELLED])
-                   .order_by('-created_at').first())
+        attempt = None
+        if provider_ref:
+            attempt = (PaymentAttempt.objects.select_for_update()
+                       .filter(method=method, provider_ref=provider_ref).first())
+            if attempt and attempt.status in SETTLED:
+                return attempt  # a repeated notification
+            if attempt and attempt.order_id != order.pk:
+                raise CheckoutError(f"{method} payment {provider_ref} belongs to order {attempt.order_id}, not {order.pk}.")
+        if attempt is None:
+            # the attempt the payment method gave this reference to, if any; else the latest
+            # one still waiting (or given up on: the money can arrive after we stop waiting)
+            attempt = (order.payment_attempts.select_for_update()
+                       .filter(method=method, status__in=UNSETTLED)
+                       .filter(Q(provider_ref='') | Q(provider_ref=provider_ref))
+                       .order_by('-created_at').first())
         if attempt is None:
             attempt = PaymentAttempt(order=order, method=method, amount=order.revenue, expires_at=timezone.now())
         attempt.amount = amount
@@ -224,8 +237,15 @@ def refund(attempt):
 
 
 def payment_failed(order, method, provider_ref=''):
-    PaymentAttempt.objects.filter(order=order, method=method, status=PaymentAttempt.Status.OPEN).update(
-        status=PaymentAttempt.Status.FAILED, provider_ref=provider_ref, updated_at=timezone.now())
+    """The customer's payment didn't go through (declined, gave up). The order stays open for a
+    short while (PAYMENT_START_GRACE_MINUTES) to try again."""
+    attempts = PaymentAttempt.objects.filter(order=order, method=method, status=PaymentAttempt.Status.OPEN)
+    if provider_ref and attempts.filter(provider_ref=provider_ref).exists():
+        attempts.filter(provider_ref=provider_ref).update(
+            status=PaymentAttempt.Status.FAILED, updated_at=timezone.now())
+    else:
+        attempts.filter(provider_ref='').update(
+            status=PaymentAttempt.Status.FAILED, provider_ref=provider_ref, updated_at=timezone.now())
 
 
 def expire_unpaid_orders(shop=None):
@@ -245,8 +265,13 @@ def expire_unpaid_orders(shop=None):
             elif result == FAILED:
                 payment_failed(order, attempt.method)
             else:
-                PaymentAttempt.objects.filter(pk=attempt.pk, status=PaymentAttempt.Status.OPEN).update(
-                    status=PaymentAttempt.Status.EXPIRED, updated_at=now)
+                if PaymentAttempt.objects.filter(pk=attempt.pk, status=PaymentAttempt.Status.OPEN).update(
+                        status=PaymentAttempt.Status.EXPIRED, updated_at=now):
+                    # stop the QR code / payment page taking money we've stopped waiting for
+                    try:
+                        PROVIDERS[attempt.method].cancel(attempt)
+                    except Exception:
+                        logger.exception("Couldn't cancel expired payment attempt %s", attempt.pk)
         order.refresh_from_db()
         if order.status == Order.Status.PENDING and hold_expires_at(order) <= now:
             cancelled += cancel_order(order, reason="Not paid in time.", actor="system")

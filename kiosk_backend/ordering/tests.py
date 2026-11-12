@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import override_settings, TestCase
 from rest_framework.test import APIClient
 from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient, DesignerConfig
 from .models import Order, OrderItem
@@ -99,6 +99,8 @@ class AvailabilityTests(OrderingTestBase):
         self.assertEqual(bad.status_code, 409)
 
 
+# the company PayNow QR code, whatever the development defaults for sandbox payments are
+@override_settings(PAYMENT_METHODS=['paynow'], PAYNOW_METHOD='paynow')
 class PayNowTests(OrderingTestBase):
     def test_qr_for_pending_order(self):
         order_id = self.order((self.green_tea, 0)).data["id"]

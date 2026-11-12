@@ -13,7 +13,8 @@ paths:
     post:
       operationId: checkout_webhooks_create
       description: Each provider posts here with its own format and signature, checked
-        by that provider's code.
+        by that provider's code. Stripe uses /checkout/webhooks/stripe/ for all its
+        methods.
       summary: Payment notification from a payment provider
       parameters:
       - in: path
@@ -467,8 +468,9 @@ paths:
   /ordering/orders/{order_id}/paynow-qr/:
     get:
       operationId: ordering_orders_paynow_qr_retrieve
-      description: Shortcut for starting a PayNow payment; same as POST .../payments/
-        with method paynow.
+      description: 'Shortcut for starting a PayNow payment: POST .../payments/ with
+        the method set by PAYNOW_METHOD (sandbox in development, stripe_paynow with
+        Stripe), or plain paynow.'
       summary: PayNow QR code for an unpaid order
       parameters:
       - in: path
@@ -1381,17 +1383,34 @@ components:
           format: date-time
           description: The ingredients are held until then; after it the order is
             cancelled if unpaid.
+        label:
+          type: string
+          description: The method's name for customers, e.g. PayNow or GrabPay.
+        test_mode:
+          type: boolean
+          description: True when no real money moves (sandbox or a gateway's test
+            keys). Screens should say so.
         qr_code:
           type: string
-          description: 'PayNow: PNG image as a data: URL.'
+          description: 'QR code for the customer''s phone, a PNG data: URL. PayNow:
+            scan in a banking app. GrabPay and sandbox: opens the payment page.'
         reference:
           type: string
-          description: 'PayNow: reference shown in the customer''s bank app.'
+          description: Reference shown in the customer's bank app.
+        pay_url:
+          type: string
+          description: The page the QR code opens, where there is one.
+        test_pay_url:
+          type: string
+          description: 'Test mode only: a page where staff can pretend the customer
+            paid.'
       required:
       - amount
       - attempt
       - expires_at
+      - label
       - method
+      - test_mode
     PickupFailed:
       type: object
       properties:

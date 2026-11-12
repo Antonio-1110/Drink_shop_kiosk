@@ -43,7 +43,11 @@ Settings come from environment variables:
 | `PAYNOW_PROXY_VALUE` | The company's UEN, or the mobile number as `+6591234567`. Required when `DJANGO_DEBUG` is off; development uses a dummy UEN. |
 | `PAYNOW_MERCHANT_NAME` | Name shown in the customer's banking app (25 characters max). |
 | `PAYNOW_MERCHANT_CITY`, `PAYNOW_MERCHANT_CATEGORY_CODE` | Optional; default `Singapore` and `0000`. |
-| `PAYMENT_METHODS` | Payment methods customers can use, comma-separated (default `paynow`). |
+| `PAYMENT_METHODS` | Payment methods customers can use, comma-separated: `paynow`, `sandbox`, `stripe_paynow`, `stripe_grabpay` (default `paynow`, plus `sandbox` in development). See [docs/payments.md](docs/payments.md). |
+| `PAYNOW_METHOD` | Which method the "scan to pay with PayNow" screens use: `sandbox` in development, `stripe_paynow` with Stripe, else `paynow`. |
+| `PAYMENTS_SANDBOX` | Turns on the fake test bank (on in development only). Never on for a shop taking real orders. |
+| `PUBLIC_BASE_URL` | This backend's address as customers' phones reach it, for QR codes that open a page (`./dev.sh --lan` sets it). |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` | Stripe keys for `stripe_paynow` / `stripe_grabpay`. Test keys move no money; a live key also needs `STRIPE_LIVE=1`. |
 | `PAYNOW_HOLD_MINUTES`, `PAYMENT_HOLD_MINUTES` | How long a PayNow payment (or any other method) stays open, default 10. The order's ingredients are held that long. |
 | `PAYMENT_START_GRACE_MINUTES` | Time to start paying after ordering, or to try another method after one fails (default 2). |
 | `ORDER_MAX_HOLD_MINUTES` | The longest any order can hold stock (default 30). |
@@ -61,9 +65,9 @@ How stock and payment fit together (`kiosk_backend/checkout/`):
 - The hold lasts as long as the customer's payment is open. Each payment method sets that time, so there is no single fixed timeout. Tapping **Cancel** on the payment screen releases the hold at once.
 - When a payment runs out, the payment method is asked whether it was paid after all before the order is cancelled.
 - Every payment method confirms payment through one function, `checkout.services.confirm_payment`. A payment that arrives after its order was cancelled gets the ingredients back if they are still there. If they have sold out, it is refunded, or flagged for staff under **Payment attempts** when the method can't refund automatically.
-- Adding GrabPay, cards or a PayNow gateway means writing one `Provider` class in `checkout/providers.py`. Payment notifications arrive at `/checkout/webhooks/<method>/`.
+- Each payment method is one `Provider` class (`checkout/providers.py`; Stripe in `checkout/stripe_gateway.py`). Payment notifications arrive at `/checkout/webhooks/<method>/`, and Stripe's at `/checkout/webhooks/stripe/`. Test payments without a bank or any money: see [docs/payments.md](docs/payments.md).
 - Unpaid orders whose time has run out are cancelled every minute by the background jobs (below), so a quiet night doesn't leave them "waiting for payment". The same clean-up also runs whenever the kiosk loads the menu or takes an order, and by hand with `python manage.py expire_orders`.
-- Until a payment gateway is connected, staff confirm PayNow payments with **Mark as paid** under **Orders** in `/admin`.
+- With the plain company PayNow QR (`paynow`), staff confirm payments with **Mark as paid** under **Orders** in `/admin`. With Stripe they're confirmed automatically. In development the PayNow screen shows a test QR code instead, which opens a fake bank at `/checkout/sandbox/`.
 
 Only the kiosk's ordering endpoints are public. Everything else, including `PATCH /operation/inventory/...`, needs a staff login.
 
@@ -77,7 +81,7 @@ npm run dev
 
 The kiosk shows shop 1 by default; set `VITE_SHOP_ID` to use another shop.
 
-PayNow QR codes are built by `kiosk_backend/payments/paynow.py`, a standalone module that follows the SGQR (EMVCo) format and has no Django dependency, so the kiosk's edge service can reuse it. Order codes are single-use, carry the amount and an `ORDER<id>` reference, and stop working after the day the order expires. A payment provider is still needed to confirm automatically that a customer paid.
+PayNow QR codes are built by `kiosk_backend/payments/paynow.py`, a standalone module that follows the SGQR (EMVCo) format and has no Django dependency, so the kiosk's edge service can reuse it. Order codes are single-use, carry the amount and an `ORDER<id>` reference, and stop working after the day the order expires. A payment gateway (Stripe, see [docs/payments.md](docs/payments.md)) confirms automatically that a customer paid.
 
 Drink designer: `GET /ordering/designer/options/?shop_id=` lists the sizes, prices and ingredients customers can build a drink from, and an order item can carry `custom: [ingredient codes]` instead of `drink`. Amounts and price come from **Drink designer settings** in `/admin`, and the ingredients are held like any menu drink.
 

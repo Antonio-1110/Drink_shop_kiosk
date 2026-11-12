@@ -23,7 +23,7 @@ class FakeProvider(Provider):
     def __init__(self):
         self.refunded = []
 
-    def start(self, attempt):
+    def start(self, attempt, base_url=''):
         return {'pay_url': f"https://pay.example/{attempt.pk}"}
 
     def check_status(self, attempt):
