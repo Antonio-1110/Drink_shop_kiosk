@@ -1,11 +1,12 @@
 import io
-from unittest import mock
+from unittest import mock, skipUnless
 from pathlib import Path
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
+from django.db import connection
 from django.test import override_settings, TestCase
 from rest_framework.test import APIClient
 from operation.models import Shop, Drink, Ingredient, Inventory, DrinkIngredient, DesignerConfig
@@ -150,6 +151,7 @@ class PermissionTests(OrderingTestBase):
 
 
 class ApiContractTests(TestCase):
+    @skipUnless(connection.vendor == "sqlite", "openapi.yaml is generated on SQLite, whose integer limits differ")
     def test_committed_schema_is_up_to_date(self):
         # openapi.yaml is the API contract the frontend and mobile app build against
         out = io.StringIO()

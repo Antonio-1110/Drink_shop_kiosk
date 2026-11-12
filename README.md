@@ -30,14 +30,25 @@ Staff sign in at http://localhost:8000/admin/. The **Dashboard** link at the top
 page (http://localhost:8000/admin/dashboard/) shows charts of orders and their statuses, sales,
 popular drinks, stock running out, fridge temperatures, and orders that need attention.
 
+To run the backend the way it runs on a server (PostgreSQL, gunicorn, the background-jobs worker,
+daily backups, HTTPS, a staging copy), see [deploy/README.md](deploy/README.md):
+
+```
+cp .env.example .env    # set POSTGRES_PASSWORD and DJANGO_SECRET_KEY
+docker compose up -d --build
+```
+
 Settings come from environment variables:
 
 | Variable | What it does |
 | --- | --- |
+| `DATABASE_URL` | The database, e.g. `postgres://kiosk:password@db:5432/kiosk`. Unset means a local SQLite file (what `./dev.sh` uses). `docker-compose.yml` sets it. |
 | `DJANGO_DEBUG` | `1` for local development. Leave unset in production. |
 | `DJANGO_SECRET_KEY` | Required when `DJANGO_DEBUG` is off. |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated host names the server answers to in production. |
 | `DJANGO_HTTPS` | `1` when the site is served over HTTPS: redirects HTTP to HTTPS, HTTPS-only cookies, HSTS. |
+| `WEB_CONCURRENCY` | gunicorn worker processes in the Docker image (default 2). |
+| `LOG_LEVEL` | How much the server logs when `DJANGO_DEBUG` is off (default `INFO`). |
 | `DJANGO_HSTS_SECONDS` | How long browsers remember to use HTTPS (default 3600). Raise it once HTTPS is known to work. |
 | `PAYNOW_PROXY_TYPE` | `UEN` (a company, the default) or `MOBILE` (a +65 number registered with PayNow). |
 | `PAYNOW_PROXY_VALUE` | The company's UEN, or the mobile number as `+6591234567`. Required when `DJANGO_DEBUG` is off; development uses a dummy UEN. |

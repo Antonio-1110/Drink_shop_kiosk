@@ -78,9 +78,57 @@ jobs:
         if: hashFiles('edge/pyproject.toml') != ''
         working-directory: edge
         run: pipx run ruff==0.16.9 check --output-format=github .
-      - name: ShellCheck dev.sh
+      - name: ShellCheck dev.sh and the deploy scripts
         if: hashFiles('dev.sh') != ''
-        run: shellcheck dev.sh
+        run: shellcheck dev.sh deploy/*.sh kiosk_backend/release.sh
+
+  docker:
+    name: Docker image and PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - id: present
+        run: |
+          if [ -f docker-compose.yml ]; then echo "yes=true" >> "$GITHUB_OUTPUT"
+          else echo "No docker-compose.yml on this branch, skipping."; fi
+      - name: Build and start the backend, database, worker and backups
+        if: steps.present.outputs.yes
+        run: |
+          cp .env.example .env
+          {
+            echo "POSTGRES_PASSWORD=ci-$(openssl rand -hex 16)"
+            echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)"
+            echo "SEED_DEMO=1"
+          } >> .env
+          docker compose up -d --build
+      - name: Wait until it answers
+        if: steps.present.outputs.yes
+        run: |
+          for _ in $(seq 60); do
+            curl -fsS http://localhost:8000/healthz/ && exit 0
+            sleep 2
+          done
+          docker compose ps -a; docker compose logs; exit 1
+      - name: Admin, static files and the API work
+        if: steps.present.outputs.yes
+        run: |
+          curl -fsS -o /dev/null http://localhost:8000/admin/login/
+          curl -fsS -o /dev/null http://localhost:8000/static/admin/css/base.css
+          curl -fsS http://localhost:8000/ordering/shops/ | grep -q Demo
+      - name: Run the backend tests on PostgreSQL
+        if: steps.present.outputs.yes
+        run: |
+          # a copy of the code (the image's is read-only to its user) and a clean environment, so the
+          # tests see development settings; only the database is the compose one
+          docker compose exec -T web sh -c \
+            'cp -r /app /tmp/tests && cd /tmp/tests && env -i PATH="$PATH" HOME=/tmp DATABASE_URL="$DATABASE_URL" DJANGO_DEBUG=1 python manage.py test'
+      - name: A backup can be taken
+        if: steps.present.outputs.yes
+        run: |
+          docker compose run --rm backup --once
+          ls -l backups/production/
+      - if: failure() && steps.present.outputs.yes
+        run: docker compose logs
 
   edge:
     name: Edge service tests

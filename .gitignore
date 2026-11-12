@@ -209,3 +209,9 @@ __marimo__/
 # edge service: dev kiosk key (./dev.sh --edge) and unsent reports
 kiosk_backend/.edge-dev-key
 edge/edge-data/
+kiosk_backend/staticfiles/
+
+# docker compose settings; the .example files are committed
+.env.*
+!.env*.example
+backups/

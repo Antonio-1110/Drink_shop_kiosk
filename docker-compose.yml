@@ -1,0 +1,113 @@
+# The cloud backend: PostgreSQL, the API/admin, the background-jobs worker and daily backups.
+#
+#   cp .env.example .env                    then fill it in (never commit .env)
+#   docker compose up -d --build            start everything; http://localhost:8000/admin/
+#   docker compose --profile https up -d    on a server: also start Caddy for HTTPS
+#
+# Staging runs from the same file as a separate copy with its own database and port:
+#   docker compose -p kiosk-staging --env-file .env.staging up -d --build
+# See deploy/README.md.
+
+x-backend: &backend
+  build: ./kiosk_backend
+  image: drink-shop-kiosk-backend:${IMAGE_TAG:-latest}
+  restart: unless-stopped
+  env_file: ${ENV_FILE:-.env}
+  environment:
+    DATABASE_URL: postgres://${POSTGRES_USER:-kiosk}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-kiosk}
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kiosk}
+      POSTGRES_USER: ${POSTGRES_USER:-kiosk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # migrates the database (and loads demo data when SEED_DEMO=1), then exits; web and worker wait for it
+  release:
+    <<: *backend
+    restart: "no"
+    command: ["sh", "release.sh"]
+    depends_on:
+      db: {condition: service_healthy}
+
+  web:
+    <<: *backend
+    ports:
+      # only this computer can reach it by default; on a server, Caddy (below) is the way in
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8000}:8000"
+    networks:
+      default:
+      # shared by production and staging, so one Caddy can serve both on the same server
+      edge:
+        aliases: ["kiosk-${DEPLOY_NAME:-production}"]
+    depends_on:
+      release: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # cancels unpaid orders on time, marks silent machines offline, runs the daily order check
+  worker:
+    <<: *backend
+    command: ["python", "manage.py", "run_jobs"]
+    depends_on:
+      release: {condition: service_completed_successfully}
+
+  # a pg_dump every day at BACKUP_AT (Singapore time), kept for BACKUP_KEEP_DAYS days
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    entrypoint: ["sh", "/deploy/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-kiosk}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      PGDATABASE: ${POSTGRES_DB:-kiosk}
+      BACKUP_AT: ${BACKUP_AT:-03:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: Asia/Singapore
+    volumes:
+      - ./deploy:/deploy:ro
+      - ${BACKUP_DIR:-./backups/${DEPLOY_NAME:-production}}:/backups
+    depends_on:
+      db: {condition: service_healthy}
+
+  # HTTPS with automatic Let's Encrypt certificates, for a server with domains pointed at it.
+  # Start it with production only; it also serves staging when that's running on the same server.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      STAGING_SITE_ADDRESS: ${STAGING_SITE_ADDRESS:-staging.localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    networks: [edge]
+    depends_on:
+      web: {condition: service_healthy}
+
+volumes:
+  pgdata:
+  caddy_data:
+
+networks:
+  edge:
+    name: kiosk-edge

@@ -1,0 +1,11 @@
+# Caddy gets and renews the HTTPS certificates. SITE_ADDRESS and STAGING_SITE_ADDRESS are the
+# domains (e.g. api.example.sg and staging-api.example.sg), each pointed at this server.
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy kiosk-production:8000
+}
+
+{$STAGING_SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy kiosk-staging:8000
+}

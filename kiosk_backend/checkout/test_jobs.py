@@ -42,6 +42,14 @@ class ExpireJobTests(CheckoutTestBase):
 
 @override_settings(EXPIRE_ORDERS_EVERY_SECONDS=60, CHECK_ORDERS_AT='04:00', TIME_ZONE='Asia/Singapore')
 class SchedulerTests(CheckoutTestBase):
+    def setUp(self):
+        super().setUp()
+        # the worker drops stale database connections before each job; inside a test's transaction
+        # that would close the test's own connection (PostgreSQL; SQLite's in-memory one ignores it)
+        patcher = mock.patch('ordering.management.commands.run_jobs.close_old_connections')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def at(self, hour, minute=0, second=0, day=3):
         return timezone.make_aware(datetime(2026, 10, day, hour, minute, second))
 
