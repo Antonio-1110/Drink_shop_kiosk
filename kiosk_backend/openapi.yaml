@@ -885,6 +885,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/CategoryEnum'
           readOnly: true
+        nutri_grade:
+          allOf:
+          - $ref: '#/components/schemas/NutriGradeLabel'
+          readOnly: true
+          description: HPB Nutri-Grade of the drink as it comes by default (100% sugar,
+            no toppings); graded from the nutrition data set on each ingredient in
+            the admin. null for a drink with no recipe yet.
         name:
           type: string
           maxLength: 100
@@ -909,6 +916,7 @@ components:
       - id
       - l_price
       - name
+      - nutri_grade
       - s_price
     Error:
       type: object
@@ -917,6 +925,18 @@ components:
           type: string
       required:
       - error
+    GradeEnum:
+      enum:
+      - A
+      - B
+      - C
+      - D
+      type: string
+      description: |-
+        * `A` - A
+        * `B` - B
+        * `C` - C
+        * `D` - D
     HeartbeatReply:
       type: object
       properties:
@@ -1062,6 +1082,22 @@ components:
         * `PREPARING` - PREPARING
         * `READY` - READY
         * `FAILED` - FAILED
+    NutriGradeLabel:
+      type: object
+      properties:
+        grade:
+          $ref: '#/components/schemas/GradeEnum'
+        sugar_percent:
+          type: integer
+          description: Sugar per 100 mL, whole number, shown on the mark.
+        label_required:
+          type: boolean
+          description: 'C and D: the menu must show the mark next to this drink. A
+            and B may.'
+      required:
+      - grade
+      - label_required
+      - sugar_percent
     Order:
       type: object
       properties:

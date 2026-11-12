@@ -14,11 +14,19 @@ https://www.healthhub.sg/programmes/nutrition-hub/nutri-grade-mark
 The overall grade is the poorer of the sugar grade and the saturated fat grade.
 A drink containing a non-sugar sweetener cannot be grade A.
 
+Freshly prepared drinks (rules in force since 30 Dec 2023): a customisable drink is graded as
+its default preparation (here 100% sugar, as the kiosk preselects). Grades C and D must show the
+mark, with the sugar content as a whole-number percentage, next to the drink on every menu,
+including on-screen and online ones; A and B may. Toppings are graded without (exclude_from_grade)
+and get their own sugar declaration where they are offered. Lactose may be left out of the sugar
+only when it is declared; here all sugar counts, which can only make a grade stricter.
+Businesses under S$1M revenue with fewer than 10 outlets are exempt for now.
+
 This module has no Django dependency so the kiosk edge service can reuse it.
 `grade_drink` duck-types over the operation.Drink / DrinkIngredient models.
 """
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
 
 GRADES = ('A', 'B', 'C', 'D')
@@ -26,6 +34,9 @@ GRADES = ('A', 'B', 'C', 'D')
 # (upper bound inclusive, grade); anything above the last bound is D
 SUGAR_THRESHOLDS = ((Decimal('1'), 'A'), (Decimal('5'), 'B'), (Decimal('10'), 'C'))
 SAT_FAT_THRESHOLDS = ((Decimal('0.7'), 'A'), (Decimal('1.2'), 'B'), (Decimal('2.8'), 'C'))
+
+# operation.Ingredient.Kind.TOPPING
+TOPPING = 'TOPPING'
 
 # OrderItem.Level stores 0..4 for 0%..100%
 LEVEL_STEPS = 4
@@ -48,6 +59,20 @@ class NutriGradeResult:
     sugar_g_per_100ml: Decimal
     saturated_fat_g_per_100ml: Decimal
     total_volume_ml: Decimal
+
+    @property
+    def sugar_percent(self) -> int:
+        """Sugar per 100 mL as the whole-number percentage printed on the Nutri-Grade mark."""
+        return int(self.sugar_g_per_100ml.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+    @property
+    def label_required(self) -> bool:
+        """Grades C and D must carry the mark on menus; A and B may."""
+        return self.grade in MARK_REQUIRED
+
+
+# grades whose mark must be shown next to the drink on menus
+MARK_REQUIRED = ('C', 'D')
 
 
 def _band(value: Decimal, thresholds) -> str:
@@ -103,8 +128,8 @@ def grade_drink(drink, sugar_level: int = LEVEL_STEPS, ice_level: int = LEVEL_ST
     Ice is left out of the volume by default, which grades on the liquid alone
     and so never under-reports concentration. Pass count_ice_volume=True to
     grade the drink as served with ice counted as diluent.
-    Ingredients flagged exclude_from_grade (e.g. toppings, whose sugar is
-    declared separately on the menu) are skipped.
+    Toppings, and ingredients flagged exclude_from_grade, are skipped: HPB grades
+    the drink without them and their sugar is declared separately on the menu.
     """
     lines = []
     for line in drink.required.select_related('ingredient'):
@@ -125,7 +150,9 @@ def grade_ingredient_lines(lines) -> NutriGradeResult:
     components = []
     for ingredient, amount in lines:
         amount = Decimal(amount)
-        if ingredient.exclude_from_grade or amount <= 0:
+        # HPB grades a drink without its toppings, so pearls and the like neither add sugar nor
+        # water the drink down; each topping gets its own sugar declaration instead
+        if ingredient.exclude_from_grade or getattr(ingredient, 'kind', None) == TOPPING or amount <= 0:
             continue
         components.append(Component(
             volume_ml=ingredient.to_millilitres(amount),
