@@ -68,7 +68,7 @@ class Command(BaseCommand):
 
         ingredients = {}
         for name, unit, stock, code, kind, category, share, color, sugar, sat_fat in INGREDIENTS:
-            ingredient, _ = Ingredient.objects.get_or_create(name=name, defaults={"unit_of_measure": unit})
+            ingredient, _ = Ingredient.objects.get_or_create(name=name, defaults={"unit_of_measure": unit, "kind": kind})
             # fill in designer details only where they're still blank, so your own edits stay
             if not ingredient.code and code:
                 ingredient.code, ingredient.kind, ingredient.designer_category = code, kind, category

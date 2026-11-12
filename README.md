@@ -115,6 +115,8 @@ python manage.py simulate_machine --key <key> --fault warm-fridge  # also: out-o
 
 Set `MACHINE_SIMULATOR=0` while it runs, so pickup doesn't make orders by itself.
 
+The real kiosk-side program is the edge service in [`edge/`](edge/README.md): it does the same over the same API behind a hardware interface (simulated for now), keeps the local dairy lock, queues reports while offline, and serves the kiosk screen. `./dev.sh --backend --edge` runs it with a dev kiosk key.
+
 ## Background jobs
 
 `python manage.py run_jobs` runs, until stopped:

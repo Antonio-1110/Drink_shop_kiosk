@@ -9,6 +9,8 @@
 #   ./dev.sh --test       run the backend tests, then exit
 #   ./dev.sh --lan        also let phones on your Wi-Fi reach the backend (mobile app testing);
 #                         combine with --backend to skip the kiosk UI
+#   ./dev.sh --edge       also run the kiosk's edge service with the simulated machine, which
+#                         makes paid orders (combine with --backend); see edge/README.md
 #
 # Ctrl-C stops everything. The backend always runs on port 8000 because
 # kiosk-app/vite.config.js proxies /api there.
@@ -26,6 +28,7 @@ RUN_BACKEND=1
 RUN_FRONTEND=1
 MODE=run
 LAN=0
+EDGE=0
 for arg in "$@"; do
   case "$arg" in
     --backend) RUN_FRONTEND=0 ;;
@@ -33,7 +36,8 @@ for arg in "$@"; do
     --setup) MODE=setup ;;
     --test) MODE="test" ;;
     --lan) LAN=1 ;;
-    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --edge) EDGE=1 ;;
+    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;
   esac
 done
@@ -89,8 +93,13 @@ setup_frontend() {
 
 if [ "$MODE" = test ]; then
   setup_backend
+  log "Edge service tests"
+  (cd "$ROOT/edge" && "$PY" -m unittest discover -s tests -t tests)
   cd "$BACKEND" && exec "$PY" manage.py test
 fi
+
+# the edge service makes the orders, so pickup must not pretend to (see MACHINE_SIMULATOR)
+if [ "$EDGE" = 1 ]; then export MACHINE_SIMULATOR=0; fi
 
 if [ "$MODE" = setup ]; then
   setup_backend
@@ -139,6 +148,28 @@ if [ "$RUN_BACKEND" = 1 ]; then
   PIDS+=($!)
   # background jobs, as in production: cancel unpaid orders on time, daily order check
   (cd "$BACKEND" && exec "$PY" manage.py run_jobs) &
+  PIDS+=($!)
+fi
+
+if [ "$EDGE" = 1 ]; then
+  [ "$RUN_BACKEND" = 1 ] || die "--edge needs the backend running here too (leave out --frontend)."
+  # a kiosk for the first shop with a key kept in kiosk_backend/.edge-dev-key; a new key is made only
+  # when that one no longer works (e.g. after deleting the database). Note: from now on that shop
+  # only takes orders while the edge service is checking in.
+  (cd "$BACKEND" && "$PY" manage.py shell -v 0 -c "
+import os
+from operation.kiosk_auth import hash_key, new_key
+from operation.models import Kiosk, Shop
+path = '.edge-dev-key'
+key = open(path).read().strip() if os.path.exists(path) else ''
+if not key or not Kiosk.objects.filter(api_key_hash=hash_key(key)).exists():
+    kiosk, _ = Kiosk.objects.get_or_create(shop=Shop.objects.order_by('pk').first(), defaults={'machine_id': 'EDGE-DEV'})
+    with open(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as f:
+        f.write(new_key(kiosk))
+") || die "Couldn't set up a kiosk key for the edge service."
+  log "Edge:     http://localhost:8080  (kiosk screen via the edge; status at /edge/status)"
+  (cd "$ROOT/edge" && KIOSK_KEY_FILE="$BACKEND/.edge-dev-key" EDGE_DATA_DIR="$ROOT/edge/edge-data" \
+    exec "$PY" -m edge_service) &
   PIDS+=($!)
 fi
 
