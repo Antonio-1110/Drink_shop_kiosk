@@ -46,7 +46,44 @@
 
 .cart-line-actions {
   display: flex;
+  align-items: center;
   gap: 16px;
+  margin-top: 10px;
+}
+
+/* − 2 + */
+.qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.qty button {
+  width: 52px;
+  height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tea);
+}
+
+.qty button:active {
+  background: var(--tea-soft);
+}
+
+.qty span {
+  min-width: 28px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .cart-line-price {
@@ -140,6 +177,10 @@
 }
 
 .qr-placeholder {
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,4 +249,17 @@
   font-weight: 500;
   line-height: 1;
   color: var(--tea);
+}
+
+/* under a minute left to pay */
+.countdown.hurry {
+  background: #f8e3c9;
+  color: #8a4f10;
+  font-weight: 600;
+}
+
+.payment-page .hurry-note {
+  color: #8a4f10;
+  font-size: 16px;
+  font-weight: 600;
 }

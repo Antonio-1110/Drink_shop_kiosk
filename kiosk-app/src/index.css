@@ -3,6 +3,10 @@
    brown-sugar amber for small highlights. Fonts are bundled so the kiosk works offline. */
 @import '@fontsource-variable/fraunces';
 @import '@fontsource-variable/inter';
+/* Chinese text when the customer picks 中文; split by character range, so the browser only loads
+   the pieces a screen uses */
+@import '@fontsource/noto-sans-sc/400.css';
+@import '@fontsource/noto-sans-sc/600.css';
 
 :root {
   --tea: #0f5c4d;
@@ -18,8 +22,8 @@
   --error-bg: #fde4e1;
   --error-ink: #9b2c1f;
 
-  --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
-  --sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Noto Sans SC', serif;
+  --sans: 'Inter Variable', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --radius: 18px;
   --radius-sm: 12px;
@@ -131,6 +135,10 @@ h3 {
 }
 
 .btn-text {
+  /* a full finger's height even though it looks like a link */
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 8px 4px;
@@ -219,4 +227,31 @@ h3 {
 
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(16px); }
+}
+
+/* a small outlined button, e.g. Edit on an order line */
+.btn-pill {
+  min-height: 48px;
+  min-width: 88px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.btn-pill:active {
+  background: var(--latte);
+}
+
+/* customers who turn animation off in the system settings get none */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

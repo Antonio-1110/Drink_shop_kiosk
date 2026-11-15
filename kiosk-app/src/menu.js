@@ -25,3 +25,19 @@ export const itemPrice = (item) => item.custom ? item.custom.price :
 
 // the name in the corner of the kiosk until the shop has a logo
 export const BRAND_NAME = import.meta.env.VITE_BRAND_NAME ?? 'Tea House';
+
+// A cart line is one drink with its options and a quantity (`qty`, 1 when missing).
+export const lineQty = (item) => item.qty ?? 1;
+export const lineTotal = (item) => itemPrice(item) * lineQty(item);
+export const cartCount = (items) => items.reduce((sum, item) => sum + lineQty(item), 0);
+export const cartTotal = (items) => items.reduce((sum, item) => sum + lineTotal(item), 0);
+
+// two lines that would make the same cup, so adding one again just raises the quantity
+export function sameDrink(a, b) {
+    if (a.size !== b.size || a.sugar !== b.sugar || a.ice !== b.ice) return false;
+    if (a.custom || b.custom) return Boolean(a.custom && b.custom) && a.custom.picks.join('-') === b.custom.picks.join('-');
+    return a.drink.id === b.drink.id;
+}
+
+// one entry per cup, the way the backend takes them
+export const expandCart = (items) => items.flatMap((item) => Array.from({ length: lineQty(item) }, () => item));

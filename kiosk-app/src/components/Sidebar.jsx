@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { BRAND_NAME, CATEGORIES } from '../menu';
+import { LANGUAGES, useLanguage, useT } from '../i18n';
 
 // the brand mark until the shop has a logo: a single tea leaf
 function LeafMark() {
@@ -12,7 +13,24 @@ function LeafMark() {
     );
 }
 
+// English / 中文, each written in its own language so a customer finds theirs at a glance
+function LanguageSwitch() {
+    const t = useT();
+    const { lang, setLang } = useLanguage();
+    return (
+        <div className="lang-switch" role="group" aria-label={t('nav.language')}>
+            {LANGUAGES.map(({ code, label }) => (
+                <button key={code} lang={code} aria-pressed={lang === code}
+                    className={lang === code ? 'selected' : ''} onClick={() => setLang(code)}>
+                    {label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
 function Sidebar() {
+    const t = useT();
     const link = ({ isActive }) => `nav-link ${isActive ? 'active' : ''}`;
     return (
         <nav className="sidebar">
@@ -21,19 +39,20 @@ function Sidebar() {
                 <span>{BRAND_NAME}</span>
             </NavLink>
 
-            <div className="eyebrow nav-heading">Menu</div>
-            <NavLink to="/" end className={link}>All drinks</NavLink>
-            {CATEGORIES.map(({ path, label }) => (
-                <NavLink key={path} to={`/${path}`} className={link}>{label}</NavLink>
+            <div className="eyebrow nav-heading">{t('nav.menu')}</div>
+            <NavLink to="/" end className={link}>{t('nav.all')}</NavLink>
+            {CATEGORIES.map(({ path }) => (
+                <NavLink key={path} to={`/${path}`} className={link}>{t(`cat.${path}`)}</NavLink>
             ))}
 
             <div className="nav-extras">
                 <NavLink to="/designer" className={({ isActive }) => `nav-feature ${isActive ? 'active' : ''}`}>
-                    <strong>Design your own</strong>
-                    <span>Choose your tea, milk and toppings</span>
+                    <strong>{t('nav.design')}</strong>
+                    <span>{t('nav.designHint')}</span>
                 </NavLink>
                 {/* for customers who ordered ahead in the app */}
-                <NavLink to="/collect" className={link}>Collect an app order</NavLink>
+                <NavLink to="/collect" className={link}>{t('nav.collect')}</NavLink>
+                <LanguageSwitch />
             </div>
         </nav>
     );

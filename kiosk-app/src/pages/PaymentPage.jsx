@@ -3,9 +3,12 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { cancelOrder, fetchOrderStatus, fetchPaynowQr } from '../api';
 import Steps from '../components/Steps';
 import { useIdleCleanup, useIdlePause } from '../idleContext';
+import { useT } from '../i18n';
 import './CartPage.css';
 
 const POLL_MS = 3000;
+// the countdown turns amber when this little time is left
+const HURRY_MS = 60 * 1000;
 
 function formatRemaining(ms) {
     const seconds = Math.max(0, Math.round(ms / 1000));
@@ -13,10 +16,12 @@ function formatRemaining(ms) {
 }
 
 function PaymentPage({ clearCart }) {
+    const t = useT();
     const { orderId } = useParams();
     const orderToken = useLocation().state?.orderToken;
     const navigate = useNavigate();
     const [qr, setQr] = useState(null);
+    const [qrTry, setQrTry] = useState(0);
     const [orderStatus, setOrderStatus] = useState('PENDING');
     const [error, setError] = useState(null);
     const [now, setNow] = useState(() => Date.now());
@@ -24,9 +29,14 @@ function PaymentPage({ clearCart }) {
     // the order is placed, so the cart is done with
     useEffect(() => { clearCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // the backend reuses the open payment, so trying again never makes a second one
     useEffect(() => {
-        fetchPaynowQr(orderId).then(setQr).catch((err) => setError(err.message));
-    }, [orderId]);
+        let cancelled = false;
+        fetchPaynowQr(orderId)
+            .then((data) => { if (!cancelled) { setQr(data); setError(null); } })
+            .catch((err) => { if (!cancelled) setError(err); });
+        return () => { cancelled = true; };
+    }, [orderId, qrTry]);
 
     // the backend decides when the order is paid or has run out of time; ask it every few seconds
     useEffect(() => {
@@ -65,58 +75,71 @@ function PaymentPage({ clearCart }) {
 
     if (orderStatus === 'CANCELLED') {
         return (
-            <div className="payment-page">
+            <div className="payment-page" role="status">
                 <div className="result-mark muted" aria-hidden="true">×</div>
-                <h1>Order cancelled</h1>
-                <p>The payment time ran out, so nothing was charged.</p>
-                <Link to="/" className="btn btn-primary">Start a new order</Link>
+                <h1>{t('pay.cancelledTitle')}</h1>
+                <p>{t('pay.cancelledText')}</p>
+                <Link to="/" className="btn btn-primary">{t('pay.newOrder')}</Link>
             </div>
         );
     }
 
     if (orderStatus !== 'PENDING') {
         return (
-            <div className="payment-page">
+            <div className="payment-page" role="status">
                 <Steps current={2} />
                 <div className="result-mark" aria-hidden="true">✓</div>
-                <h1>Thank you</h1>
-                <p>Payment received. Your drink is being made now.</p>
+                <h1>{t('pay.thanks')}</h1>
+                <p>{t('pay.paidText')}</p>
                 <div className="order-number">
-                    <span className="eyebrow">Order number</span>
+                    <span className="eyebrow">{t('pay.orderNumber')}</span>
                     <strong>{orderId}</strong>
                 </div>
-                <Link to="/" className="btn btn-ghost">Start a new order</Link>
+                <Link to="/" className="btn btn-ghost">{t('pay.newOrder')}</Link>
             </div>
         );
     }
 
     const remaining = qr ? new Date(qr.expires_at).getTime() - now : null;
+    const hurry = remaining !== null && remaining < HURRY_MS;
 
     return (
         <div className="payment-page">
             <Steps current={1} />
-            <h1>Scan to pay</h1>
-            <p>Open your banking app and scan with PayNow.</p>
-            {error && <p className="error-banner">{error}</p>}
+            <h1>{t('pay.title')}</h1>
+            <p>{t('pay.hint')}</p>
             {/* sandbox or a gateway's test keys: say so, so nobody thinks this is a real charge */}
-            {qr?.test_mode && <p className="test-mode">Test mode: no real money will be charged</p>}
+            {qr?.test_mode && <p className="test-mode">{t('pay.testMode')}</p>}
             <div className="payment-card">
                 {qr
-                    ? <img className="paynow-qr" src={qr.qr_code} alt="PayNow QR code" />
-                    : <div className="paynow-qr qr-placeholder">{error ? 'QR code unavailable' : 'Preparing QR code…'}</div>}
+                    ? <img className="paynow-qr" src={qr.qr_code} alt={t('pay.qrAlt')} />
+                    : (
+                        <div className="paynow-qr qr-placeholder" role={error ? 'alert' : 'status'}>
+                            {error ? (
+                                <>
+                                    <span>{error.offline ? t('cart.offline') : t('pay.qrUnavailable')}</span>
+                                    <button className="btn btn-ghost" onClick={() => setQrTry((n) => n + 1)}>{t('pay.retry')}</button>
+                                </>
+                            ) : t('pay.qrPreparing')}
+                        </div>
+                    )}
                 {qr && (
                     <>
                         <div className="payment-amount price">${qr.amount}</div>
                         <div className="payment-meta">
-                            <span>Ref {qr.reference}</span>
-                            <span className="countdown">{formatRemaining(remaining)} left</span>
+                            <span>{t('pay.ref', { ref: qr.reference })}</span>
+                            <span className={`countdown ${hurry ? 'hurry' : ''}`}>
+                                {t('pay.left', { time: formatRemaining(remaining) })}
+                            </span>
                         </div>
+                        {/* said once, not every second, for screen readers */}
+                        {hurry && <p className="hurry-note" role="alert">{t('pay.hurry')}</p>}
                     </>
                 )}
             </div>
             {orderToken
-                ? <button className="btn-text" onClick={cancel}>Cancel order</button>
-                : <Link to="/" className="btn-text">Start a new order</Link>}
+                ? <button className="btn-text" onClick={cancel}>{t('pay.cancel')}</button>
+                : <Link to="/" className="btn-text">{t('pay.newOrder')}</Link>}
         </div>
     );
 }

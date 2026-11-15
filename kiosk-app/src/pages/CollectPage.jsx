@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { collectOrder } from '../api';
 import { useIdlePause } from '../idleContext';
+import { useT } from '../i18n';
 import './CollectPage.css';
 
 const PIN_LENGTH = 6;
@@ -8,36 +9,25 @@ const PIN_LENGTH = 6;
 const RESULT_MS = 8000;
 
 // what each backend answer means for the customer at the machine
-function describeFailure(err) {
-    if (err.status === 429) {
-        return { tone: 'warn', title: 'Too many tries', text: 'Please wait a minute, then try again.' };
-    }
-    if (err.data?.reason === 'not_paid') {
-        return { tone: 'warn', title: 'Not paid yet', text: 'This order is still waiting for payment. Finish paying in the app, then try again.' };
-    }
-    if (err.data?.reason === 'cancelled') {
-        return { tone: 'warn', title: 'Order cancelled', text: 'This order was cancelled because it wasn\'t paid in time. Please order again.' };
-    }
+const FAILURES = {
+    not_paid: ['warn', 'notPaid'],
+    cancelled: ['warn', 'cancelled'],
     // the machine's own steps (from the backend's drink-making statuses)
-    if (err.data?.reason === 'preparing') {
-        return { tone: 'warn', title: 'Still being made', text: 'Your drink is nearly ready. Please try again in a moment.' };
-    }
-    if (err.data?.reason === 'failed') {
-        return { tone: 'error', title: 'Couldn\'t be made', text: 'Sorry, the machine couldn\'t make this drink. Staff have been told and will sort it out.' };
-    }
-    if (err.data?.reason === 'refunding') {
-        return { tone: 'error', title: 'Couldn\'t be made', text: 'Sorry, this drink couldn\'t be made. Your payment is being refunded.' };
-    }
-    if (err.data?.reason === 'already_collected') {
-        return { tone: 'warn', title: 'Already collected', text: 'This order was collected earlier. Please ask staff if that wasn\'t you.' };
-    }
-    if (err.data?.reason === 'not_found') {
-        return { tone: 'error', title: 'Code not recognised', text: 'Check the PIN in your app. Orders can only be collected at the machine they were ordered for.' };
-    }
-    return { tone: 'error', title: 'Something went wrong', text: 'Please try again, or ask staff for help.' };
+    preparing: ['warn', 'preparing'],
+    failed: ['error', 'failed'],
+    refunding: ['error', 'failed', 'refunding'],
+    already_collected: ['warn', 'already'],
+    not_found: ['error', 'notFound'],
+};
+
+function describeFailure(err) {
+    if (err.status === 429) return { tone: 'warn', title: 'collect.tooManyTitle', text: 'collect.tooManyText' };
+    const [tone, name, textName = name] = FAILURES[err.data?.reason] ?? ['error', 'error'];
+    return { tone, title: `collect.${name}Title`, text: `collect.${textName}Text` };
 }
 
 function CollectPage() {
+    const t = useT();
     const [pin, setPin] = useState('');
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState(null);
@@ -51,11 +41,8 @@ function CollectPage() {
         setBusy(true);
         try {
             const order = await collectOrder(code);
-            setResult({
-                tone: 'ok',
-                title: 'Order collected',
-                text: `Order #${order.id}, ${order.items.length} ${order.items.length === 1 ? 'drink' : 'drinks'}. Enjoy!`,
-            });
+            const drinks = t('cart.drinks', { count: order.items.length });
+            setResult({ tone: 'ok', title: 'collect.okTitle', text: 'collect.okText', vars: { id: order.id, drinks } });
         } catch (err) {
             setResult(describeFailure(err));
         } finally {
@@ -89,9 +76,9 @@ function CollectPage() {
                     <div className="collect-icon" aria-hidden="true">
                         {result.tone === 'ok' ? '✓' : result.tone === 'warn' ? '!' : '✕'}
                     </div>
-                    <h1>{result.title}</h1>
-                    <p>{result.text}</p>
-                    <button className="btn btn-primary collect-done" onClick={() => setResult(null)}>Done</button>
+                    <h1>{t(result.title)}</h1>
+                    <p>{t(result.text, result.vars)}</p>
+                    <button className="btn btn-primary collect-done" onClick={() => setResult(null)}>{t('collect.done')}</button>
                 </div>
             </div>
         );
@@ -99,8 +86,8 @@ function CollectPage() {
 
     return (
         <div className="collect-page">
-            <h1>Collect your order</h1>
-            <p className="collect-hint">Scan the pickup QR code from your app, or type your 6-digit PIN.</p>
+            <h1>{t('collect.title')}</h1>
+            <p className="collect-hint">{t('collect.hint')}</p>
 
             <form className="collect-scan" onSubmit={(e) => {
                 e.preventDefault();
@@ -108,11 +95,11 @@ function CollectPage() {
                 e.target.reset();
             }}>
                 {/* receives the scanner's typing; invisible but focused */}
-                <input ref={scanInput} name="code" aria-label="Scanned pickup code" autoComplete="off"
+                <input ref={scanInput} name="code" aria-label={t('collect.scanned')} autoComplete="off"
                     onBlur={() => setTimeout(() => scanInput.current?.focus(), 100)} />
             </form>
 
-            <div className="collect-pin" aria-label="PIN entered">
+            <div className="collect-pin" aria-label={t('collect.pin')}>
                 {Array.from({ length: PIN_LENGTH }, (_, i) => (
                     <span key={i} className={i < pin.length ? 'filled' : ''}>{pin[i] ?? ''}</span>
                 ))}
@@ -122,12 +109,12 @@ function CollectPage() {
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                     <button key={d} onClick={() => press(d)} disabled={busy}>{d}</button>
                 ))}
-                <button onClick={() => setPin(pin.slice(0, -1))} disabled={busy || !pin}>⌫</button>
+                <button onClick={() => setPin(pin.slice(0, -1))} disabled={busy || !pin} aria-label={t('collect.delete')}>⌫</button>
                 <button onClick={() => press('0')} disabled={busy}>0</button>
-                <button onClick={() => setPin('')} disabled={busy || !pin}>Clear</button>
+                <button onClick={() => setPin('')} disabled={busy || !pin}>{t('collect.clear')}</button>
             </div>
 
-            {busy && <p className="collect-hint">Checking…</p>}
+            {busy && <p className="collect-hint" role="status">{t('collect.checking')}</p>}
         </div>
     );
 }

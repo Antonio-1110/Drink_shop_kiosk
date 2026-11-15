@@ -244,3 +244,91 @@
   border-color: var(--tea);
   color: white;
 }
+
+/* English / 中文 at the bottom of the menu rail */
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+}
+
+.lang-switch button {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.lang-switch button.selected {
+  background: var(--surface);
+  color: var(--tea);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(43, 35, 32, 0.12);
+}
+
+/* shown while the backend can't be reached; the kiosk keeps retrying on its own */
+.offline-notice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 14px 14px 14px 22px;
+  border-radius: var(--radius);
+  background: var(--latte);
+  border: 1px solid var(--line);
+}
+
+.offline-notice div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.offline-notice strong {
+  font-size: 18px;
+}
+
+.offline-notice span {
+  color: var(--muted);
+}
+
+.offline-notice .btn {
+  min-height: 52px;
+  background: var(--surface);
+}
+
+.offline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.35; }
+}
+
+/* the count bounces when a drink goes in */
+.order-bar.just-added .order-bar-count {
+  animation: bump 0.35s ease-out;
+}
+
+.order-bar.just-added .order-bar-text .eyebrow {
+  color: #f3d9b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes bump {
+  40% { transform: scale(1.22); }
+}

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IDLE_MS, IdleContext, PROMPT_MS } from './idleContext';
+import { useT } from './i18n';
 import './IdleProvider.css';
 
 // what counts as someone using the kiosk (a keyboard-wedge QR scanner types, so keys count too)
@@ -12,6 +13,7 @@ const ACTIVITY_EVENTS = ['pointerdown', 'touchstart', 'keydown'];
 // `hasSession` says whether there is anything to reset. With an empty cart on the menu there isn't,
 // so the prompt isn't shown to an empty room over and over.
 function IdleProvider({ hasSession, onReset, children }) {
+    const t = useT();
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const [pauses, setPauses] = useState(0);
@@ -74,11 +76,11 @@ function IdleProvider({ hasSession, onReset, children }) {
             {prompting && (
                 <div className="idle-overlay" role="alertdialog" aria-labelledby="idle-title">
                     <div className="idle-dialog">
-                        <h2 id="idle-title">Still there?</h2>
-                        <p>Your order will be cleared in {promptLeft} seconds.</p>
+                        <h2 id="idle-title">{t('idle.title')}</h2>
+                        <p>{t('idle.text', { seconds: promptLeft })}</p>
                         <div className="idle-actions">
-                            <button className="btn btn-primary" onClick={keepGoing}>Continue</button>
-                            <button className="btn btn-ghost" onClick={reset}>Start over</button>
+                            <button className="btn btn-primary" onClick={keepGoing}>{t('idle.continue')}</button>
+                            <button className="btn btn-ghost" onClick={reset}>{t('idle.startOver')}</button>
                         </div>
                     </div>
                 </div>
