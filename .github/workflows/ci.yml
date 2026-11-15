@@ -150,9 +150,17 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Unit tests (simulator, fake backend)
+      # coverage is only for CI; the service itself still needs nothing but the standard library
+      - if: steps.present.outputs.yes
+        run: pip install coverage
+      - name: Unit tests (simulator, fake backend) with coverage
         if: steps.present.outputs.yes
-        run: python -m unittest discover -s tests -t tests -v
+        run: coverage run -m unittest discover -s tests -t tests -v
+      - name: Coverage report (fails below the floor in edge/pyproject.toml)
+        if: steps.present.outputs.yes
+        run: |
+          coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
+          coverage report
 
   kiosk:
     name: Kiosk UI lint and build
@@ -178,6 +186,8 @@ jobs:
       - name: Lint
         if: steps.present.outputs.yes
         run: npm run lint
+      # includes src/parity.test.js: the kiosk's and the phone app's drink previews against the
+      # backend's prices and Nutri-Grades in test-cases/ (written by ordering/test_app_parity.py)
       - name: Test
         if: steps.present.outputs.yes
         run: npm test

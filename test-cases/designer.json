@@ -1,0 +1,930 @@
+{
+  "_about": "Backend results for designed drinks; written by kiosk_backend/ordering/test_app_parity.py, checked against the apps by kiosk-app/src/parity.test.js. Don't edit by hand.",
+  "cases": [
+    {
+      "amounts": {
+        "BT": 360.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT"
+        ],
+        "size": 0,
+        "sugar": 0
+      },
+      "grade": "A",
+      "price": "3.30"
+    },
+    {
+      "amounts": {
+        "BS": 10.0,
+        "GT": 500.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT"
+        ],
+        "size": 1,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "3.90"
+    },
+    {
+      "amounts": {
+        "BS": 15.0,
+        "FM": 360.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM"
+        ],
+        "size": 0,
+        "sugar": 2
+      },
+      "grade": "C",
+      "price": "3.60"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "OM": 500.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "OM"
+        ],
+        "size": 1,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "3.90"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "ZS": 360.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "ZS"
+        ],
+        "size": 0,
+        "sugar": 4
+      },
+      "grade": "B",
+      "price": "3.90"
+    },
+    {
+      "amounts": {
+        "LM": 500.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "LM"
+        ],
+        "size": 1,
+        "sugar": 0
+      },
+      "grade": "B",
+      "price": "3.90"
+    },
+    {
+      "amounts": {
+        "AV": 360.0,
+        "BS": 7.5
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "AV"
+        ],
+        "size": 0,
+        "sugar": 1
+      },
+      "grade": "D",
+      "price": "3.30"
+    },
+    {
+      "amounts": {
+        "BS": 20.0,
+        "BT": 250.0,
+        "GT": 250.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "GT"
+        ],
+        "size": 1,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BS": 22.5,
+        "BT": 216.0,
+        "FM": 144.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "FM"
+        ],
+        "size": 0,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "4.10"
+    },
+    {
+      "amounts": {
+        "BS": 40.0,
+        "BT": 300.0,
+        "OM": 200.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "OM"
+        ],
+        "size": 1,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BT": 270.0,
+        "ZS": 90.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "ZS"
+        ],
+        "size": 0,
+        "sugar": 0
+      },
+      "grade": "B",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BS": 10.0,
+        "BT": 375.0,
+        "LM": 125.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "LM"
+        ],
+        "size": 1,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "AV": 90.0,
+        "BS": 15.0,
+        "BT": 270.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "AV"
+        ],
+        "size": 0,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "3.80"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "FM": 200.0,
+        "GT": 300.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "FM"
+        ],
+        "size": 1,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "4.70"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "GT": 216.0,
+        "OM": 144.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "OM"
+        ],
+        "size": 0,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "3.80"
+    },
+    {
+      "amounts": {
+        "GT": 375.0,
+        "ZS": 125.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "ZS"
+        ],
+        "size": 1,
+        "sugar": 0
+      },
+      "grade": "B",
+      "price": "5.00"
+    },
+    {
+      "amounts": {
+        "BS": 7.5,
+        "GT": 270.0,
+        "LM": 90.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "LM"
+        ],
+        "size": 0,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "3.80"
+    },
+    {
+      "amounts": {
+        "AV": 125.0,
+        "BS": 20.0,
+        "GT": 375.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "AV"
+        ],
+        "size": 1,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BS": 22.5,
+        "FM": 180.0,
+        "OM": 180.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM",
+          "OM"
+        ],
+        "size": 0,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "4.10"
+    },
+    {
+      "amounts": {
+        "BS": 40.0,
+        "FM": 333.33,
+        "ZS": 166.67
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM",
+          "ZS"
+        ],
+        "size": 1,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "5.30"
+    },
+    {
+      "amounts": {
+        "FM": 240.0,
+        "LM": 120.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM",
+          "LM"
+        ],
+        "size": 0,
+        "sugar": 0
+      },
+      "grade": "C",
+      "price": "4.10"
+    },
+    {
+      "amounts": {
+        "AV": 166.67,
+        "BS": 10.0,
+        "FM": 333.33
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM",
+          "AV"
+        ],
+        "size": 1,
+        "sugar": 1
+      },
+      "grade": "C",
+      "price": "4.70"
+    },
+    {
+      "amounts": {
+        "BS": 15.0,
+        "OM": 240.0,
+        "ZS": 120.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "OM",
+          "ZS"
+        ],
+        "size": 0,
+        "sugar": 2
+      },
+      "grade": "C",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "LM": 166.67,
+        "OM": 333.33
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "OM",
+          "LM"
+        ],
+        "size": 1,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "AV": 120.0,
+        "BS": 30.0,
+        "OM": 240.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "OM",
+          "AV"
+        ],
+        "size": 0,
+        "sugar": 4
+      },
+      "grade": "D",
+      "price": "3.80"
+    },
+    {
+      "amounts": {
+        "LM": 250.0,
+        "ZS": 250.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "ZS",
+          "LM"
+        ],
+        "size": 1,
+        "sugar": 0
+      },
+      "grade": "B",
+      "price": "5.00"
+    },
+    {
+      "amounts": {
+        "AV": 180.0,
+        "BS": 7.5,
+        "ZS": 180.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "ZS",
+          "AV"
+        ],
+        "size": 0,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "AV": 250.0,
+        "BS": 20.0,
+        "LM": 250.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "LM",
+          "AV"
+        ],
+        "size": 1,
+        "sugar": 2
+      },
+      "grade": "C",
+      "price": "4.40"
+    },
+    {
+      "amounts": {
+        "BS": 22.5,
+        "BT": 216.0,
+        "FM": 144.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "FM",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 3
+      },
+      "grade": "C",
+      "price": "5.00"
+    },
+    {
+      "amounts": {
+        "BS": 40.0,
+        "CJ": 40.0,
+        "GT": 300.0,
+        "OM": 200.0,
+        "TP": 40.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "GT",
+          "OM",
+          "CJ",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "5.90"
+    },
+    {
+      "amounts": {
+        "AV": 120.0,
+        "FM": 240.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "FM",
+          "AV"
+        ],
+        "size": 0,
+        "sugar": 0
+      },
+      "grade": "C",
+      "price": "4.10"
+    },
+    {
+      "amounts": {
+        "BS": 10.0,
+        "LM": 250.0,
+        "TP": 80.0,
+        "ZS": 250.0
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "LM",
+          "ZS",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "5.90"
+    },
+    {
+      "amounts": {
+        "BS": 15.0,
+        "BT": 98.18,
+        "FM": 65.45,
+        "GT": 98.18,
+        "LM": 32.73,
+        "OM": 65.45
+      },
+      "design": {
+        "ice": 2,
+        "picks": [
+          "BT",
+          "GT",
+          "FM",
+          "OM",
+          "LM"
+        ],
+        "size": 0,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "5.60"
+    },
+    {
+      "amounts": {
+        "GT": 360.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 0
+      },
+      "grade": "A",
+      "price": "4.20"
+    },
+    {
+      "amounts": {
+        "BS": 7.5,
+        "GT": 360.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "4.20"
+    },
+    {
+      "amounts": {
+        "BS": 15.0,
+        "GT": 360.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "4.20"
+    },
+    {
+      "amounts": {
+        "BS": 22.5,
+        "GT": 360.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 3
+      },
+      "grade": "B",
+      "price": "4.20"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "GT": 360.0,
+        "TP": 60.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 0,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "4.20"
+    },
+    {
+      "amounts": {
+        "GT": 500.0,
+        "TP": 80.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 0
+      },
+      "grade": "A",
+      "price": "4.80"
+    },
+    {
+      "amounts": {
+        "BS": 10.0,
+        "GT": 500.0,
+        "TP": 80.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 1
+      },
+      "grade": "B",
+      "price": "4.80"
+    },
+    {
+      "amounts": {
+        "BS": 20.0,
+        "GT": 500.0,
+        "TP": 80.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 2
+      },
+      "grade": "B",
+      "price": "4.80"
+    },
+    {
+      "amounts": {
+        "BS": 30.0,
+        "GT": 500.0,
+        "TP": 80.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 3
+      },
+      "grade": "B",
+      "price": "4.80"
+    },
+    {
+      "amounts": {
+        "BS": 40.0,
+        "GT": 500.0,
+        "TP": 80.0
+      },
+      "design": {
+        "ice": 4,
+        "picks": [
+          "GT",
+          "TP"
+        ],
+        "size": 1,
+        "sugar": 4
+      },
+      "grade": "C",
+      "price": "4.80"
+    }
+  ],
+  "options": {
+    "ingredients": [
+      {
+        "available": true,
+        "category": "Fruit",
+        "code": "LM",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Lemon",
+        "sat_fat": 0.0,
+        "share": 1.0,
+        "sugar": 2.5,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Fruit",
+        "code": "ZS",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Zero-sugar soda",
+        "sat_fat": 0.0,
+        "share": 1.0,
+        "sugar": 0.0,
+        "sweetener": true
+      },
+      {
+        "available": true,
+        "category": "Milk",
+        "code": "FM",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Fresh milk",
+        "sat_fat": 2.3,
+        "share": 2.0,
+        "sugar": 4.8,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Milk",
+        "code": "OM",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Oat milk",
+        "sat_fat": 0.3,
+        "share": 2.0,
+        "sugar": 4.0,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Tea",
+        "code": "BT",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Black tea",
+        "sat_fat": 0.0,
+        "share": 3.0,
+        "sugar": 0.0,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Tea",
+        "code": "GT",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "liquid",
+        "name": "Green tea",
+        "sat_fat": 0.0,
+        "share": 3.0,
+        "sugar": 0.4,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Toppings",
+        "code": "AV",
+        "color": "",
+        "exclude_from_grade": true,
+        "kind": "liquid",
+        "name": "Aloe vera",
+        "sat_fat": 0.0,
+        "share": 1.0,
+        "sugar": 9.0,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Toppings",
+        "code": "CJ",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "topping",
+        "name": "Coconut jelly",
+        "sat_fat": 0.0,
+        "share": 1.0,
+        "sugar": 12.0,
+        "sweetener": false
+      },
+      {
+        "available": true,
+        "category": "Toppings",
+        "code": "TP",
+        "color": "",
+        "exclude_from_grade": false,
+        "kind": "topping",
+        "name": "Tapioca pearls",
+        "sat_fat": 0.0,
+        "share": 1.0,
+        "sugar": 30.0,
+        "sweetener": false
+      }
+    ],
+    "pricing": {
+      "cup": {
+        "0": "2.80",
+        "1": "3.40"
+      },
+      "liquid": "0.50",
+      "overrides": {
+        "FM": "0.80",
+        "TP": "0.90",
+        "ZS": "1.10"
+      },
+      "topping": "0.60"
+    },
+    "sizes": [
+      {
+        "label": "Small",
+        "liquid_ml": 360.0,
+        "topping_g": 60.0,
+        "value": 0
+      },
+      {
+        "label": "Large",
+        "liquid_ml": 500.0,
+        "topping_g": 80.0,
+        "value": 1
+      }
+    ],
+    "sweetener": {
+      "code": "BS",
+      "color": "",
+      "contains_sweetener": false,
+      "ml": {
+        "0": 30.0,
+        "1": 40.0
+      },
+      "name": "Brown sugar syrup",
+      "sat_fat": 0.0,
+      "sugar": 65.0
+    }
+  }
+}

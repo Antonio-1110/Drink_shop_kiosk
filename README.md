@@ -225,8 +225,13 @@ In the app, "Kiosk QR" shows the drink as a code like `DD1:144:OT-OM-TP`: size, 
 ## Tests
 
 ```
-cd kiosk_backend && DJANGO_DEBUG=1 python manage.py test
+./dev.sh --check     # everything CI runs: lint, backend + edge + kiosk tests, kiosk build, mobile typecheck
+./dev.sh --test      # just the backend and edge service tests
 ```
+
+Run `./dev.sh --check` before pushing to main. CI (`.github/workflows/ci.yml`) runs the same checks after the push, and it fails if test coverage drops below 90% for the backend (`kiosk_backend/pyproject.toml`) or for the edge service (`edge/pyproject.toml`).
+
+The kiosk and the phone app work out a designed drink's price and Nutri-Grade on their own, to show it before the order is placed. `test-cases/` holds what the backend charges and grades for a set of drinks, and `kiosk-app/src/parity.test.js` checks both apps against it. After you deliberately change pricing or grading in the backend, refresh the file with `UPDATE_TEST_CASES=1 python manage.py test ordering.test_app_parity` (in `kiosk_backend/`), then update both apps until the kiosk tests pass again.
 
 
 ## What's next

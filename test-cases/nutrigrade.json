@@ -1,0 +1,761 @@
+{
+  "_about": "Backend Nutri-Grade per 100 mL; written by kiosk_backend/ordering/test_app_parity.py, checked against the apps by kiosk-app/src/parity.test.js. Don't edit by hand.",
+  "cases": [
+    {
+      "grade": "A",
+      "sat_fat": 0,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "A",
+      "sat_fat": 0.7,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 0,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 0,
+      "sweetener": true
+    },
+    {
+      "grade": "A",
+      "sat_fat": 0,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "A",
+      "sat_fat": 0.7,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 1,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 1,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 1.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 1.01,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 4.99,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 4.99,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.7,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 0.71,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "B",
+      "sat_fat": 1.2,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 5,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 5,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.7,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.7,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.71,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.71,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.2,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.2,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 5.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 5.01,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.7,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.7,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.71,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 0.71,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.2,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.2,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 1.21,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "C",
+      "sat_fat": 2.8,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 10,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 10,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.7,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.7,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.71,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.71,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.2,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.2,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.21,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.21,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.8,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.8,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 10.01,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 10.01,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.7,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.7,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.71,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 0.71,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.2,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.2,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.21,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 1.21,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.8,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.8,
+      "sugar": 30,
+      "sweetener": true
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 30,
+      "sweetener": false
+    },
+    {
+      "grade": "D",
+      "sat_fat": 2.81,
+      "sugar": 30,
+      "sweetener": true
+    }
+  ]
+}

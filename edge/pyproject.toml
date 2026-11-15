@@ -1,6 +1,8 @@
 # The edge service runs on the kiosk's computer with the standard library only (Python 3.11+),
 # so there's nothing to install. Run its tests from this folder:
 #   python -m unittest discover -s tests -t tests
+# CI also measures coverage (pip install coverage):
+#   coverage run -m unittest discover -s tests -t tests && coverage report
 
 [tool.ruff]
 target-version = "py311"
@@ -8,3 +10,12 @@ target-version = "py311"
 [tool.ruff.lint]
 # same rules as the backend: only checks that catch real bugs
 select = ["F", "E9", "B"]
+
+[tool.coverage.run]
+source = ["edge_service"]
+
+[tool.coverage.report]
+skip_empty = true
+sort = "cover"
+show_missing = true
+fail_under = 90

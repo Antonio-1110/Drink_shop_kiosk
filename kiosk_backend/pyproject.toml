@@ -11,10 +11,10 @@ select = ["F", "E9", "B"]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["*/migrations/*", "*/tests.py", "manage.py", ".venv/*"]
+# tests are left out, so the figure is how much of the app code the tests run
+omit = ["*/migrations/*", "*/tests.py", "*/test_*.py", "manage.py", ".venv/*"]
 
 [tool.coverage.report]
 skip_empty = true
 sort = "cover"
-
-fail_under = 85
+fail_under = 90

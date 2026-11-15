@@ -156,7 +156,9 @@ WEBHOOK_SECRET = 'whsec_test'
 @override_settings(PAYMENT_METHODS=['stripe_paynow', 'stripe_grabpay'], PAYNOW_METHOD='stripe_paynow',
                    STRIPE_SECRET_KEY='sk_test_abc', STRIPE_WEBHOOK_SECRET=WEBHOOK_SECRET, STRIPE_LIVE=False,
                    PUBLIC_BASE_URL='https://api.example.sg/')
-class StripeTests(CheckoutTestBase):
+class StripeTestBase(CheckoutTestBase):
+    """Stripe switched on in test mode, with its API replaced by FakeStripe."""
+
     def setUp(self):
         super().setUp()
         self.stripe = FakeStripe()
@@ -174,6 +176,8 @@ class StripeTests(CheckoutTestBase):
         return self.client.post('/checkout/webhooks/stripe/', body, content_type='application/json',
                                 HTTP_STRIPE_SIGNATURE=f"t={t},v1={sig}")
 
+
+class StripeTests(StripeTestBase):
     def test_paynow_creates_one_payment_intent_and_shows_its_qr_code(self):
         order, _ = self.place(self.milk_tea)
         res = self.client.get(f"/ordering/orders/{order.pk}/paynow-qr/")

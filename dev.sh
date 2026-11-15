@@ -6,7 +6,9 @@
 #   ./dev.sh --backend    run only the backend
 #   ./dev.sh --frontend   run only the frontend
 #   ./dev.sh --setup      install dependencies and migrate, then exit
-#   ./dev.sh --test       run the backend tests, then exit
+#   ./dev.sh --test       run the backend and edge service tests, then exit
+#   ./dev.sh --check      run what CI runs (lint, all tests, kiosk build, mobile typecheck);
+#                         use it before pushing to main, since no pull request runs CI first
 #   ./dev.sh --lan        also let phones on your Wi-Fi reach the backend (mobile app testing);
 #                         combine with --backend to skip the kiosk UI
 #   ./dev.sh --edge       also run the kiosk's edge service with the simulated machine, which
@@ -37,7 +39,8 @@ for arg in "$@"; do
     --test) MODE="test" ;;
     --lan) LAN=1 ;;
     --edge) EDGE=1 ;;
-    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --check) MODE=check ;;
+    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;
   esac
 done
@@ -96,6 +99,51 @@ if [ "$MODE" = test ]; then
   log "Edge service tests"
   (cd "$ROOT/edge" && "$PY" -m unittest discover -s tests -t tests)
   cd "$BACKEND" && exec "$PY" manage.py test
+fi
+
+if [ "$MODE" = check ]; then
+  setup_backend
+  FAILED=()
+  step() {  # step "name" command...: runs it, notes a failure and carries on
+    log "$1"
+    if ! "${@:2}"; then FAILED+=("$1"); fi
+  }
+  # shellcheck disable=SC2329  # called through step and in_dir
+  ruff_check() {
+    if "$PY" -m ruff --version >/dev/null 2>&1; then "$PY" -m ruff check "$@"
+    elif command -v ruff >/dev/null; then ruff check "$@"
+    elif command -v pipx >/dev/null; then pipx run ruff==0.16.9 check "$@"
+    else log "ruff isn't installed (pip install ruff), skipping"; fi
+  }
+  in_dir() { (cd "$1" && "${@:2}"); }  # in_dir folder command...
+  step "Lint the backend" ruff_check "$BACKEND"
+  step "Lint the edge service" in_dir "$ROOT/edge" ruff_check .
+  if command -v shellcheck >/dev/null; then
+    step "ShellCheck" shellcheck "$ROOT/dev.sh" "$ROOT"/deploy/*.sh "$BACKEND/release.sh"
+  fi
+  step "Edge service tests" in_dir "$ROOT/edge" "$PY" -m unittest discover -s tests -t tests
+  step "Backend tests" in_dir "$BACKEND" "$PY" manage.py test
+  step "No missing migrations" in_dir "$BACKEND" "$PY" manage.py makemigrations --check --dry-run
+  if command -v npm >/dev/null; then
+    setup_frontend
+    MOBILE="$ROOT/mobile-app"
+    if [ ! -f "$MOBILE/node_modules/.package-lock.json" ] || [ "$MOBILE/package-lock.json" -nt "$MOBILE/node_modules/.package-lock.json" ]; then
+      log "Installing mobile app dependencies"
+      in_dir "$MOBILE" npm ci --no-audit --no-fund
+    fi
+    step "Kiosk lint" in_dir "$FRONTEND" npm run --silent lint
+    step "Kiosk tests (including the app/backend parity checks)" in_dir "$FRONTEND" npm test --silent
+    step "Kiosk build" in_dir "$FRONTEND" npm run --silent build
+    step "Mobile lint" in_dir "$MOBILE" npm run --silent lint
+    step "Mobile typecheck" in_dir "$MOBILE" npm run --silent typecheck
+  else
+    log "npm isn't installed: kiosk and mobile checks skipped"
+  fi
+  if [ "${#FAILED[@]}" -gt 0 ]; then
+    die "Failed: ${FAILED[*]}"
+  fi
+  log "All checks passed."
+  exit 0
 fi
 
 # the edge service makes the orders, so pickup must not pretend to (see MACHINE_SIMULATOR)
