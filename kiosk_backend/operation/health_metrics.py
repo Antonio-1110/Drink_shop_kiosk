@@ -132,7 +132,9 @@ def grade_drink(drink, sugar_level: int = LEVEL_STEPS, ice_level: int = LEVEL_ST
     the drink without them and their sugar is declared separately on the menu.
     """
     lines = []
-    for line in drink.required.select_related('ingredient'):
+    # a menu listing prefetches every drink's recipe (required__ingredient) in two queries
+    prefetched = 'required' in getattr(drink, '_prefetched_objects_cache', {})
+    for line in (drink.required.all() if prefetched else drink.required.select_related('ingredient')):
         ingredient = line.ingredient
         quantity = Decimal(line.required_quantity)
         if line.scaling == line.Scaling.SUGAR:

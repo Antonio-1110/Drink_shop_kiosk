@@ -3,6 +3,8 @@
 # docker-compose.yml): brings the database up to date, then exits.
 set -eu
 python manage.py migrate --noinput
+# the shared cache behind the rate limits (settings.CACHES); does nothing if it's already there
+python manage.py createcachetable
 python manage.py check --deploy --fail-level ERROR
 # staging and demos: load the demo shops and menu into an empty database
 if [ "${SEED_DEMO:-}" = 1 ]; then

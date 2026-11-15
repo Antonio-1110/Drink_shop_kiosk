@@ -49,6 +49,14 @@ Settings come from environment variables:
 | `DJANGO_HTTPS` | `1` when the site is served over HTTPS: redirects HTTP to HTTPS, HTTPS-only cookies, HSTS. |
 | `WEB_CONCURRENCY` | gunicorn worker processes in the Docker image (default 2). |
 | `LOG_LEVEL` | How much the server logs when `DJANGO_DEBUG` is off (default `INFO`). |
+| `LOG_FORMAT` | `plain` (default) or `json`: one JSON object per log line, for a log service. Every request is logged once with its id (also sent back as the `X-Request-ID` header), status, time taken and database queries. |
+| `SLOW_REQUEST_MS`, `SLOW_REQUEST_QUERIES` | A request slower than this (default 1000 ms) or running this many database queries (default 60) is logged as a warning. |
+| `DJANGO_NUM_PROXIES` | How many proxies in front add to `X-Forwarded-For`: `1` behind Caddy or a platform's load balancer, `0` (default) when reached directly. Rate limits count by the visitor's address, so this must be right or one visitor can get round them. |
+| `DJANGO_CACHE` | Where rate-limit counts are kept: `database` (default in production, shared by all gunicorn processes; `release.sh` makes the table) or `memory`. |
+| `ADMIN_LOGIN_ATTEMPTS`, `ADMIN_LOGIN_WINDOW_MINUTES` | Wrong staff passwords (admin login or API Basic auth) from one address before it is locked out, and for how long (default 10 in 15 minutes). |
+| `REQUIRE_ORDER_TOKEN` | `1` to make an order's payment, QR code and status endpoints refuse requests without its `order_token` (`X-Order-Token` header or `?order_token=`). A wrong token is always refused. Turn on once the kiosk and app send it. |
+| `PICKUP_ATTEMPTS_PER_MINUTE`, `PICKUP_FAILURES_PER_SHOP_PER_MINUTE` | Pickup PIN attempts per address (default 10) and wrong codes per shop from all addresses together (default 20) each minute. |
+| `ORDERS_PER_MINUTE` | Orders one address can place a minute (default 20). |
 | `DJANGO_HSTS_SECONDS` | How long browsers remember to use HTTPS (default 3600). Raise it once HTTPS is known to work. |
 | `PAYNOW_PROXY_TYPE` | `UEN` (a company, the default) or `MOBILE` (a +65 number registered with PayNow). |
 | `PAYNOW_PROXY_VALUE` | The company's UEN, or the mobile number as `+6591234567`. Required when `DJANGO_DEBUG` is off; development uses a dummy UEN. |

@@ -33,7 +33,15 @@ class Order(models.Model):
     pickup_pin = models.CharField(max_length=6, blank=True, db_index=True)
     pickup_token = models.CharField(max_length=32, blank=True, db_index=True)
     collected_at = models.DateTimeField(null=True, blank=True)
-    
+
+    class Meta:
+        indexes = [
+            # every kiosk request sweeps unpaid orders, and pickup looks for a shop's open ones
+            models.Index(fields=['status', 'shop'], name='order_status_shop'),
+            # the dashboard and the daily check read a shop's orders by date
+            models.Index(fields=['shop', 'time'], name='order_shop_time'),
+        ]
+
 
 class OrderItem(models.Model):
     class Size(models.IntegerChoices): # can add more sizes later

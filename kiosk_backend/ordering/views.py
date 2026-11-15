@@ -1,5 +1,8 @@
 from operation.models import Shop, Drink, DrinkIngredient, Inventory
 import logging
+import time
+from django.conf import settings
+from django.core.cache import cache
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -62,7 +65,8 @@ def available_drinks(request):
         if closed_reason(shop):
             return Response([])  # the machine is offline: nothing can be made
         drinks = (Drink.objects.filter(is_active=True).exclude(id__in=inventory_check(shop, valid_cart))
-                  .exclude(required__ingredient_id__in=locked_ingredient_ids(shop)).distinct())
+                  .exclude(required__ingredient_id__in=locked_ingredient_ids(shop)).distinct()
+                  .prefetch_related('required__ingredient'))
         drink_serializer = DrinkSerializer(drinks, many=True)
         return Response(drink_serializer.data)
     except Shop.DoesNotExist:
@@ -183,9 +187,22 @@ def collect_order(request):
     shop = request.data.get('shop')
     if not str(shop).isdigit():
         return Response({'error': "Invalid or missing shop."}, status=status.HTTP_400_BAD_REQUEST)
+    shop = int(shop)
+    # wrong codes count per shop as well as per address, so guessing from many addresses is no faster
+    failures_key = f'pickup-failures:{shop}:{int(time.time() // 60)}'
+    if cache.get(failures_key, 0) >= settings.PICKUP_FAILURES_PER_SHOP_PER_MINUTE:
+        logger.warning("Pickup at shop %s paused: too many wrong codes this minute", shop)
+        return Response({'error': "Too many attempts. Please wait a minute and try again.", 'reason': 'too_many'},
+                        status=status.HTTP_429_TOO_MANY_REQUESTS, headers={'Retry-After': '60'})
     try:
-        order = pickup.collect(int(shop), str(request.data.get('code', '')))
+        order = pickup.collect(shop, str(request.data.get('code', '')))
     except pickup.PickupError as e:
+        if e.reason == 'not_found':
+            cache.add(failures_key, 0, 120)
+            try:
+                cache.incr(failures_key)
+            except ValueError:
+                pass
         return Response({'error': str(e), 'reason': e.reason}, status=e.status)
     return Response(OrderSerializer(order).data)
 

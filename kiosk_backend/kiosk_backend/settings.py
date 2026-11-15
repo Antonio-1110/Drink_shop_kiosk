@@ -72,6 +72,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'kiosk_backend.health.HealthCheckMiddleware',  # /healthz/, see health.py
+    # request id, one log line per request, slow-request warnings (observability.py)
+    'kiosk_backend.observability.RequestLogMiddleware',
     'django.middleware.security.SecurityMiddleware',
     # serves collected static files (admin, dashboard, API docs) from gunicorn, no nginx needed
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -79,6 +81,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # locks out an address after too many wrong staff passwords (login_limit.py)
+    'kiosk_backend.login_limit.LoginLimitMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -171,16 +175,40 @@ STORAGES = {
 }
 
 # In production everything is logged to the console (docker logs / the host's log viewer), errors
-# included. Development keeps Django's own console logging.
+# included, one line per request with its id, time taken and database queries (observability.py).
+# LOG_FORMAT=json writes JSON lines for a log service. Development keeps Django's own console
+# logging, plus warnings for slow requests.
+LOG_FORMAT = os.environ.get('LOG_FORMAT', 'plain')
+# a request that takes this long, or runs this many database queries, is logged as a warning
+SLOW_REQUEST_MS = int(os.environ.get('SLOW_REQUEST_MS', '1000'))
+SLOW_REQUEST_QUERIES = int(os.environ.get('SLOW_REQUEST_QUERIES', '60'))
 if not DEBUG:
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': False,
-        'formatters': {'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'}},
-        'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'}},
+        'filters': {'request_id': {'()': 'kiosk_backend.observability.RequestIdFilter'}},
+        'formatters': {
+            'plain': {'format': '%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s'},
+            'json': {'()': 'kiosk_backend.observability.JsonFormatter'},
+        },
+        'handlers': {'console': {'class': 'logging.StreamHandler', 'filters': ['request_id'],
+                                 'formatter': 'json' if LOG_FORMAT == 'json' else 'plain'}},
         'root': {'handlers': ['console'], 'level': os.environ.get('LOG_LEVEL', 'INFO')},
-        'loggers': {'django.db.backends': {'level': 'WARNING'}},
+        'loggers': {'django.db.backends': {'level': 'WARNING'},
+                    # the request log line above covers these
+                    'django.request': {'level': 'ERROR'}, 'django.server': {'level': 'WARNING'}},
     }
+
+# Rate limits and the staff sign-in lockout count in the cache. Each gunicorn worker process has
+# its own memory, so production keeps the cache in the database, shared by all of them (the table
+# is made by release.sh). DJANGO_CACHE=memory keeps it in memory, e.g. for a single process.
+if os.environ.get('DJANGO_CACHE', 'memory' if DEBUG else 'database') == 'database':
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+                          'LOCATION': 'kiosk_cache'}}
+
+# staff sign-in lockout: this many wrong passwords from one address within the window blocks it
+ADMIN_LOGIN_ATTEMPTS = int(os.environ.get('ADMIN_LOGIN_ATTEMPTS', '10'))
+ADMIN_LOGIN_WINDOW_MINUTES = int(os.environ.get('ADMIN_LOGIN_WINDOW_MINUTES', '15'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -217,6 +245,14 @@ PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 STRIPE_LIVE = os.environ.get('STRIPE_LIVE', '').lower() in ('1', 'true', 'yes')
+# The payment, QR code and status endpoints for an order accept its order_token (the X-Order-Token
+# header or ?order_token=) and refuse a wrong one. With this on they also refuse requests without
+# one, so nobody can look at or start paying for other people's orders by trying order numbers.
+# Turn it on once the kiosk and the app send the token everywhere.
+REQUIRE_ORDER_TOKEN = os.environ.get('REQUIRE_ORDER_TOKEN', '').lower() in ('1', 'true', 'yes')
+# Failed pickup PIN/QR attempts per shop per minute, from all addresses together, on top of the
+# per-address pickup limit: guessing a PIN from many addresses is just as slow.
+PICKUP_FAILURES_PER_SHOP_PER_MINUTE = int(os.environ.get('PICKUP_FAILURES_PER_SHOP_PER_MINUTE', '20'))
 # the most drinks one order (or one cart check) may have
 ORDER_MAX_ITEMS = int(os.environ.get('ORDER_MAX_ITEMS', '20'))
 # An unpaid order's ingredients stay held while its payment is open. Each method sets how long
@@ -262,6 +298,11 @@ REST_FRAMEWORK = {
     # staff-only unless a view says otherwise; the kiosk's public endpoints opt out explicitly
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAdminUser'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # How many proxies sit in front of the backend and add to X-Forwarded-For: 1 behind Caddy
+    # (docker-compose's https profile) or a platform's load balancer, 0 when reached directly.
+    # Rate limits count by the visitor's address; with the wrong number one visitor could make up
+    # a new address per request and get round them.
+    'NUM_PROXIES': int(os.environ.get('DJANGO_NUM_PROXIES', '0')),
     # pickup PIN attempts per machine (by IP), so 6-digit PINs can't be guessed
     'DEFAULT_THROTTLE_RATES': {'pickup': os.environ.get('PICKUP_ATTEMPTS_PER_MINUTE', '10') + '/min',
                                # orders placed per device (by IP), so nobody can hold all the stock with fake orders

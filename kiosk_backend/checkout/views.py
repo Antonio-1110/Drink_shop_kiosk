@@ -1,7 +1,7 @@
 import logging
 
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
@@ -67,18 +67,40 @@ def start_response(request, order, method):
                      'expires_at': attempt.expires_at, **details}, status=status.HTTP_200_OK)
 
 
+def token_refused(request, order):
+    """403 response when the request's order token is wrong, or missing while
+    settings.REQUIRE_ORDER_TOKEN is on; None when it may go ahead."""
+    token = request.headers.get('X-Order-Token') or request.query_params.get('order_token')
+    if token is None and isinstance(request.data, dict):
+        token = request.data.get('order_token')
+    if token is None and not settings.REQUIRE_ORDER_TOKEN:
+        return None
+    if services.check_order_token(order, token):
+        return None
+    return Response({'error': "Not your order."}, status=status.HTTP_403_FORBIDDEN)
+
+
+ORDER_TOKEN = OpenApiParameter('X-Order-Token', str, OpenApiParameter.HEADER, required=False,
+                               description="The order_token from placing the order (or ?order_token=). "
+                                           "A wrong one is refused; a missing one too when the server "
+                                           "sets REQUIRE_ORDER_TOKEN.")
+
+
 @extend_schema(summary="Start paying for an order",
                description="Opens a payment with the chosen method (see PAYMENT_METHODS) and holds the "
                            "order's ingredients until the payment expires. Calling it again returns the "
                            "same open payment.",
                request=inline_serializer('StartPayment', {'method': serializers.CharField()}),
-               responses={200: PaymentStarted, 400: Error, 404: Error, 409: Error, 503: Error})
+               parameters=[ORDER_TOKEN],
+               responses={200: PaymentStarted, 400: Error, 403: Error, 404: Error, 409: Error, 503: Error})
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def start_payment(request, order_id):
-    services.expire_unpaid_orders()
     order = get_object_or_404(Order, pk=order_id)
+    if refused := token_refused(request, order):
+        return refused
+    services.expire_unpaid_orders()
     method = request.data.get('method', '')
     if get_provider(method) is None:
         return Response({'error': f"Unknown payment method {method!r}."}, status=status.HTTP_400_BAD_REQUEST)
@@ -88,26 +110,33 @@ def start_payment(request, order_id):
 @extend_schema(summary="PayNow QR code for an unpaid order",
                description="Shortcut for starting a PayNow payment: POST .../payments/ with the method set by "
                            "PAYNOW_METHOD (sandbox in development, stripe_paynow with Stripe), or plain paynow.",
-               responses={200: PaymentStarted, 404: Error, 409: Error, 503: Error})
+               parameters=[ORDER_TOKEN],
+               responses={200: PaymentStarted, 403: Error, 404: Error, 409: Error, 503: Error})
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def paynow_qr(request, order_id):
-    services.expire_unpaid_orders()
     order = get_object_or_404(Order, pk=order_id)
+    if refused := token_refused(request, order):
+        return refused
+    services.expire_unpaid_orders()
     method = paynow_method()
     if get_provider(method) is None:
         return Response({'error': "PayNow is not enabled."}, status=status.HTTP_404_NOT_FOUND)
     return start_response(request, order, method)
 
 
-@extend_schema(summary="Payment status of an order", responses={200: OrderStatus, 404: Error})
+@extend_schema(summary="Payment status of an order", parameters=[ORDER_TOKEN],
+               responses={200: OrderStatus, 403: Error, 404: Error})
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def order_status(request, order_id):
-    services.expire_unpaid_orders()
     order = get_object_or_404(Order, pk=order_id)
+    if refused := token_refused(request, order):
+        return refused
+    services.expire_unpaid_orders()
+    order.refresh_from_db()
     pending = order.status == Order.Status.PENDING
     return Response({
         'status': order.status,

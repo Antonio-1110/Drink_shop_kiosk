@@ -415,6 +415,12 @@ paths:
         returns the same open payment.
       summary: Start paying for an order
       parameters:
+      - in: header
+        name: X-Order-Token
+        schema:
+          type: string
+        description: The order_token from placing the order (or ?order_token=). A
+          wrong one is refused; a missing one too when the server sets REQUIRE_ORDER_TOKEN.
       - in: path
         name: order_id
         schema:
@@ -449,6 +455,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutError'
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
+          description: ''
         '404':
           content:
             application/json:
@@ -475,6 +487,12 @@ paths:
         Stripe), or plain paynow.'
       summary: PayNow QR code for an unpaid order
       parameters:
+      - in: header
+        name: X-Order-Token
+        schema:
+          type: string
+        description: The order_token from placing the order (or ?order_token=). A
+          wrong one is refused; a missing one too when the server sets REQUIRE_ORDER_TOKEN.
       - in: path
         name: order_id
         schema:
@@ -490,6 +508,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentStarted'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
           description: ''
         '404':
           content:
@@ -570,6 +594,12 @@ paths:
       operationId: ordering_orders_status_retrieve
       summary: Payment status of an order
       parameters:
+      - in: header
+        name: X-Order-Token
+        schema:
+          type: string
+        description: The order_token from placing the order (or ?order_token=). A
+          wrong one is refused; a missing one too when the server sets REQUIRE_ORDER_TOKEN.
       - in: path
         name: order_id
         schema:
@@ -585,6 +615,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderPaymentStatus'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutError'
           description: ''
         '404':
           content:

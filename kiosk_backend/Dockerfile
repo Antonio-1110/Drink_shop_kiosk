@@ -26,5 +26,7 @@ RUN DJANGO_SECRET_KEY=collectstatic-only python manage.py collectstatic --noinpu
 USER kiosk
 EXPOSE 8000
 
-# gunicorn reads WEB_CONCURRENCY for the number of worker processes (default 2 here)
-CMD ["sh", "-c", "exec gunicorn kiosk_backend.wsgi --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-2} --access-logfile -"]
+# gunicorn reads WEB_CONCURRENCY for the number of worker processes (default 2 here). Requests are
+# logged by the backend itself, with an id and timings (kiosk_backend/observability.py), so
+# gunicorn's own access log is off. A request stuck for 30 s is cut off and logged.
+CMD ["sh", "-c", "exec gunicorn kiosk_backend.wsgi --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-2} --timeout 30 --graceful-timeout 20 --max-requests 2000 --max-requests-jitter 200"]

@@ -19,7 +19,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import Exists, Max, OuterRef, Q
 from django.utils import timezone
 
 from operation.availability import locked_ingredient_ids
@@ -250,12 +250,24 @@ def payment_failed(order, method, provider_ref=''):
             status=PaymentAttempt.Status.FAILED, provider_ref=provider_ref, updated_at=timezone.now())
 
 
+def _may_be_due(now):
+    """Only the unpaid orders that could have run out by now, so the sweep every kiosk request
+    makes doesn't look at each customer still paying (see hold_expires_at for the rules):
+    one with an open payment past its expiry, one past ORDER_MAX_HOLD_MINUTES, or one with no
+    open payment that is older than PAYMENT_START_GRACE_MINUTES."""
+    attempts = PaymentAttempt.objects.filter(order=OuterRef('pk'), status=PaymentAttempt.Status.OPEN)
+    grace = min(settings.PAYMENT_START_GRACE_MINUTES, settings.ORDER_MAX_HOLD_MINUTES)
+    return (Exists(attempts.filter(expires_at__lte=now))
+            | Q(time__lte=now - timedelta(minutes=settings.ORDER_MAX_HOLD_MINUTES))
+            | (~Exists(attempts.filter(expires_at__gt=now)) & Q(time__lte=now - timedelta(minutes=grace))))
+
+
 def expire_unpaid_orders(shop=None):
     """Cancels unpaid orders whose hold has run out and returns their stock. Checks with each
     payment method first, so a payment we weren't told about still counts. Returns how many
     orders were cancelled."""
     now = timezone.now()
-    pending = Order.objects.filter(status=Order.Status.PENDING)
+    pending = Order.objects.filter(status=Order.Status.PENDING).filter(_may_be_due(now))
     if shop is not None:
         pending = pending.filter(shop=shop)
     cancelled = 0
