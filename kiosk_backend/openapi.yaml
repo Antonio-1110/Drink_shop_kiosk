@@ -120,8 +120,9 @@ paths:
         and amounts. 204 when there''s nothing to make. A paid order that needs an
         ingredient under the dairy lock is failed (for a refund) instead of handed
         out. Also 204 while the last check-in reported an essential part (cups, sealer,
-        pickup, liquids) empty or faulty: paid orders wait until it''s fixed. Report
-        READY or FAILED on /ordering/orders/{id}/progress/.'
+        pickup, liquids) empty or faulty, or after MACHINE_FAILURES_TO_PAUSE failed
+        drinks in a row: paid orders wait until it''s fixed. Report READY or FAILED
+        on /ordering/orders/{id}/progress/.'
       summary: Take the next order to make (kiosk edge service only)
       tags:
       - operation

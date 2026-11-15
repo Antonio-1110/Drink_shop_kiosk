@@ -9,6 +9,9 @@ Two things stop sales without anyone on site:
 - The machine says it can't make drinks. A check-in that reports an essential part (cups, sealer,
   pickup, liquids) as empty or faulty closes the shop, and paid orders wait instead of being handed
   to the machine and failed, until a later check-in says the part is fine again.
+- The machine keeps failing. After MACHINE_FAILURES_TO_PAUSE drinks failed in a row the shop stops
+  selling (same machine_not_ready reason) until a drink is made, the machine checks in for
+  MAINTENANCE, or staff set the kiosk's consecutive failures back to 0.
 - The dairy lock. While the kiosk is food-safety locked (sfa_locked, set when a temperature
   reading is out of range), every ingredient with a safe temperature range is off sale until staff
   check it and clear the lock in the admin. Drinks without chilled ingredients keep selling.
@@ -39,6 +42,11 @@ def modules_down(kiosk):
     return [m for m in ESSENTIAL_MODULES if str(states.get(m, '')).strip().lower() in DOWN_STATES]
 
 
+def machine_failing(kiosk):
+    """True when the machine failed too many drinks in a row to keep selling."""
+    return kiosk.consecutive_failures >= settings.MACHINE_FAILURES_TO_PAUSE
+
+
 def closed_reason(shop):
     """None if the shop can take orders, else (message for the customer, reason code)."""
     kiosk = Kiosk.objects.filter(shop=shop).first()
@@ -48,7 +56,7 @@ def closed_reason(shop):
         return "This shop is closed for maintenance right now.", "maintenance"
     if not heartbeat_fresh(kiosk):
         return "This shop is closed right now. Please try again later.", "machine_offline"
-    if modules_down(kiosk):
+    if modules_down(kiosk) or machine_failing(kiosk):
         return "This shop can't make drinks right now. Please try again later.", "machine_not_ready"
     return None
 

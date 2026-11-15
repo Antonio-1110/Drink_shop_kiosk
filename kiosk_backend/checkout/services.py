@@ -211,12 +211,36 @@ def refund_failed_order(order, reason='', actor='system'):
     False if the order wasn't FAILED. The ingredients aren't put back: some may have been used,
     and staff count what's left."""
     with transaction.atomic():
-        if not change_status(order, Order.Status.REFUND_NEEDED, actor=actor, reason=reason):
+        if not change_status(order, Order.Status.REFUND_NEEDED, actor=actor, reason=reason,
+                             only_from=Order.Status.FAILED):
             return False
         attempts = list(order.payment_attempts.select_for_update().filter(status=PaymentAttempt.Status.SUCCEEDED))
         for attempt in attempts:
             attempt.status = PaymentAttempt.Status.REFUND_NEEDED
             attempt.note = (f"Drink couldn't be made. {reason}".strip())[:200]
+            attempt.save(update_fields=['status', 'note', 'updated_at'])
+    for attempt in attempts:
+        refund(attempt)
+    return True
+
+
+def refund_unmade_order(order, reason='', actor='system'):
+    """Gives the money back for a paid order the machine never started (PAID -> REFUND_NEEDED),
+    e.g. when the shop couldn't make drinks for too long. Nothing was used, so its ingredients go
+    back on sale. False if the order wasn't PAID (the machine took it in the meantime)."""
+    with transaction.atomic():
+        if not change_status(order, Order.Status.REFUND_NEEDED, actor=actor, reason=reason,
+                             only_from=Order.Status.PAID):
+            return False
+        for hold in order.stock_holds.select_for_update().filter(status=StockHold.Status.CONSUMED):
+            hold.inventory.adjust_stock(hold.quantity, StockMovement.Reason.RELEASE, order=order,
+                                        note="Paid order refunded before it was made.")
+            hold.status = StockHold.Status.RELEASED
+            hold.save(update_fields=['status', 'updated_at'])
+        attempts = list(order.payment_attempts.select_for_update().filter(status=PaymentAttempt.Status.SUCCEEDED))
+        for attempt in attempts:
+            attempt.status = PaymentAttempt.Status.REFUND_NEEDED
+            attempt.note = (f"Drink wasn't made. {reason}".strip())[:200]
             attempt.save(update_fields=['status', 'note', 'updated_at'])
     for attempt in attempts:
         refund(attempt)
@@ -233,7 +257,9 @@ def refund(attempt):
         PaymentAttempt.objects.filter(pk=attempt.pk).update(status=PaymentAttempt.Status.REFUNDED)
         attempt.status = PaymentAttempt.Status.REFUNDED
     else:
-        # staff see these in the admin under Payment attempts, "Paid, needs refund"
+        # tried again every REFUND_RETRY_MINUTES (operation/recovery.py); staff see these in the admin
+        # under Payment attempts, "Paid, needs refund", and get a "Refunds to make by hand" alert
+        PaymentAttempt.objects.filter(pk=attempt.pk).update(updated_at=timezone.now())
         logger.error("Order %s: payment %s needs a refund by staff: %s",
                      attempt.order_id, attempt.pk, attempt.note)
 

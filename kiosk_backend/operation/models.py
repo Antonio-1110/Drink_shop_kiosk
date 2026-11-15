@@ -43,8 +43,38 @@ class Kiosk(models.Model):
     # SHA-256 of the key the machine's edge service sends (see operation/kiosk_auth.py); the key
     # itself is shown once, by `manage.py kiosk_key`, and never stored
     api_key_hash = models.CharField(max_length=64, blank=True, editable=False)
+    # drinks the machine reported FAILED in a row; at MACHINE_FAILURES_TO_PAUSE the shop stops selling
+    # until a drink is made, the machine checks in for MAINTENANCE, or staff set this back to 0
+    consecutive_failures = models.PositiveSmallIntegerField(default=0)
     def __str__(self):
         return self.machine_id + " @ " + str(self.shop)
+
+
+class Alert(models.Model):
+    """Something at a shop that needs a person, raised and cleared by the background jobs
+    (operation/alerts.py). Staff are emailed when one opens, reminded while it stays open, and told
+    when it clears by itself."""
+    class Kind(models.TextChoices):
+        MACHINE_OFFLINE = 'MACHINE_OFFLINE', 'Machine stopped checking in'
+        MACHINE_NOT_READY = 'MACHINE_NOT_READY', 'Machine part empty or faulty'
+        MACHINE_FAILING = 'MACHINE_FAILING', 'Machine keeps failing drinks'
+        DAIRY_LOCK = 'DAIRY_LOCK', 'Dairy lock on'
+        LOW_STOCK = 'LOW_STOCK', 'Ingredients running low'
+        REFUND_BY_HAND = 'REFUND_BY_HAND', 'Refunds to make by hand'
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='alerts')
+    message = models.CharField(max_length=500)
+    opened_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    notified_at = models.DateTimeField(null=True, blank=True)  # last email about it
+
+    class Meta:
+        ordering = ['-opened_at']
+        constraints = [models.UniqueConstraint(fields=['kind', 'shop'], condition=models.Q(resolved_at=None),
+                                               name='one_open_alert_per_kind_and_shop')]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} at {self.shop}"
 
 class Ingredient(models.Model):
     class Viscosity(models.IntegerChoices):

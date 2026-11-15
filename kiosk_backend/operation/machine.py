@@ -24,7 +24,7 @@ from rest_framework.response import Response
 from ordering.models import Order
 from ordering.status import change_status
 from ordering.utils import menu_needs
-from .availability import closed_reason, heartbeat_fresh, locked_ingredient_ids, modules_down
+from .availability import closed_reason, heartbeat_fresh, locked_ingredient_ids, machine_failing, modules_down
 from .kiosk_auth import IsKiosk, KioskKeyAuthentication
 from .models import Ingredient, Inventory, Kiosk
 
@@ -92,7 +92,12 @@ def heartbeat(request):
     kiosk.operational_status = to
     kiosk.module_states = modules
     kiosk.last_heartbeat = timezone.now()
-    kiosk.save(update_fields=['operational_status', 'module_states', 'last_heartbeat'])
+    fields = ['operational_status', 'module_states', 'last_heartbeat']
+    if to == Kiosk.Status.MAINTENANCE and kiosk.consecutive_failures:
+        # someone is looking at the machine: give it a fresh start once it's back ONLINE
+        kiosk.consecutive_failures = 0
+        fields.append('consecutive_failures')
+    kiosk.save(update_fields=fields)
     return Response({**_state(kiosk), 'chilled': _chilled(kiosk)})
 
 
@@ -172,15 +177,17 @@ _Job = inline_serializer('MachineJob', {
                 "machine takes it. The reply has each drink's ingredients and amounts. 204 when there's nothing "
                 "to make. A paid order that needs an ingredient under the dairy lock is failed (for a refund) "
                 "instead of handed out. Also 204 while the last check-in reported an essential part (cups, sealer, "
-                "pickup, liquids) empty or faulty: paid orders wait until it's fixed. Report READY or FAILED "
+                "pickup, liquids) empty or faulty, or after MACHINE_FAILURES_TO_PAUSE failed drinks in a row: paid "
+                "orders wait until it's fixed. Report READY or FAILED "
                 "on /ordering/orders/{id}/progress/.",
     request=None, responses={200: _Job, 204: OpenApiResponse(description="Nothing to make.")})
 @machine_view('POST')
 def next_order(request):
     kiosk = request.auth
     actor = f"machine:{kiosk.machine_id}"
-    if modules_down(kiosk):
-        return Response(status=status.HTTP_204_NO_CONTENT)  # e.g. out of cups: the orders wait for a refill
+    if modules_down(kiosk) or machine_failing(kiosk):
+        # e.g. out of cups: the orders wait for a refill (and are refunded if that takes too long)
+        return Response(status=status.HTTP_204_NO_CONTENT)
     locked = locked_ingredient_ids(kiosk.shop)
     for order in Order.objects.filter(shop_id=kiosk.shop_id, status=S.PAID).order_by('time', 'pk')[:20]:
         # change_status checks the order is still PAID, so only one machine can take it
@@ -199,10 +206,13 @@ def next_order(request):
 
 def mark_silent_machines_offline(now=None):
     """Marks machines that stopped checking in as OFFLINE (their shops are already closed to new orders).
-    Returns how many changed. Run by `manage.py run_jobs`."""
+    A machine that said MAINTENANCE before going quiet (switched off for the night, being serviced)
+    stays in MAINTENANCE, so it isn't reported as lost. Returns how many changed. Run by
+    `manage.py run_jobs`."""
     now = now or timezone.now()
     count = 0
-    for kiosk in Kiosk.objects.exclude(api_key_hash='').exclude(operational_status=Kiosk.Status.OFFLINE):
+    for kiosk in (Kiosk.objects.exclude(api_key_hash='')
+                  .exclude(operational_status__in=[Kiosk.Status.OFFLINE, Kiosk.Status.MAINTENANCE])):
         if not heartbeat_fresh(kiosk, now):
             Kiosk.objects.filter(pk=kiosk.pk).update(operational_status=Kiosk.Status.OFFLINE)
             logger.error("Machine %s stopped checking in (last %s); its shop is closed", kiosk.machine_id,

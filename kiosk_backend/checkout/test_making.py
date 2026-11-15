@@ -68,7 +68,7 @@ class StatusRuleTests(MakingTestBase):
                     self.assertEqual(order.events.count(), events)
 
     def test_the_new_moves(self):
-        self.assertEqual(TRANSITIONS[S.PAID], {S.PREPARING})
+        self.assertEqual(TRANSITIONS[S.PAID], {S.PREPARING, S.REFUND_NEEDED})
         self.assertEqual(TRANSITIONS[S.PREPARING], {S.READY, S.FAILED})
         self.assertEqual(TRANSITIONS[S.READY], {S.COLLECTED})
         self.assertEqual(TRANSITIONS[S.FAILED], {S.PREPARING, S.REFUND_NEEDED})

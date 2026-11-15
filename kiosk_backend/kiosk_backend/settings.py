@@ -281,7 +281,27 @@ MACHINE_HEARTBEAT_TIMEOUT_SECONDS = int(os.environ.get('MACHINE_HEARTBEAT_TIMEOU
 # CHECK_ORDERS_AT (HH:MM in TIME_ZONE).
 EXPIRE_ORDERS_EVERY_SECONDS = int(os.environ.get('EXPIRE_ORDERS_EVERY_SECONDS', '60'))
 CHECK_ORDERS_AT = os.environ.get('CHECK_ORDERS_AT', '04:00')
-# who is emailed when the daily check finds a problem, comma-separated
+
+# Running without staff (operation/recovery.py, every minute with the jobs above):
+# a drink the machine couldn't make is refunded this long after it failed (time for the machine to retry it)
+AUTO_REFUND_FAILED_AFTER_MINUTES = int(os.environ.get('AUTO_REFUND_FAILED_AFTER_MINUTES', '3'))
+# a drink still "being made" this long (plus MINUTES_PER_DRINK for each cup in the order) after the machine
+# took it is marked failed, and so refunded: the machine crashed or lost it
+STUCK_PREPARING_MINUTES = int(os.environ.get('STUCK_PREPARING_MINUTES', '10'))
+MINUTES_PER_DRINK = int(os.environ.get('MINUTES_PER_DRINK', '2'))
+# ...and this much longer while the machine is silent, since it may come back and finish the drink
+SILENT_MACHINE_WAIT_MINUTES = int(os.environ.get('SILENT_MACHINE_WAIT_MINUTES', '120'))
+# a paid order still waiting this long while its shop can't make drinks (machine off, part empty) is refunded
+PAID_WAIT_MAX_MINUTES = int(os.environ.get('PAID_WAIT_MAX_MINUTES', '30'))
+# this many failed drinks in a row closes the shop until a drink is made, the machine checks in for
+# MAINTENANCE, or staff set the kiosk's consecutive failures back to 0
+MACHINE_FAILURES_TO_PAUSE = int(os.environ.get('MACHINE_FAILURES_TO_PAUSE', '3'))
+# a refund the payment method turned down is tried again this often
+REFUND_RETRY_MINUTES = int(os.environ.get('REFUND_RETRY_MINUTES', '15'))
+# alerts (operation/alerts.py): a machine silent this long is reported, and open alerts are emailed again this often
+MACHINE_OFFLINE_ALERT_MINUTES = int(os.environ.get('MACHINE_OFFLINE_ALERT_MINUTES', '10'))
+ALERT_REMIND_HOURS = int(os.environ.get('ALERT_REMIND_HOURS', '6'))
+# who is emailed when the daily check finds a problem or an alert opens, comma-separated
 STAFF_ALERT_EMAILS = [e.strip() for e in os.environ.get('STAFF_ALERT_EMAILS', '').split(',') if e.strip()]
 
 # Outgoing email. Development prints emails to the console instead of sending them.

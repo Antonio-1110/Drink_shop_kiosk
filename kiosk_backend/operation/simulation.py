@@ -8,7 +8,8 @@ the real HTTP API in-process, on a simulated clock, so a 14-hour day runs in a f
   and collect with their PIN or QR code (or never come);
 - the machine checks in every minute, sends fridge temperatures, takes paid orders one at a time,
   sometimes fails a drink, and has faults on a timetable (warm fridge, out of cups, offline);
-- the background jobs run every minute (cancel unpaid orders, mark silent machines offline);
+- the background jobs run every minute (cancel unpaid orders, mark silent machines offline, refund
+  failed drinks and paid orders the shop couldn't make in time, see recovery.py);
 - "staff" only restock before opening and clear the dairy lock once the fridge is cold again.
 
 While it runs it checks every reply against what should happen (no orders while the shop is closed,
@@ -44,6 +45,7 @@ from ordering.models import Order, OrderEvent
 from ordering.status import TRANSITIONS
 from .kiosk_auth import new_key
 from .machine import mark_silent_machines_offline
+from .recovery import recover
 from .management.commands.simulate_machine import Machine
 from .models import DesignerConfig, Drink, Ingredient, Inventory, Kiosk, Shop, StockMovement
 
@@ -245,6 +247,7 @@ class Simulation:
             if now >= self.next_jobs:
                 services.expire_unpaid_orders()
                 mark_silent_machines_offline()
+                recover(now)
                 self.next_jobs = now + timedelta(seconds=60)
             while arrivals and arrivals[0] <= now:
                 pending.append(self.new_visit(arrivals.pop(0)))
@@ -636,8 +639,10 @@ class Simulation:
             made = self.made.get(visit.order_id)
             if made == 'READY':
                 return {S.READY}
-            # failed by the machine, or not made because of the dairy lock; staff refund these
-            return {S.FAILED}
+            # failed by the machine, or not made because of the dairy lock, then refunded automatically
+            # (still FAILED if the day ended within AUTO_REFUND_FAILED_AFTER_MINUTES); or refunded
+            # unmade after waiting too long while the shop couldn't make drinks
+            return {S.FAILED, S.REFUND_NEEDED}
         return {S.CANCELLED}
 
     def check_history(self, orders):
@@ -695,7 +700,10 @@ class Simulation:
             used = {i: q for (s, i), q in holds.items() if s == StockHold.Status.CONSUMED}
             held = {i: q for (s, i), q in holds.items() if s == StockHold.Status.HELD}
             needs = {i: q for i, q in services.order_needs(order).items() if q}
-            if order.events.filter(to_status=S.PAID).exists():
+            if order.status == S.REFUND_NEEDED and not order.events.filter(to_status=S.PREPARING).exists():
+                if used or held:  # refunded before the machine started it: everything goes back
+                    self.problem(f"Order {order.pk} was refunded unmade but still uses {fmt(used or held)} of stock")
+            elif order.events.filter(to_status=S.PAID).exists():
                 if used != needs:
                     self.problem(f"Order {order.pk} ({order.status}) used {fmt(used)} of stock, its drinks need {fmt(needs)}")
             elif used or held:

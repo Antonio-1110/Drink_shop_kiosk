@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk, StockMovement, TemperatureReading, DesignerConfig
+from .models import Alert, Drink, DrinkIngredient, Shop, Ingredient, Inventory, Kiosk, StockMovement, TemperatureReading, DesignerConfig
 
 # Register your models here.
 
@@ -47,8 +47,25 @@ class InventoryAdmin(admin.ModelAdmin):
 
 @admin.register(Kiosk)
 class KioskAdmin(admin.ModelAdmin):
-    list_display = ('machine_id', 'shop', 'operational_status', 'sfa_locked', 'last_heartbeat')
+    list_display = ('machine_id', 'shop', 'operational_status', 'sfa_locked', 'consecutive_failures', 'last_heartbeat')
     list_filter = ('operational_status', 'sfa_locked')
+    actions = ['resume_selling']
+
+    @admin.action(description="Machine checked: resume selling after failed drinks")
+    def resume_selling(self, request, queryset):
+        count = queryset.exclude(consecutive_failures=0).update(consecutive_failures=0)
+        self.message_user(request, f"{count} machine(s) can take orders again.")
+
+
+@admin.register(Alert)
+class AlertAdmin(admin.ModelAdmin):
+    # raised and cleared by the background jobs (operation/alerts.py); fix the cause and it clears itself
+    list_display = ('opened_at', 'shop', 'kind', 'message', 'resolved_at')
+    list_filter = (('resolved_at', admin.EmptyFieldListFilter), 'kind', 'shop')
+    readonly_fields = ('kind', 'shop', 'message', 'opened_at', 'resolved_at', 'notified_at')
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(StockMovement)

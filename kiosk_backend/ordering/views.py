@@ -1,8 +1,9 @@
-from operation.models import Shop, Drink, DrinkIngredient, Inventory
+from operation.models import Shop, Drink, DrinkIngredient, Inventory, Kiosk
 import logging
 import time
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import F
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -235,11 +236,20 @@ def report_progress(request, order_id):
     order = Order.objects.filter(pk=order_id, shop_id=kiosk.shop_id).first()
     if order is None:
         return Response({'error': "No such order at this kiosk's shop."}, status=status.HTTP_404_NOT_FOUND)
-    if order.status != to and not change_status(order, to, actor=f"machine:{kiosk.machine_id}", reason=reason):
+    if order.status == to:
+        return Response({'id': order.pk, 'status': order.status})  # a repeated report
+    if not change_status(order, to, actor=f"machine:{kiosk.machine_id}", reason=reason):
         order.refresh_from_db()
         return Response({'error': f"Can't move an order from {order.status} to {to}.", 'status': order.status},
                         status=status.HTTP_409_CONFLICT)
     if to == Order.Status.FAILED:
-        # staff find it in the admin under Orders, "Couldn't be made"
+        # refunded automatically after AUTO_REFUND_FAILED_AFTER_MINUTES unless the machine retries it
         logger.error("Order %s couldn't be made at %s: %s", order.pk, kiosk.machine_id, reason or "no reason given")
+        Kiosk.objects.filter(pk=kiosk.pk).update(consecutive_failures=F('consecutive_failures') + 1)
+        kiosk.refresh_from_db(fields=['consecutive_failures'])
+        if kiosk.consecutive_failures == settings.MACHINE_FAILURES_TO_PAUSE:
+            logger.error("Machine %s failed %s drinks in a row; its shop stops selling until it's checked",
+                         kiosk.machine_id, kiosk.consecutive_failures)
+    elif to == Order.Status.READY and kiosk.consecutive_failures:
+        Kiosk.objects.filter(pk=kiosk.pk).update(consecutive_failures=0)
     return Response({'id': order.pk, 'status': order.status})

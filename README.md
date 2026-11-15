@@ -75,7 +75,7 @@ Settings come from environment variables:
 | `EXPIRE_ORDERS_EVERY_SECONDS` | How often the background jobs cancel unpaid orders that ran out of time (default 60). |
 | `CHECK_ORDERS_AT` | When the daily order check runs, `HH:MM` in the backend's time zone (default `04:00`). |
 | `DJANGO_TIME_ZONE` | Time zone for the dashboard's days and hours and for `CHECK_ORDERS_AT` (default `Asia/Singapore`). Times are stored in UTC either way. |
-| `STAFF_ALERT_EMAILS` | Comma-separated addresses emailed when the daily check finds a problem. |
+| `STAFF_ALERT_EMAILS` | Comma-separated addresses emailed when the daily check finds a problem or a shop alert opens (see Running without staff). |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | The mail server those emails go through (port 587 with TLS by default). With `DJANGO_DEBUG` and no `EMAIL_HOST`, emails are printed to the console instead. |
 
 How stock and payment fit together (`kiosk_backend/checkout/`):
@@ -159,13 +159,25 @@ python manage.py simulate_day --keep                   # keep it, e.g. to look a
 
 `python manage.py run_jobs` runs, until stopped:
 
-- every minute: cancel unpaid orders whose time has run out and put their ingredients back (`expire_orders`), and mark machines that stopped checking in as offline (`check_machines`);
+- every minute: cancel unpaid orders whose time has run out and put their ingredients back (`expire_orders`), mark machines that stopped checking in as offline (`check_machines`), and recover and alert (`recover_shops`, below);
 - once a day at `CHECK_ORDERS_AT`: check that orders, stock and payments add up, and email `STAFF_ALERT_EMAILS` if not (`check_orders --email`).
 
-`./dev.sh` starts it next to the backend. In production run one copy next to the web server, kept running by whatever runs the server (a systemd service, a Docker container with the same image, or a supervisor). Or, from cron:
+### Running without staff
+
+Every minute `recover_shops` (operation/recovery.py and alerts.py) makes sure a customer who paid gets either their drink or their money back, without anyone on site:
+
+- a drink the machine reported FAILED is refunded after `AUTO_REFUND_FAILED_AFTER_MINUTES` (3), unless the machine retried it;
+- a drink "being made" for longer than `STUCK_PREPARING_MINUTES` (10) + `MINUTES_PER_DRINK` (2) per cup while the machine keeps checking in is marked FAILED, so it gets refunded (a silent machine gets `SILENT_MACHINE_WAIT_MINUTES`, 120, longer to come back and finish it);
+- a paid order still waiting after `PAID_WAIT_MAX_MINUTES` (30) while its shop can't make drinks is refunded, and its ingredients go back on sale;
+- after `MACHINE_FAILURES_TO_PAUSE` (3) failed drinks in a row the shop stops selling (`machine_not_ready`) until a drink is made, the machine checks in with MAINTENANCE, or staff use "resume selling" on the kiosk in the admin;
+- a refund the payment method turned down is retried every `REFUND_RETRY_MINUTES` (15).
+
+Then it opens, updates and clears **alerts** (admin → Alerts) for: a machine silent for `MACHINE_OFFLINE_ALERT_MINUTES` (10; not if it said MAINTENANCE first, so switch it to MAINTENANCE before turning it off for the night), a part empty or faulty, a machine failing drinks, the dairy lock, ingredients at their reorder threshold, and refunds to make by hand. `STAFF_ALERT_EMAILS` get one email per change: new alerts, reminders every `ALERT_REMIND_HOURS` (6) while open, and alerts that cleared by themselves.
+
+`./dev.sh` starts `run_jobs` next to the backend. In production run one copy next to the web server, kept running by whatever runs the server (a systemd service, a Docker container with the same image, or a supervisor). Or, from cron:
 
 ```
-* * * * *  cd /path/to/kiosk_backend && python manage.py expire_orders --verbosity 0
+* * * * *  cd /path/to/kiosk_backend && python manage.py expire_orders --verbosity 0 && python manage.py check_machines --verbosity 0 && python manage.py recover_shops --verbosity 0
 0 4 * * *  cd /path/to/kiosk_backend && python manage.py check_orders --email
 ```
 

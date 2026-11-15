@@ -1,7 +1,8 @@
 """Runs the backend's background jobs, for as long as it's left running:
 
 - every EXPIRE_ORDERS_EVERY_SECONDS (60): cancel unpaid orders whose time ran out (expire_orders),
-  and mark machines that stopped checking in as offline (check_machines)
+  mark machines that stopped checking in as offline (check_machines), then refund what can't be made
+  and email staff about what needs a person (recover_shops, see operation/recovery.py and alerts.py)
 - once a day at CHECK_ORDERS_AT: check orders, stock and payments add up, emailing staff if not
   (check_orders --email)
 
@@ -42,6 +43,7 @@ class Jobs:
         if now >= self.next_expire:
             self.run('expire_orders', verbosity=0)
             self.run('check_machines', verbosity=0)
+            self.run('recover_shops', verbosity=0)
             self.next_expire = now + timedelta(seconds=settings.EXPIRE_ORDERS_EVERY_SECONDS)
             ran.append('expire_orders')
         if now >= self.next_check:

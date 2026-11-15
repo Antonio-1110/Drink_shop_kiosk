@@ -10,7 +10,7 @@ S = Order.Status
 TRANSITIONS = {
     S.PENDING: {S.PAID, S.CANCELLED},
     S.CANCELLED: {S.PAID},  # paid after the hold ran out, while the ingredients were still there
-    S.PAID: {S.PREPARING},
+    S.PAID: {S.PREPARING, S.REFUND_NEEDED},  # refunded if the shop can't make it for too long
     S.PREPARING: {S.READY, S.FAILED},
     S.READY: {S.COLLECTED},
     S.FAILED: {S.PREPARING, S.REFUND_NEEDED},  # try again, or give the money back
@@ -28,14 +28,15 @@ def record_placed(order, actor='customer'):
     OrderEvent.objects.create(order=order, from_status='', to_status=order.status, actor=actor)
 
 
-def change_status(order, to, *, actor, reason='', **fields):
+def change_status(order, to, *, actor, reason='', only_from=None, **fields):
     """Moves the order to `to` and sets any extra `fields` on it, if that move is allowed from the
-    status it has in the database right now. Returns False (and changes nothing) otherwise, so two
-    requests racing to change the same order can't both win."""
+    status it has in the database right now (and that status is `only_from`, when given). Returns
+    False (and changes nothing) otherwise, so two requests racing to change the same order can't
+    both win."""
     with transaction.atomic():
         current = (Order.objects.select_for_update().filter(pk=order.pk)
                    .values_list('status', flat=True).first())
-        if current is None or to not in TRANSITIONS[current]:
+        if current is None or to not in TRANSITIONS[current] or only_from not in (None, current):
             return False
         if not Order.objects.filter(pk=order.pk, status=current).update(status=to, **fields):
             return False
