@@ -5,7 +5,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
-from django.core.cache import cache
 from django.db import connection
 from django.test import RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
