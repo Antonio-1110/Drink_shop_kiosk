@@ -5,19 +5,22 @@ import ErrorBanner from '@/components/ErrorBanner';
 import { colors, fonts } from '@/constants/theme';
 import { fetchShops } from '@/lib/api';
 import { useCart } from '@/lib/cart';
+import { useT } from '@/lib/i18n';
 import { Shop } from '@/lib/menu';
 
 // Lets the customer pick which shop or kiosk they'll collect from; the menu depends on its stock.
 export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void }) {
   const { shop: current, chooseShop } = useCart();
   const [shops, setShops] = useState<Shop[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const t = useT();
 
   useEffect(() => {
-    fetchShops().then(setShops).catch((err) => setError(err.message));
-  }, []);
+    fetchShops().then((list) => { setShops(list); setError(false); }).catch(() => setError(true));
+  }, [attempt]);
 
-  if (error) return <ErrorBanner message={`Could not load shops: ${error}`} />;
+  if (error) return <ErrorBanner message={t('shops.error')} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!shops) return <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />;
 
   return (
@@ -25,8 +28,8 @@ export default function ShopList({ onChosen }: { onChosen?: (shop: Shop) => void
       data={shops}
       keyExtractor={(shop) => String(shop.id)}
       contentContainerStyle={{ padding: 16, gap: 12 }}
-      ListHeaderComponent={<Text style={styles.heading}>Where will you pick up?</Text>}
-      ListEmptyComponent={<Text style={styles.muted}>No shops are open right now.</Text>}
+      ListHeaderComponent={<Text style={styles.heading}>{t('shops.title')}</Text>}
+      ListEmptyComponent={<Text style={styles.muted}>{t('shops.none')}</Text>}
       renderItem={({ item }) => (
         <Pressable
           accessibilityRole="button"

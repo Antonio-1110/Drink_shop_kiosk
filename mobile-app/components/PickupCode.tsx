@@ -3,39 +3,41 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts } from '@/constants/theme';
 import type { PlacedOrder } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 type Mode = 'qr' | 'pin';
 
 // What the customer shows the machine to collect: scan the QR, or key in the PIN.
 export default function PickupCode({ order }: { order: PlacedOrder }) {
+  const t = useT();
   const hasQr = Boolean(order.pickup_qr);
   const hasPin = Boolean(order.pickup_pin);
   const [mode, setMode] = useState<Mode>(hasQr ? 'qr' : 'pin');
 
   // the codes only come back when the order is placed, so a reloaded page has lost them
   if (!hasQr && !hasPin) {
-    return <Text style={styles.fallback}>Your pickup code is on the screen you saw right after ordering.</Text>;
+    return <Text style={styles.fallback}>{t('pickup.missing')}</Text>;
   }
 
   return (
     <View style={styles.box}>
       {hasQr && hasPin && (
         <View style={styles.toggle} accessibilityRole="tablist">
-          <ToggleButton label="QR code" selected={mode === 'qr'} onPress={() => setMode('qr')} />
-          <ToggleButton label="PIN" selected={mode === 'pin'} onPress={() => setMode('pin')} />
+          <ToggleButton label={t('pickup.qr')} selected={mode === 'qr'} onPress={() => setMode('qr')} />
+          <ToggleButton label={t('pickup.pin')} selected={mode === 'pin'} onPress={() => setMode('pin')} />
         </View>
       )}
       {mode === 'qr' ? (
         <>
-          <Image source={{ uri: order.pickup_qr }} style={styles.qr} accessibilityLabel="Pickup QR code" />
-          <Text style={styles.hint}>Hold this up to the scanner on the machine.</Text>
+          <Image source={{ uri: order.pickup_qr }} style={styles.qr} accessibilityLabel={t('pickup.qrAlt')} />
+          <Text style={styles.hint}>{t('pickup.qrHint')}</Text>
         </>
       ) : (
         <>
-          <Text style={styles.pin} accessibilityLabel={`Pickup PIN ${order.pickup_pin?.split('').join(' ')}`}>
+          <Text style={styles.pin} accessibilityLabel={t('pickup.pinLabel', { digits: order.pickup_pin?.split('').join(' ') ?? '' })}>
             {order.pickup_pin}
           </Text>
-          <Text style={styles.hint}>Key this PIN in on the machine&apos;s screen.</Text>
+          <Text style={styles.hint}>{t('pickup.pinHint')}</Text>
         </>
       )}
     </View>
@@ -57,7 +59,7 @@ function ToggleButton({ label, selected, onPress }: { label: string; selected: b
 const styles = StyleSheet.create({
   box: { alignItems: 'center', gap: 8, alignSelf: 'stretch' },
   toggle: { flexDirection: 'row', backgroundColor: colors.primarySoft, borderRadius: 20, padding: 3 },
-  toggleButton: { paddingVertical: 8, paddingHorizontal: 22, borderRadius: 18 },
+  toggleButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 22, borderRadius: 18 },
   toggleSelected: { backgroundColor: colors.primary },
   toggleText: { fontFamily: fonts.sansBold, color: colors.primary },
   toggleTextSelected: { color: colors.surface },

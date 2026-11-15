@@ -40,10 +40,11 @@ export type Shop = {
   shop_type: string;
 };
 
-export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar: number; ice: number };
+// qty: how many of this same cup (1 when missing)
+export type MenuCartItem = { drink: Drink; custom?: undefined; size: Size; sugar: number; ice: number; qty?: number };
 // a drink built in the designer (see lib/designer.ts)
 export type CustomDrink = { picks: string[]; price: number };
-export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number };
+export type CustomCartItem = { drink: { id: null; name: string }; custom: CustomDrink; size: Size; sugar: number; ice: number; qty?: number };
 export type CartItem = MenuCartItem | CustomCartItem;
 
 // the most drinks one order may have; matches the backend's ORDER_MAX_ITEMS (default 20)
@@ -53,3 +54,19 @@ export const itemPrice = (item: CartItem) => item.custom ? item.custom.price :
   Number(item.size === SIZE.LARGE ? item.drink.l_price : item.drink.s_price);
 
 export const formatPrice = (value: number | string) => `$${Number(value).toFixed(2)}`;
+
+// quantities, the same way as kiosk-app/src/menu.js
+export const lineQty = (item: CartItem) => item.qty ?? 1;
+export const lineTotal = (item: CartItem) => itemPrice(item) * lineQty(item);
+export const cartCount = (items: CartItem[]) => items.reduce((sum, item) => sum + lineQty(item), 0);
+export const cartTotal = (items: CartItem[]) => items.reduce((sum, item) => sum + lineTotal(item), 0);
+
+// two lines that would make the same cup, so adding one again just raises the quantity
+export function sameDrink(a: CartItem, b: CartItem) {
+  if (a.size !== b.size || a.sugar !== b.sugar || a.ice !== b.ice) return false;
+  if (a.custom || b.custom) return Boolean(a.custom && b.custom) && a.custom!.picks.join('-') === b.custom!.picks.join('-');
+  return a.drink.id === b.drink.id;
+}
+
+// one entry per cup, the way the backend takes them
+export const expandCart = (items: CartItem[]) => items.flatMap((item) => Array.from({ length: lineQty(item) }, () => item));

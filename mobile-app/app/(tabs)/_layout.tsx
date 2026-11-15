@@ -3,9 +3,12 @@ import { SymbolView } from 'expo-symbols';
 
 import { colors, fonts } from '@/constants/theme';
 import { useCart } from '@/lib/cart';
+import { useT } from '@/lib/i18n';
+import { cartCount } from '@/lib/menu';
 
 export default function TabLayout() {
   const { cartItems } = useCart();
+  const t = useT();
 
   return (
     <Tabs
@@ -22,7 +25,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Menu',
+          title: t('tab.menu'),
           // the menu draws its own slim header with the pickup shop
           headerShown: false,
           tabBarIcon: ({ color }) => (
@@ -33,10 +36,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Your order',
-          tabBarLabel: 'Order',
+          title: t('title.order'),
+          tabBarLabel: t('tab.order'),
           tabBarBadgeStyle: { backgroundColor: colors.accent },
-          tabBarBadge: cartItems.length || undefined,
+          tabBarBadge: cartCount(cartItems) || undefined,
           tabBarIcon: ({ color }) => (
             <SymbolView name={{ ios: 'cart', android: 'shopping_cart', web: 'shopping_cart' }} tintColor={color} size={26} />
           ),

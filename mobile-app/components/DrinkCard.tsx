@@ -3,16 +3,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DrinkArt from '@/components/DrinkArt';
 import NutriGradeMark from '@/components/NutriGradeMark';
 import { colors, fonts } from '@/constants/theme';
+import { useT } from '@/lib/i18n';
 import { Drink, formatPrice } from '@/lib/menu';
 
 // One drink on the phone menu: a full-width row, so names and descriptions have room and the
 // whole row is one easy target. Tapping it opens the drink's options (see DrinkSheet).
 export default function DrinkCard({ drink, onSelect }: { drink: Drink; onSelect: (drink: Drink) => void }) {
+  const t = useT();
   const from = Math.min(Number(drink.s_price), Number(drink.l_price));
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${drink.name}, from ${formatPrice(from)}`}
+      accessibilityLabel={t('drink.from', { name: drink.name, price: formatPrice(from) })}
       onPress={() => onSelect(drink)}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.cream }]}>
       <DrinkArt drink={drink} size={88} />

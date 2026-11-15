@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrinkArt from '@/components/DrinkArt';
 import NutriGradeMark from '@/components/NutriGradeMark';
 import { colors, fonts } from '@/constants/theme';
+import { useT } from '@/lib/i18n';
 import { CartItem, formatPrice, itemPrice, LEVELS, SIZE, Size } from '@/lib/menu';
 
 export type DrinkChoice = { size: Size; sugar: number; ice: number };
@@ -61,6 +62,7 @@ function SheetBody({ item, confirmLabel, onConfirm, onClose }: {
   item: CartItem; confirmLabel: string; onConfirm: (choice: DrinkChoice) => void; onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const [choice, setChoice] = useState<DrinkChoice>({ size: item.size, sugar: item.sugar, ice: item.ice });
   const set = (changes: Partial<DrinkChoice>) => setChoice({ ...choice, ...changes });
   const price = itemPrice({ ...item, ...choice } as CartItem);
@@ -70,7 +72,7 @@ function SheetBody({ item, confirmLabel, onConfirm, onClose }: {
 
   return (
     <View style={styles.backdrop}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t('drink.close')} />
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.handle} />
         <ScrollView contentContainerStyle={styles.content} bounces={false}>
@@ -86,17 +88,17 @@ function SheetBody({ item, confirmLabel, onConfirm, onClose }: {
 
           {!item.custom && (
             <View style={styles.group}>
-              <Text style={styles.groupLabel}>Size</Text>
+              <Text style={styles.groupLabel}>{t('drink.size')}</Text>
               <View style={styles.sizeRow}>
-                <Chip label="Regular" sublabel={formatPrice(item.drink.s_price)} selected={choice.size === SIZE.SMALL}
-                  onPress={() => set({ size: SIZE.SMALL })} a11y="Regular size" />
-                <Chip label="Large" sublabel={formatPrice(item.drink.l_price)} selected={choice.size === SIZE.LARGE}
-                  onPress={() => set({ size: SIZE.LARGE })} a11y="Large size" />
+                <Chip label={t('drink.regular')} sublabel={formatPrice(item.drink.s_price)} selected={choice.size === SIZE.SMALL}
+                  onPress={() => set({ size: SIZE.SMALL })} a11y={t('drink.regular')} />
+                <Chip label={t('drink.large')} sublabel={formatPrice(item.drink.l_price)} selected={choice.size === SIZE.LARGE}
+                  onPress={() => set({ size: SIZE.LARGE })} a11y={t('drink.large')} />
               </View>
             </View>
           )}
-          <LevelRow label="Sugar" value={choice.sugar} onChange={(sugar) => set({ sugar })} />
-          <LevelRow label="Ice" value={choice.ice} onChange={(ice) => set({ ice })} />
+          <LevelRow label={t('drink.sugar')} value={choice.sugar} onChange={(sugar) => set({ sugar })} />
+          <LevelRow label={t('drink.ice')} value={choice.ice} onChange={(ice) => set({ ice })} />
         </ScrollView>
 
         <Pressable accessibilityRole="button" onPress={() => onConfirm(choice)}

@@ -8,6 +8,7 @@ import QrCode from '@/components/QrCode';
 import { colors, fonts } from '@/constants/theme';
 import { fetchDesignerOptions } from '@/lib/api';
 import { useCart } from '@/lib/cart';
+import { useT } from '@/lib/i18n';
 import {
   categories, Design, DesignerOptions, designName, designNutrition, designPrice, designToCartItem,
   encodeDesign, ingredientPrice, missingChoice, newDesign, recipe, RecipeLine, togglePick,
@@ -55,6 +56,8 @@ function Chip({ label, sublabel, selected, disabled, onPress }: {
 
 export default function DesignerScreen() {
   const { shop, addCustomToCart } = useCart();
+  const t = useT();
+  const [attempt, setAttempt] = useState(0);
   const [options, setOptions] = useState<DesignerOptions | null>(null);
   const [design, setDesign] = useState<Design | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,11 +68,13 @@ export default function DesignerScreen() {
     fetchDesignerOptions(shop.id)
       .then((data) => { setOptions(data); setDesign(newDesign(data)); })
       .catch((err) => setLoadError(err.message));
-  }, [shop]);
+  }, [shop, attempt]);
 
-  if (!shop) return <ErrorBanner message="Choose a shop first." />;
-  if (loadError) return <ErrorBanner message={`Could not load the drink designer: ${loadError}`} />;
-  if (!options || !design) return <Text style={styles.loading}>Loading…</Text>;
+  if (!shop) return <ErrorBanner message={t('designer.chooseShop')} />;
+  if (loadError) {
+    return <ErrorBanner message={t('designer.loadError')} onRetry={() => { setLoadError(null); setAttempt((n) => n + 1); }} />;
+  }
+  if (!options || !design) return <Text style={styles.loading}>{t('designer.loading')}</Text>;
 
   const lines = recipe(options, design);
   const nutrition = designNutrition(options, design);
@@ -85,7 +90,7 @@ export default function DesignerScreen() {
         <View style={styles.preview}>
           <Cup lines={lines} ice={design.ice} />
           <View style={styles.previewText}>
-            <Text style={styles.name}>{designName(options, design)}</Text>
+            <Text style={styles.name}>{design.picks.length ? designName(options, design) : t('designer.ownDrink')}</Text>
             {/* amounts change as ingredients are added, so show what actually goes in */}
             {lines.map((line) => (
               <Text key={line.code} style={styles.recipeLine}>{line.name}: {Math.round(line.amount)} {line.unit}</Text>
@@ -93,13 +98,13 @@ export default function DesignerScreen() {
             <View style={styles.gradeRow}>
               <Text style={[styles.gradeBadge, { backgroundColor: GRADE_COLORS[nutrition.grade] }]}>{nutrition.grade}</Text>
               <Text style={styles.gradeDetail}>
-                Nutri-Grade{'\n'}{nutrition.sugar.toFixed(1)} g sugar{'\n'}{nutrition.satFat.toFixed(1)} g sat. fat / 100 mL
+                {t('designer.per100', { sugar: nutrition.sugar.toFixed(1), fat: nutrition.satFat.toFixed(1) })}
               </Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.groupTitle}>Cup size</Text>
+        <Text style={styles.groupTitle}>{t('designer.cupSize')}</Text>
         <View style={styles.chips}>
           {options.sizes.map((size) => (
             <Chip key={size.value} label={size.label} sublabel={formatPrice(options.pricing.cup[size.value])}
@@ -117,7 +122,7 @@ export default function DesignerScreen() {
                 const price = ingredientPrice(options, i);
                 return (
                   <Chip key={i.code} label={i.name}
-                    sublabel={soldOut ? 'Sold out' : price ? `+${formatPrice(price)}` : 'Included'}
+                    sublabel={soldOut ? t('designer.soldOut') : price ? `+${formatPrice(price)}` : t('designer.included')}
                     selected={selected} disabled={soldOut}
                     onPress={() => setDesign(togglePick(options, design, i.code))} />
                 );
@@ -126,26 +131,26 @@ export default function DesignerScreen() {
           </View>
         ))}
 
-        <Text style={styles.groupTitle}>Sugar and ice</Text>
+        <Text style={styles.groupTitle}>{t('designer.sugarIce')}</Text>
         <View style={styles.levels}>
-          <LevelPicker label="Sugar" value={design.sugar} onChange={(sugar) => setDesign({ ...design, sugar })} />
-          <LevelPicker label="Ice" value={design.ice} onChange={(ice) => setDesign({ ...design, ice })} />
+          <LevelPicker label={t('drink.sugar')} value={design.sugar} onChange={(sugar) => setDesign({ ...design, sugar })} />
+          <LevelPicker label={t('drink.ice')} value={design.ice} onChange={(ice) => setDesign({ ...design, ice })} />
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <View>
-          <Text style={styles.muted}>Price</Text>
+          <Text style={styles.muted}>{t('designer.price')}</Text>
           <Text style={styles.total}>{formatPrice(designPrice(options, design))}</Text>
         </View>
         <View style={styles.footerButtons}>
           <Pressable accessibilityRole="button" onPress={() => setShowCode(true)} disabled={Boolean(missing)}
             style={[styles.codeButton, missing && { opacity: 0.5 }]}>
-            <Text style={styles.codeText}>Kiosk QR</Text>
+            <Text style={styles.codeText}>{t('designer.kioskQr')}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={add} disabled={Boolean(missing)}
             style={[styles.addButton, missing && { opacity: 0.5 }]}>
-            <Text style={styles.addText}>{missing ?? 'Add to order'}</Text>
+            <Text style={styles.addText}>{missing ? t('designer.chooseLiquid') : t('drink.add')}</Text>
           </Pressable>
         </View>
       </View>
@@ -153,12 +158,12 @@ export default function DesignerScreen() {
       <Modal visible={showCode} transparent animationType="fade" onRequestClose={() => setShowCode(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Scan this at the kiosk</Text>
-            <Text style={styles.modalText}>Hold it up to the kiosk&apos;s reader and your drink appears on its screen.</Text>
+            <Text style={styles.modalTitle}>{t('designer.scanTitle')}</Text>
+            <Text style={styles.modalText}>{t('designer.scanText')}</Text>
             <QrCode value={encodeDesign(design)} />
             <Text style={styles.codeValue} selectable>{encodeDesign(design)}</Text>
             <Pressable accessibilityRole="button" onPress={() => setShowCode(false)} style={styles.addButton}>
-              <Text style={styles.addText}>Done</Text>
+              <Text style={styles.addText}>{t('designer.done')}</Text>
             </Pressable>
           </View>
         </View>

@@ -8,25 +8,20 @@ import ErrorBanner from '@/components/ErrorBanner';
 import { colors, fonts } from '@/constants/theme';
 import { ApiError, placeOrder } from '@/lib/api';
 import { useCart } from '@/lib/cart';
-import { CartItem, formatPrice, itemPrice, LEVELS, MAX_ORDER_DRINKS, SIZE } from '@/lib/menu';
+import { Translate, useT } from '@/lib/i18n';
+import { CartItem, cartCount, cartTotal, formatPrice, lineQty, lineTotal, LEVELS, MAX_ORDER_DRINKS, SIZE } from '@/lib/menu';
 
 const levelLabel = (value: number) => LEVELS.find((level) => level.value === value)?.label;
-const TOO_MANY_DRINKS = `One order can have up to ${MAX_ORDER_DRINKS} drinks. Please remove some, or place a second order after this one.`;
-
 // why the shop can't take orders (the backend's 503 `reason`); nothing is placed or charged
-const SHOP_CLOSED: Record<string, string> = {
-  machine_offline: 'This shop is closed right now. Please try again later, or pick another shop.',
-  maintenance: 'This shop is closed for maintenance right now. Please try again later, or pick another shop.',
-  // cups, sealer, pickup or liquids are empty or faulty
-  machine_not_ready: "This shop's machine needs a quick refill or check before it can make drinks. Please try again in a little while, or pick another shop.",
-};
+const SHOP_CLOSED = ['machine_offline', 'maintenance', 'machine_not_ready'];
 
 // what the customer should see when the backend turns the order down
-function orderErrorMessage(err: ApiError, cartItems: CartItem[]) {
-  if (err.status === 503 && SHOP_CLOSED[err.data?.reason]) return SHOP_CLOSED[err.data.reason];
-  if (err.status === 429) return 'Lots of orders are coming in from your connection. Please wait a minute, then try again.';
+function orderErrorMessage(err: ApiError, cartItems: CartItem[], t: Translate) {
+  if (err.data?.offline) return t('cart.offline');
+  if (err.status === 503 && SHOP_CLOSED.includes(err.data?.reason)) return t(`closed.${err.data.reason}`);
+  if (err.status === 429) return t('cart.busy');
   // more drinks than the backend allows (its limit may differ from ours)
-  if (err.status === 400 && err.data?.items) return TOO_MANY_DRINKS;
+  if (err.status === 400 && err.data?.items) return t('cart.tooMany', { max: MAX_ORDER_DRINKS });
   // the backend lists the drinks and designer ingredients it no longer has stock for
   const soldOutIds: number[] = err.data?.drinks ?? [];
   const soldOutCodes: string[] = err.data?.options ?? [];
@@ -35,16 +30,39 @@ function orderErrorMessage(err: ApiError, cartItems: CartItem[]) {
       ? item.custom.picks.some((code) => soldOutCodes.includes(code))
       : soldOutIds.includes(item.drink.id)))
     .map((item) => item.drink.name);
-  return soldOut.length ? `Sorry, not enough stock for: ${[...new Set(soldOut)].join(', ')}` : err.message;
+  return soldOut.length ? t('cart.soldOut', { names: [...new Set(soldOut)].join(', ') }) : err.message;
+}
+
+// − 2 + : one less (a bin at 1, which removes the line) or one more of the same cup
+function Quantity({ item, onChange }: { item: CartItem; onChange: (qty: number) => void }) {
+  const t = useT();
+  const qty = lineQty(item);
+  const name = item.drink.name;
+  return (
+    <View style={styles.qty}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t(qty === 1 ? 'cart.remove' : 'cart.less', { name })}
+        onPress={() => onChange(qty - 1)} style={styles.qtyButton} hitSlop={4}>
+        <Text style={styles.qtySign}>{qty === 1 ? '×' : '−'}</Text>
+      </Pressable>
+      <Text style={styles.qtyValue} accessibilityLiveRegion="polite">{qty}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('cart.more', { name })}
+        onPress={() => onChange(qty + 1)} style={styles.qtyButton} hitSlop={4}>
+        <Text style={styles.qtySign}>+</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 export default function CartScreen() {
-  const { shop, cartItems, updateCartItem, removeFromCart, setLastOrder } = useCart();
+  const { shop, cartItems, updateCartItem, removeFromCart, saveOrder } = useCart();
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<number | null>(null); // the line whose options are open
-  const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
-  const tooMany = cartItems.length > MAX_ORDER_DRINKS;
+  const total = cartTotal(cartItems);
+  const count = cartCount(cartItems);
+  const tooMany = count > MAX_ORDER_DRINKS;
+  const tooManyText = t('cart.tooMany', { max: MAX_ORDER_DRINKS });
   const blocked = cartItems.length === 0 || submitting || tooMany;
 
   const checkout = async () => {
@@ -53,10 +71,10 @@ export default function CartScreen() {
     setError(null);
     try {
       const order = await placeOrder(shop.id, cartItems);
-      setLastOrder(order);
+      saveOrder(order, count);
       router.push({ pathname: '/payment/[orderId]', params: { orderId: order.id } });
     } catch (err) {
-      setError(orderErrorMessage(err as ApiError, cartItems));
+      setError(orderErrorMessage(err as ApiError, cartItems, t));
     } finally {
       setSubmitting(false);
     }
@@ -65,10 +83,10 @@ export default function CartScreen() {
   if (cartItems.length === 0) {
     return (
       <View style={[styles.screen, styles.emptyScreen]}>
-        <Text style={styles.emptyTitle}>Your order is empty</Text>
-        <Text style={styles.muted}>Pick a drink from the menu to get started.</Text>
+        <Text style={styles.emptyTitle}>{t('cart.emptyTitle')}</Text>
+        <Text style={styles.muted}>{t('cart.emptyText')}</Text>
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/')} style={styles.payButton}>
-          <Text style={styles.payText}>Browse the menu</Text>
+          <Text style={styles.payText}>{t('cart.browse')}</Text>
         </Pressable>
       </View>
     );
@@ -80,7 +98,7 @@ export default function CartScreen() {
         data={cartItems}
         keyExtractor={(_, index) => String(index)}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={shop ? <Text style={styles.pickup}>Pick up at {shop.name}</Text> : null}
+        ListHeaderComponent={shop ? <Text style={styles.pickup}>{t('cart.pickUpAt', { shop: shop.name })}</Text> : null}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item, index }) => (
           <View style={styles.item}>
@@ -88,32 +106,37 @@ export default function CartScreen() {
             <View style={styles.itemMain}>
               <View style={styles.itemHeader}>
                 <Text style={styles.itemName} numberOfLines={2}>{item.drink.name}</Text>
-                <Text style={styles.itemPrice}>{formatPrice(itemPrice(item))}</Text>
+                <Text style={styles.itemPrice}>{formatPrice(lineTotal(item))}</Text>
               </View>
-              {item.custom && <Text style={styles.customTag}>DESIGNED</Text>}
+              {item.custom && <Text style={styles.customTag}>{t('cart.designed')}</Text>}
               <Text style={styles.itemDetail}>
-                {item.size === SIZE.LARGE ? 'Large' : 'Regular'} · Sugar {levelLabel(item.sugar)} · Ice {levelLabel(item.ice)}
+                {t('cart.detail', {
+                  size: t(item.size === SIZE.LARGE ? 'drink.large' : 'drink.regular'),
+                  sugar: levelLabel(item.sugar) ?? '',
+                  ice: levelLabel(item.ice) ?? '',
+                })}
               </Text>
               <View style={styles.itemActions}>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.drink.name}`}
-                  onPress={() => setEditing(index)} hitSlop={8}>
-                  <Text style={styles.link}>Edit</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('cart.editLabel', { name: item.drink.name })}
+                  onPress={() => setEditing(index)} style={styles.editButton}>
+                  <Text style={styles.link}>{t('cart.edit')}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${item.drink.name}`}
-                  onPress={() => removeFromCart(index)} hitSlop={8}>
-                  <Text style={styles.link}>Remove</Text>
-                </Pressable>
+                <Quantity item={item} onChange={(qty) => {
+                  setError(null);
+                  if (qty < 1) removeFromCart(index);
+                  else updateCartItem(index, { qty });
+                }} />
               </View>
             </View>
           </View>
         )}
       />
 
-      <ErrorBanner message={error ?? (tooMany ? TOO_MANY_DRINKS : null)} />
+      <ErrorBanner message={error ?? (tooMany ? tooManyText : null)} />
 
       <View style={styles.footer}>
         <View>
-          <Text style={styles.footerLabel}>{cartItems.length} {cartItems.length === 1 ? 'drink' : 'drinks'}</Text>
+          <Text style={styles.footerLabel}>{t('cart.drinks', { count })}</Text>
           <Text style={styles.total}>{formatPrice(total)}</Text>
         </View>
         <Pressable
@@ -121,13 +144,13 @@ export default function CartScreen() {
           onPress={checkout}
           disabled={blocked}
           style={[styles.payButton, blocked && { opacity: 0.5 }]}>
-          <Text style={styles.payText}>{submitting ? 'Placing order…' : 'Place order'}</Text>
+          <Text style={styles.payText}>{submitting ? t('cart.placing') : t('cart.place')}</Text>
         </Pressable>
       </View>
 
       <DrinkSheet
         item={editing === null ? null : cartItems[editing] ?? null}
-        confirmLabel="Save changes"
+        confirmLabel={t('drink.save')}
         onConfirm={(choice) => { if (editing !== null) updateCartItem(editing, choice); setEditing(null); }}
         onClose={() => setEditing(null)}
       />
@@ -149,7 +172,12 @@ const styles = StyleSheet.create({
   itemPrice: { fontFamily: fonts.sansBold, fontSize: 15, color: colors.text },
   customTag: { fontFamily: fonts.sansBold, fontSize: 10, letterSpacing: 1, color: colors.primary },
   itemDetail: { fontFamily: fonts.sans, fontSize: 13, color: colors.muted },
-  itemActions: { flexDirection: 'row', gap: 20, marginTop: 6 },
+  itemActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  editButton: { minHeight: 44, minWidth: 64, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, borderWidth: 1, borderColor: colors.border },
+  qty: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 22 },
+  qtyButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  qtySign: { fontSize: 22, lineHeight: 26, color: colors.primary, fontFamily: fonts.sans },
+  qtyValue: { minWidth: 22, textAlign: 'center', fontFamily: fonts.sansBold, fontSize: 16, color: colors.text },
   link: { fontFamily: fonts.sansMedium, fontSize: 14, color: colors.primary },
   footer: {
     flexDirection: 'row',

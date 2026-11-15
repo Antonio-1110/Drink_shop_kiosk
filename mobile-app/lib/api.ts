@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import type { DesignerOptions } from './designer';
-import type { CartItem, Drink, Shop } from './menu';
+import { CartItem, Drink, expandCart, Shop } from './menu';
 
 function defaultApiBase() {
   // in the browser, metro.config.js proxies /api to the backend like Vite does for the kiosk
@@ -30,7 +30,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${API_BASE}${path}`, options);
   } catch {
-    throw new ApiError(`Can't reach the shop server at ${API_BASE}`, {});
+    throw new ApiError(`Can't reach the shop server at ${API_BASE}`, { offline: true });
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(data.error ?? 'Request failed', data, res.status);
@@ -45,7 +45,7 @@ export function fetchShops() {
 export function fetchAvailableDrinks(shopId: number, cartItems: CartItem[]) {
   const params = new URLSearchParams({ shop_id: String(shopId) });
   // only menu drinks count here; designed drinks are checked when the order is placed
-  cartItems.forEach((item) => { if (!item.custom) params.append('cart', String(item.drink.id)); });
+  expandCart(cartItems).forEach((item) => { if (!item.custom) params.append('cart', String(item.drink.id)); });
   return request<Drink[]>(`/ordering/drinks/?${params}`);
 }
 
@@ -65,7 +65,7 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       shop: shopId,
-      items: cartItems.map(({ drink, custom, size, sugar, ice }) => (custom
+      items: expandCart(cartItems).map(({ drink, custom, size, sugar, ice }) => (custom
         ? { custom: custom.picks, size, sugar, ice }
         : { drink: drink.id, size, sugar, ice })),
     }),
@@ -77,8 +77,12 @@ export function placeOrder(shopId: number, cartItems: CartItem[]) {
 export type PaynowQr = { qr_code: string; reference: string; amount: string; expires_at?: string; test_mode?: boolean };
 
 // starts the PayNow payment (or returns the open one); ingredients are held until expires_at
-export function fetchPaynowQr(orderId: string | number) {
-  return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`);
+// the order's token proves this phone placed it; the backend refuses a wrong one
+const withToken = (orderToken?: string): RequestInit | undefined =>
+  (orderToken ? { headers: { 'X-Order-Token': orderToken } } : undefined);
+
+export function fetchPaynowQr(orderId: string | number, orderToken?: string) {
+  return request<PaynowQr>(`/ordering/orders/${orderId}/paynow-qr/`, withToken(orderToken));
 }
 
 // what the drink designer offers at this shop: ingredients, their amounts and prices
@@ -101,8 +105,8 @@ export const DRINK_PROGRESS: Record<string, { text: string; tone: 'ok' | 'warn' 
   REFUND_NEEDED: { text: "Sorry, your drink couldn't be made. Your payment is being refunded.", tone: 'warn' },
 };
 
-export function fetchOrderStatus(orderId: string | number) {
-  return request<OrderStatus>(`/ordering/orders/${orderId}/status/`);
+export function fetchOrderStatus(orderId: string | number, orderToken?: string) {
+  return request<OrderStatus>(`/ordering/orders/${orderId}/status/`, withToken(orderToken));
 }
 
 export function cancelOrder(orderId: string | number, orderToken: string) {

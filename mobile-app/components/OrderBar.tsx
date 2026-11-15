@@ -3,19 +3,22 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts } from '@/constants/theme';
 import { useCart } from '@/lib/cart';
-import { formatPrice, itemPrice } from '@/lib/menu';
+import { useT } from '@/lib/i18n';
+import { cartCount, cartTotal, formatPrice } from '@/lib/menu';
 
 // The running order floating above the tab bar, like a food-chain app's cart bar.
 export default function OrderBar() {
   const { cartItems } = useCart();
+  const t = useT();
   if (cartItems.length === 0) return null;
-  const total = cartItems.reduce((sum, item) => sum + itemPrice(item), 0);
+  const total = cartTotal(cartItems);
+  const count = cartCount(cartItems);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Review order, ${cartItems.length} drinks, ${formatPrice(total)}`}
+    <Pressable accessibilityRole="button" accessibilityLabel={t('bar.label', { drinks: t('cart.drinks', { count }), total: formatPrice(total) })}
       onPress={() => router.navigate('/cart')} style={({ pressed }) => [styles.bar, pressed && { opacity: 0.9 }]}>
-      <View style={styles.count}><Text style={styles.countText}>{cartItems.length}</Text></View>
+      <View style={styles.count}><Text style={styles.countText}>{count}</Text></View>
       <Text style={styles.total}>{formatPrice(total)}</Text>
-      <Text style={styles.go}>Review order</Text>
+      <Text style={styles.go}>{t('bar.review')}</Text>
     </Pressable>
   );
 }

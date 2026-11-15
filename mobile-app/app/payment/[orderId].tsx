@@ -5,44 +5,61 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import ErrorBanner from '@/components/ErrorBanner';
 import PickupCode from '@/components/PickupCode';
 import { colors, fonts } from '@/constants/theme';
-import { cancelOrder, DRINK_PROGRESS, fetchOrderStatus, fetchPaynowQr, isPaid, PaynowQr } from '@/lib/api';
+import { ApiError, cancelOrder, DRINK_PROGRESS, fetchOrderStatus, fetchPaynowQr, isPaid, PaynowQr, PlacedOrder } from '@/lib/api';
 import { useCart } from '@/lib/cart';
+import { useT } from '@/lib/i18n';
 import { formatPrice } from '@/lib/menu';
 
 const POLL_MS = 4000;
 
 export default function PaymentScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const { shop, clearCart, lastOrder } = useCart();
+  const { shop, clearCart, orders, finishOrder } = useCart();
+  const t = useT();
+  const [qrTry, setQrTry] = useState(0);
   const [qr, setQr] = useState<PaynowQr | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const order = lastOrder && String(lastOrder.id) === orderId ? lastOrder : { id: Number(orderId), revenue: '' };
+  // the saved order has the pickup codes and the token to cancel, even after the app was closed
+  const saved = orders.find((o) => String(o.id) === orderId);
+  const order: PlacedOrder = saved ?? { id: Number(orderId), revenue: '' };
   const paid = isPaid(status ?? undefined);
   const cancelled = status === 'CANCELLED';
   const collected = status === 'COLLECTED';
   const progress = status ? DRINK_PROGRESS[status] : undefined;
 
-  // the order is placed, so the cart is done with
-  useEffect(() => { clearCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // start the payment straight away: the backend cancels orders that don't start one quickly
+  // the order is placed, so the cart is done with (only on the visit right after placing it, not
+  // when an earlier order is opened from the menu)
   useEffect(() => {
-    fetchPaynowQr(orderId).then(setQr).catch((err) => setError(err.message));
-  }, [orderId]);
+    if (saved && Date.now() - saved.placedAt < 60000) clearCart();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // start the payment straight away: the backend cancels orders that don't start one quickly.
+  // It reuses an open payment, so trying again never makes a second one.
+  useEffect(() => {
+    if (paid || cancelled || collected) return;
+    fetchPaynowQr(orderId, order.order_token)
+      .then((res) => { setQr(res); setError(null); })
+      .catch((err: ApiError) => setError(err.data?.offline ? t('cart.offline') : t('pay.qrError')));
+  }, [orderId, qrTry]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the menu stops showing an order once it's collected or cancelled
+  useEffect(() => {
+    if (collected || cancelled) finishOrder(Number(orderId));
+  }, [collected, cancelled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // poll until the order is paid or cancelled; older backends without /status/ just leave it unknown
   useEffect(() => {
     if (collected || cancelled) return;
     let stopped = false;
-    const check = () => fetchOrderStatus(orderId)
+    const check = () => fetchOrderStatus(orderId, order.order_token)
       .then((res) => { if (!stopped) setStatus(res.status); })
       .catch(() => {});
     check();
     const timer = setInterval(check, POLL_MS);
     return () => { stopped = true; clearInterval(timer); };
-  }, [orderId, collected, cancelled]);
+  }, [orderId, collected, cancelled, order.order_token]);
 
   const cancel = async () => {
     if (!order.order_token) return;
@@ -51,7 +68,7 @@ export default function PaymentScreen() {
       const res = await cancelOrder(orderId, order.order_token);
       setStatus(res.status);
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as ApiError).data?.offline ? t('cart.offline') : (err as Error).message);
     } finally {
       setCancelling(false);
     }
@@ -59,62 +76,60 @@ export default function PaymentScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.orderLabel}>Order number</Text>
+      <Text style={styles.orderLabel}>{t('pay.orderNumber')}</Text>
       <Text style={styles.orderNumber}>{orderId}</Text>
-      {shop && <Text style={styles.muted}>Collect at {shop.name}</Text>}
+      {(saved?.shopName ?? shop?.name) && <Text style={styles.muted}>{t('pay.collectAt', { shop: saved?.shopName ?? shop?.name ?? '' })}</Text>}
 
       {cancelled ? (
-        <Text style={styles.cancelled}>This order was cancelled and you haven&apos;t been charged.</Text>
+        <Text style={styles.cancelled}>{t('pay.cancelled')}</Text>
       ) : collected ? (
-        <Text style={styles.collected}>Collected. Enjoy your drink!</Text>
+        <Text style={styles.collected}>{t('pay.collected')}</Text>
       ) : (
         <>
           <View style={styles.step}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>1. Pay with PayNow</Text>
-              {paid && <Text style={styles.paidBadge}>Paid</Text>}
+              <Text style={styles.stepTitle}>{t('pay.step1')}</Text>
+              {paid && <Text style={styles.paidBadge}>{t('pay.paid')}</Text>}
             </View>
             {/* sandbox or a gateway's test keys: say so, so nobody thinks this is a real charge */}
-            {qr?.test_mode && <Text style={styles.testMode}>Test mode: no real money will be charged</Text>}
-            <ErrorBanner message={error} />
+            {qr?.test_mode && <Text style={styles.testMode}>{t('pay.testMode')}</Text>}
+            <ErrorBanner message={error} onRetry={qr ? undefined : () => { setError(null); setQrTry((n) => n + 1); }} />
             {!qr && !error && <ActivityIndicator style={{ marginVertical: 30 }} color={colors.primary} />}
             {qr && !paid && (
               <>
-                <Image source={{ uri: qr.qr_code }} style={styles.qr} accessibilityLabel="PayNow QR code" />
+                <Image source={{ uri: qr.qr_code }} style={styles.qr} accessibilityLabel={t('pay.qrAlt')} />
                 <Text style={styles.amount}>{formatPrice(qr.amount)}</Text>
-                <Text style={styles.muted}>Reference: {qr.reference}</Text>
+                <Text style={styles.muted}>{t('pay.ref', { ref: qr.reference })}</Text>
                 {qr.expires_at && (
                   <Text style={styles.deadline}>
-                    Pay by {new Date(qr.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} or the order is cancelled.
+                    {t('pay.payBy', { time: new Date(qr.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) })}
                   </Text>
                 )}
-                <Text style={styles.hint}>
-                  Take a screenshot of this code, then open your banking app, choose Scan & Pay and pick the screenshot from your gallery.
-                </Text>
+                <Text style={styles.hint}>{t('pay.hint')}</Text>
               </>
             )}
-            {qr && paid && <Text style={styles.muted}>Payment of {formatPrice(qr.amount)} received. Thank you!</Text>}
+            {qr && paid && <Text style={styles.muted}>{t('pay.received', { amount: formatPrice(qr.amount) })}</Text>}
           </View>
 
           <View style={styles.step}>
-            <Text style={styles.stepTitle}>2. Collect at the machine</Text>
-            {!paid && <Text style={styles.muted}>Your code works once the payment comes through.</Text>}
+            <Text style={styles.stepTitle}>{t('pay.step2')}</Text>
+            {!paid && <Text style={styles.muted}>{t('pay.codeLater')}</Text>}
             {progress && (
-              <Text style={[styles.progress, progress.tone === 'warn' && styles.progressWarn]}>{progress.text}</Text>
+              <Text style={[styles.progress, progress.tone === 'warn' && styles.progressWarn]}>{t(`progress.${status}`)}</Text>
             )}
             <PickupCode order={order} />
           </View>
 
           {order.order_token && !paid && (
             <Pressable accessibilityRole="button" onPress={cancel} disabled={cancelling} style={styles.cancelButton}>
-              <Text style={styles.cancelText}>{cancelling ? 'Cancelling...' : 'Cancel order'}</Text>
+              <Text style={styles.cancelText}>{cancelling ? t('pay.cancelling') : t('pay.cancel')}</Text>
             </Pressable>
           )}
         </>
       )}
 
       <Pressable accessibilityRole="button" onPress={() => router.dismissTo('/')} style={styles.newOrder}>
-        <Text style={styles.newOrderText}>Start a new order</Text>
+        <Text style={styles.newOrderText}>{t('pay.newOrder')}</Text>
       </Pressable>
     </ScrollView>
   );

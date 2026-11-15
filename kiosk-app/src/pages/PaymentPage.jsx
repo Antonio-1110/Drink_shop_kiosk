@@ -32,20 +32,20 @@ function PaymentPage({ clearCart }) {
     // the backend reuses the open payment, so trying again never makes a second one
     useEffect(() => {
         let cancelled = false;
-        fetchPaynowQr(orderId)
+        fetchPaynowQr(orderId, orderToken)
             .then((data) => { if (!cancelled) { setQr(data); setError(null); } })
             .catch((err) => { if (!cancelled) setError(err); });
         return () => { cancelled = true; };
-    }, [orderId, qrTry]);
+    }, [orderId, orderToken, qrTry]);
 
     // the backend decides when the order is paid or has run out of time; ask it every few seconds
     useEffect(() => {
         if (orderStatus !== 'PENDING') return undefined;
         const timer = setInterval(() => {
-            fetchOrderStatus(orderId).then((data) => setOrderStatus(data.status)).catch(() => {});
+            fetchOrderStatus(orderId, orderToken).then((data) => setOrderStatus(data.status)).catch(() => {});
         }, POLL_MS);
         return () => clearInterval(timer);
-    }, [orderId, orderStatus]);
+    }, [orderId, orderToken, orderStatus]);
 
     // a one-second tick for the countdown
     useEffect(() => {

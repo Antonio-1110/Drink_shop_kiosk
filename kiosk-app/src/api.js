@@ -47,12 +47,15 @@ export function placeOrder(cartItems) {
 }
 
 // starts (or reuses) the PayNow payment; the ingredients stay held until it expires
-export function fetchPaynowQr(orderId) {
-    return request(`/ordering/orders/${orderId}/paynow-qr/`);
+// the order's token proves this kiosk placed it; the backend refuses a wrong one
+const withToken = (orderToken) => (orderToken ? { headers: { 'X-Order-Token': orderToken } } : undefined);
+
+export function fetchPaynowQr(orderId, orderToken) {
+    return request(`/ordering/orders/${orderId}/paynow-qr/`, withToken(orderToken));
 }
 
-export function fetchOrderStatus(orderId) {
-    return request(`/ordering/orders/${orderId}/status/`);
+export function fetchOrderStatus(orderId, orderToken) {
+    return request(`/ordering/orders/${orderId}/status/`, withToken(orderToken));
 }
 
 // reason 'idle_timeout' tells the backend the kiosk cancelled it, not the customer

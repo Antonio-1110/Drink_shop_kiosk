@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { colors, fonts } from '@/constants/theme';
 import { CartProvider } from '@/lib/cart';
+import { LanguageProvider, useT } from '@/lib/i18n';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -26,7 +27,17 @@ export default function RootLayout() {
   // the system fonts stand in until these load, so nothing waits on them
   useFonts({ Fraunces_500Medium, Fraunces_600SemiBold, Inter_400Regular, Inter_500Medium, Inter_600SemiBold });
   return (
-    <CartProvider>
+    <LanguageProvider>
+      <CartProvider>
+        <Screens />
+      </CartProvider>
+    </LanguageProvider>
+  );
+}
+
+function Screens() {
+  const t = useT();
+  return (
       <ThemeProvider value={theme}>
         <StatusBar style="dark" />
         <Stack screenOptions={{
@@ -36,11 +47,10 @@ export default function RootLayout() {
           headerTintColor: colors.primary,
         }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="designer" options={{ title: 'Design your own' }} />
-          <Stack.Screen name="shops" options={{ title: 'Choose a shop', presentation: 'modal' }} />
-          <Stack.Screen name="payment/[orderId]" options={{ title: 'Your order', headerBackVisible: false, headerLeft: () => null, gestureEnabled: false }} />
+          <Stack.Screen name="designer" options={{ title: t('title.designer') }} />
+          <Stack.Screen name="shops" options={{ title: t('title.shops'), presentation: 'modal' }} />
+          <Stack.Screen name="payment/[orderId]" options={{ title: t('title.payment'), headerBackVisible: false, headerLeft: () => null, gestureEnabled: false }} />
         </Stack>
       </ThemeProvider>
-    </CartProvider>
   );
 }
