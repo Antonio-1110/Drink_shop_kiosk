@@ -120,8 +120,10 @@ jobs:
         run: |
           # a copy of the code (the image's is read-only to its user) and a clean environment, so the
           # tests see development settings; only the database is the compose one. The edge service
-          # sits next to it because one test drives it against the backend.
+          # sits next to it because one test drives it against the backend, and test-cases/ because the
+          # app-parity tests read it.
           docker compose cp edge web:/tmp/edge
+          docker compose cp test-cases web:/tmp/test-cases
           docker compose exec -T web sh -c \
             'cp -r /app /tmp/tests && cd /tmp/tests && env -i PATH="$PATH" HOME=/tmp DATABASE_URL="$DATABASE_URL" DJANGO_DEBUG=1 python manage.py test'
       - name: A backup can be taken
